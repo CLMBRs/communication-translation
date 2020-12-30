@@ -4,7 +4,7 @@ This repository follows the official PyTorch implementation of the following pap
 Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. *Emergent Communication Pretraining for Few-Shot Machine Translation*. In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020). [LINK](https://www.aclweb.org/anthology/2020.coling-main.416.pdf)
 
 For now, I barely changes anything but upgrade the pytorch and huggingface version we should use.
-(The bart model version should come soon!)
+~~(The bart model version should come soon!)~~ The bart model version is coming now :)
 
 ## Dependencies
 We should use the same dependency as below to obtain comparable results.
