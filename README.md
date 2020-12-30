@@ -1,16 +1,16 @@
-# ECNMT: Emergent Communication Pretraining for Few-Shot Machine Translation
-This repository is the official PyTorch implementation of the following paper: 
+# UNMT_wEye: Unsupervised Neural Machine Translation with Image as finetuning signal
+This repository follows the official PyTorch implementation of the following paper: 
 
 Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. *Emergent Communication Pretraining for Few-Shot Machine Translation*. In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020). [LINK](https://www.aclweb.org/anthology/2020.coling-main.416.pdf)
 
-This method is a form of unsupervised knowledge transfer in the absence of linguistic data, where a model is first pre-trained on *artificial* languages emerging from referential games and then fine-tuned on few-shot downstream tasks like neural machine translation.
-
-![Emergent Communication and Machine Translation](model.png "Emergent Communication and Machine Translation")
+For now, I barely changes anything but upgrade the pytorch and huggingface version we should use.
+(The bart model version should come soon!)
 
 ## Dependencies
-
-- PyTorch 1.3.1
+We should use the same dependency as below to obtain comparable results.
+- ~~PyTorch 1.3.1~~ PyTorch 1.7.0
 - Python 3.6
+- transformers 4.0.1
 
 ## Data
 COCO image features are available in the sub-folder `half_feats` [here](https://drive.google.com/open?id=14XUGgnXbt--rwfyM-raz9BKKJlnV1zXh). Preprocessed EN-DE (DE-EN) data for translation are available in the sub-folder `task1` [here](https://drive.google.com/open?id=14059L8cfNxxtR8jwRmOS45NmP0J7Rg9r). Both are obtained from [Translagent](https://github.com/facebookresearch/translagent).
@@ -52,19 +52,10 @@ cd ./BASELINENMT
 sh run_training.sh
  ```
    
-## Citation
 
-    @inproceedings{YL:2020,
-      author    = {Yaoyiran Li and Edoardo Maria Ponti and Ivan Vulić and Anna Korhonen},
-      title     = {Emergent Communication Pretraining for Few-Shot Machine Translation},
-      year      = {2020},
-      booktitle = {Proceedings of the 28th International Conference on Computational Linguistics},
-    }
-    
 ## Acknowledgements
 
 Part of the code is based on [Translagent](https://github.com/facebookresearch/translagent). 
 
 The datasets for our experiments include [MS COCO](http://cocodataset.org/#home) for Emergent Communication pretraining, [Multi30k Task 1](https://github.com/multi30k/dataset) and [Europarl](http://www.statmt.org/europarl/v7/) for NMT fine-tuning. Text preprocessing is based on [Moses](https://github.com/moses-smt/mosesdecoder "Moses") and [Subword-NMT](https://github.com/rsennrich/subword-nmt "Subword-NMT"). 
 
-Please cite these resources accordingly.
