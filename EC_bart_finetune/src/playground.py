@@ -7,6 +7,7 @@ import math
 import pickle as pkl
 import os
 import numpy as np
+import yaml
 
 import torch
 import torch.nn as nn
@@ -23,15 +24,21 @@ random = np.random
 random.seed(42)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Translation from scratch')
+    parser = argparse.ArgumentParser(description='Ref Game Engine')
+    parser.add_argument("--config", type=str)
+    args = parser.parse_args()
+    args_dict = vars(args)
+    with open(args_dict["config"], "r") as config_file:
+        args_dict.update(yaml.load(config_file))
 
+    '''
     parser.add_argument("--gpuid", type=int, default=0,
                     help="Which GPU to run")
     parser.add_argument("--dataset", type=str, default="coco",
                     help="Which Image Dataset To Use EC Pretraining")
     parser.add_argument("--len_loss", type=int, default=False,
                     help="Which GPU to run")
-    parser.add_argument("--vocab_size", type=int, default=4035, #The EC vocab_size should be in line with the vocab_size in NMT fine-tuning. 
+    parser.add_argument("--vocab_size", type=int, default=4035, #The EC vocab_size should be in line with the vocab_size in NMT fine-tuning.
                     help="EC vocab size")                    
     parser.add_argument("--alpha", type=float, default=1.0,
                     help="Which GPU to run")
@@ -125,10 +132,18 @@ if __name__ == '__main__':
                     help="Hard Gumbel-Softmax Sampling.")
     parser.add_argument("--no_terminal", action="store_true", default=False,
                     help="Hard Gumbel-Softmax Sampling.")
+    parser.add_argument("--eval_mode", action="store_true", default=False,
+                    help="Only Eval, Does not need to train")
+    '''
+
     start_time = time.time()
-    args, remaining_args = parser.parse_known_args()
-    assert remaining_args == []
-    args_dict = vars(args)
+    #args, remaining_args = parser.parse_known_args()
+    #assert remaining_args == []
+    #args_dict = vars(args)
+
+    #with open('result.yml', 'w') as yaml_file:
+    #    yaml.dump(args_dict, yaml_file, default_flow_style=False)
+
     print("Entering Main")
     if args.dataset == "coco":
         feat_path = coco_path()
@@ -173,8 +188,7 @@ if __name__ == '__main__':
     path_dir = path + model_str + hyperparam_str
 
     if not args.no_write:
-        #recur_mkdir(path_dir)
-        pass
+        recur_mkdir(path_dir)
 
     #sys.stdout = Logger(path_dir, no_write=args.no_write, no_terminal=args.no_terminal)
     print(args)
@@ -225,8 +239,9 @@ if __name__ == '__main__':
 
     best_epoch = -1
     train_loss_dict_ = get_log_loss_dict_()
+    output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        loss = forward_joint(train_data, model, train_loss_dict_, args, loss_fn, args.num_dist, tt)
+        loss, _ = forward_joint(train_data, model, train_loss_dict_, args, loss_fn, args.num_dist, tt)
         optimizer.zero_grad()
         loss.backward()
         total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
@@ -241,14 +256,18 @@ if __name__ == '__main__':
             model.eval()
             if epoch % args.valid_every == 0:
                 valid_loss_dict_ = get_log_loss_dict_()
+                output_ids = True
                 for idx in range(args.print_every):
-                    _ = forward_joint(valid_data, model, valid_loss_dict_, args, loss_fn, args.num_dist_, tt)
+                    _, output_ids_batch = forward_joint(valid_data, model, valid_loss_dict_, args, loss_fn, args.num_dist_, tt)
+                if output_ids==True:
+                    output_ids = output_ids_batch
+                output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
                 avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
                 s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, "valid")
                 print(s_new)
-                if float(s_new.split()[-6][:-2]) > 99.0:
-                    path_model = open(path_dir +
-                                      f"model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt")
+                if float(s_new.split()[-6][:-2]) > 85.0:
+                    path_model = path_dir + f"model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt"
+                    torch.save(output_ids, output_id_path+'bart_output_ids.pt')
                     torch.save(model.state_dict(), path_model)
                     print("Epoch :", epoch, "Prediction Accuracy =", float(s_new.split()[-6][:-2]), "Saved to Path :", path_dir)
                     if args.TransferH:
