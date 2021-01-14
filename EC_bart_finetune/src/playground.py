@@ -22,6 +22,14 @@ from dataloader import *
 from forward import *
 random = np.random
 random.seed(42)
+# General comments here:
+# -Instead of using print, maybe we use logger?
+# -Don't like the way how they define epoch, we should probably follow HF's
+# style.
+# -General model part is good, it is flexible and we could replace any model we
+# want
+# -We want to rewrite the data-loader part in the data_loader.py 
+# -We do not have a predict function yet
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Ref Game Engine')
@@ -31,120 +39,8 @@ if __name__ == '__main__':
     with open(args_dict["config"], "r") as config_file:
         args_dict.update(yaml.load(config_file))
 
-    '''
-    parser.add_argument("--gpuid", type=int, default=0,
-                    help="Which GPU to run")
-    parser.add_argument("--dataset", type=str, default="coco",
-                    help="Which Image Dataset To Use EC Pretraining")
-    parser.add_argument("--len_loss", type=int, default=False,
-                    help="Which GPU to run")
-    parser.add_argument("--vocab_size", type=int, default=4035, #The EC vocab_size should be in line with the vocab_size in NMT fine-tuning.
-                    help="EC vocab size")                    
-    parser.add_argument("--alpha", type=float, default=1.0,
-                    help="Which GPU to run")
-    parser.add_argument("--two_fc", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-
-    parser.add_argument("--num_games", type=int, default=30000,
-                    help="Total number of batches to train for")
-    parser.add_argument("--batch_size", type=int, default=16,
-                    help="Batch size For Training")
-    parser.add_argument("--valid_batch_size", type=int, default=128,
-                    help="Batch size For Validation")
-    parser.add_argument("--num_dist", type=int, default=256,
-                    help="Number of Distracting Images For Training")
-
-    parser.add_argument("--num_dist_", type=int, default=128,
-                    help="Number of Distracting Images For Validation")
-
-    parser.add_argument("--D_img", type=int, default=2048,
-                    help="ResNet feature dimensionality")
-    parser.add_argument("--D_hid", type=int, default=512,
-                    help="Token embedding dimensionality")
-    parser.add_argument("--D_emb", type=int, default=1024,
-                    help="Token embedding dimensionality")
-    parser.add_argument("--seq_len", type=int, default=15,
-                    help="Max Len")
-    parser.add_argument("--lr", type=float, default=1e-5,
-                    help="Learning rate")
-    parser.add_argument("--dropout", type=float, default=0.1,
-                    help="Dropout keep probability")
-
-    parser.add_argument("--temp", type=float, default=1.0,
-                    help="Gumbel temperature")
-    parser.add_argument("--hard", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--TransferH", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--print_every", type=int, default=50,
-                    help="Save model output.")
-    parser.add_argument("--ECemb", type=int, default=5000,
-                    help="Set The EC Embedding Size")                    
-    parser.add_argument("--valid_every", type=int, default=250,
-                    help="Validate model every k batches")
-    parser.add_argument("--translate_every", type=int, default=2000,
-                    help="Validate model every k batches")
-    parser.add_argument("--save_every", type=int, default=4000,
-                    help="Save model output.")
-
-    parser.add_argument("--stop_after", type=int, default=30,
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--grad_clip", type=float, default=1.0,
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--num_directions", type=float, default=1,
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--num_layers", type=float, default=1,
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--unit_norm", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--cpu", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-
-    parser.add_argument("--pretrain_spk", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--bart", action="store_true", default=False,
-                    help="Whether to use the BART model or not")
-    parser.add_argument("--which_loss", type=str, default="joint",
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--loss_type", type=str, default="xent",
-                    help="Stop if validation loss doesn't improve after k iterations.")
-
-    parser.add_argument("--fix_spk", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--fix_bhd", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--no_share_bhd", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-
-    parser.add_argument("--decode_how", type=str, default="greedy",
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--sample_how", type=str, default="gumbel",
-                    help="Stop if validation loss doesn't improve after k iterations.")
-    parser.add_argument("--beam_width", type=int, default=12,
-                    help="Which GPU to run")
-    parser.add_argument("--norm_pow", type=float, default=0.0,
-                    help="Which GPU to run")
-
-    parser.add_argument("--re_load", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-
-    parser.add_argument("--no_write", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--no_terminal", action="store_true", default=False,
-                    help="Hard Gumbel-Softmax Sampling.")
-    parser.add_argument("--eval_mode", action="store_true", default=False,
-                    help="Only Eval, Does not need to train")
-    '''
-
-    start_time = time.time()
-    #args, remaining_args = parser.parse_known_args()
-    #assert remaining_args == []
-    #args_dict = vars(args)
-
-    #with open('result.yml', 'w') as yaml_file:
-    #    yaml.dump(args_dict, yaml_file, default_flow_style=False)
-
-    print("Entering Main")
+      start_time = time.time()
+      print("Entering Main")
     if args.dataset == "coco":
         feat_path = coco_path()
         data_path = coco_path()
@@ -153,7 +49,9 @@ if __name__ == '__main__':
     else:
         print("image dataset should be set as coco")
         #here to insert alternative imgae data set
+        #Xuhui: we should be able to use any img
 
+    # Xuhui: this is loading the pre-computed ResNet Image representation
     (train_img1, train_img2, valid_img, test_img) = [torch.load(f'{feat_path}/half_feats/{x}') \
         for x in f"train_en_feats train_{args.l2}_feats valid_feats test_feats".split() ]
 
@@ -186,7 +84,8 @@ if __name__ == '__main__':
     path = f"{saved_results_path()}sentence_level/{task_path}/joint_model/"
     hyperparam_str = f"{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}.num_dist_{args.num_dist}.vocab_size_{args.vocab_size}_{args.vocab_size}.hard_{args.hard}/"
     path_dir = path + model_str + hyperparam_str
-
+    # Xuhui: I actually do not like the way how they make the directory, any
+    # better thoughts?
     if not args.no_write:
         recur_mkdir(path_dir)
 
@@ -210,7 +109,7 @@ if __name__ == '__main__':
     if not args.cpu:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
-
+    #Xuhui: This module is showing the model parameter, maybe we do not need
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
