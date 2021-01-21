@@ -33,6 +33,9 @@ the following command
 
     yapf -ir src_file_or_directory
 
+We recommend running this command after you add any code, and *before you
+commit*
+
 Please also follow other style best practices that yapf does not enforce:
 
 - Always break up lines over 80 characters
