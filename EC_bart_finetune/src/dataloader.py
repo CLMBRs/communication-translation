@@ -1,16 +1,17 @@
 import copy
 import json
 import operator
-import pickle as pkl
-import numpy as np
-from collections import OrderedDict
 import time
+import numpy as np
+import pickle as pkl
+from collections import OrderedDict
+from util import *
+
 import torch
 from torch.autograd import Variable
 from torchfile import load as load_lua
 
-from util import *
-
+# TODO: We probably should only set this once in the main script
 random = np.random
 random.seed(1234)
 

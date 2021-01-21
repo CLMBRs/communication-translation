@@ -1,20 +1,20 @@
-import time
-import operator
 import math
-import sys
+import operator
 import os
-import pickle as pkl
+import sys
+import time
 import numpy as np
+import pickle as pkl
+from modeling_bart import BartForConditionalGeneration
+from transformers import BartTokenizer
+from util import *
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from util import *
-from modeling_bart import BartForConditionalGeneration
-from transformers import BartTokenizer
-
+# TODO: again, we probably want to set a global random seed
 millis = int(round(time.time() * 1000))
 torch.manual_seed(millis)
 torch.cuda.manual_seed(millis)
@@ -91,7 +91,8 @@ class BartAgent(torch.nn.Module):
 
         #import pdb; pdb.set_trace()
         # TODO: This is really bad style, need to fix when we figure out how
-        return spk_embeds, (lis_hid, lsn_h_imgs), spk_msg,(end_idx_, end_loss_), (
+        return spk_embeds, (lis_hid,
+                            lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (
                                 torch.min(spk_cap_len_.float()),
                                 torch.mean(spk_cap_len_.float()),
                                 torch.max(spk_cap_len_.float())
@@ -164,7 +165,7 @@ class RnnListener(torch.nn.Module):
 class Speaker(torch.nn.Module):
     def __init__(self, bart, lang, args):
         super(Speaker, self).__init__()
-        # self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers, 
+        # self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers,
         # batch_first=True)
         self.spk = bart
         self.project = nn.Linear(args.D_hid, args.seq_len * args.D_emb)

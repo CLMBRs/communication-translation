@@ -1,12 +1,11 @@
-import operator
 import math
+import operator
 import os
 import numpy as np
+from util import *
 
 import torch
 import torch.nn.functional as F
-
-from util import *
 
 
 def sample_gumbel(shape, tt=torch, eps=1e-20):

@@ -1,17 +1,16 @@
-import time
-import operator
 import math
-import sys
+import operator
 import os
-import pickle as pkl
+import sys
+import time
 import numpy as np
+import pickle as pkl
+from util import *
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
-from util import *
 
 millis = int(round(time.time() * 1000))
 torch.manual_seed(millis)

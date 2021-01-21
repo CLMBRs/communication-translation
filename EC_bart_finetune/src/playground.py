@@ -1,25 +1,24 @@
-import sys
-import subprocess as commands
+import argparse
 import codecs
 import copy
-import argparse
 import math
-import pickle as pkl
 import os
-import numpy as np
+import sys
 import yaml
-
-import torch
-import torch.nn as nn
-import torch.autograd as autograd
-from torch.autograd import Variable
-from torchfile import load as load_lua
-
-from util import *
-from models import *
+import numpy as np
+import pickle as pkl
+import subprocess as commands
 from bart_models import *
 from dataloader import *
 from forward import *
+from models import *
+from util import *
+
+import torch
+import torch.autograd as autograd
+import torch.nn as nn
+from torch.autograd import Variable
+from torchfile import load as load_lua
 
 # General comments here:
 # -Instead of using print, maybe we use logger?
@@ -29,6 +28,7 @@ from forward import *
 # want
 # -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
+
 
 def main():
     # TODO: The seed should be a setable parameter
@@ -55,10 +55,8 @@ def main():
 
     # Xuhui: this is loading the pre-computed ResNet Image representation
     (train_img1, train_img2, valid_img, test_img) = [
-        torch.load(f'{feat_path}/half_feats/{x}')
-        for x in (
-            f"train_en_feats train_{args.l2}_feats valid_feats test_feats"
-        ).split()
+        torch.load(f'{feat_path}/half_feats/{x}') for x in
+        (f"train_en_feats train_{args.l2}_feats valid_feats test_feats").split()
     ]
 
     print("Dataset Loaded")
@@ -130,7 +128,7 @@ def main():
     if not args.cpu:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
-    
+
     #Xuhui: This module is showing the model parameter, maybe we do not need
     in_params, out_params = [], []
     in_names, out_names = [], []
@@ -218,6 +216,7 @@ def main():
         model.train()
     end_time = time.time()
     print("Total Runtime :", end_time - start_time)
+
 
 if __name__ == '__main__':
     main()

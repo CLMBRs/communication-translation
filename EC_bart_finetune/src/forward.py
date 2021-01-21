@@ -1,17 +1,15 @@
-import time
 import random
-import pickle as pkl
+import time
 import numpy as np
-
-import torch
-import torch.nn as nn
-import torch.autograd as autograd
-from torch.autograd import Variable
-import torch.nn.functional as F
-
+import pickle as pkl
+from dataloader import next_batch_joint
 from util import idx_to_emb, logit_to_acc
 
-from dataloader import next_batch_joint
+import torch
+import torch.autograd as autograd
+import torch.nn as nn
+from torch.autograd import Variable
+import torch.nn.functional as F
 
 millis = int(round(time.time() * 10000)) % 10000
 random.seed(millis)

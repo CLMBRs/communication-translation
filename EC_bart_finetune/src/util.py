@@ -1,10 +1,10 @@
-import pprint
 import codecs
 import os
+import pprint
 import sys
 import time
-import pickle as pkl
 import numpy as np
+import pickle as pkl
 from collections import OrderedDict
 
 import torch
@@ -253,7 +253,7 @@ def loss_acc_dict():
                "loss": 0},\
         "lsn": {\
                "loss": 0,\
-               "acc": 0 } \
+               "acc": 0 }  \
         }
 
 
@@ -263,7 +263,7 @@ def loss_acc_meter():
                "loss": AverageMeter()},\
         "lsn": {\
                "loss": AverageMeter(),\
-               "acc": AverageMeter() } \
+               "acc": AverageMeter() }  \
         }
 
 
