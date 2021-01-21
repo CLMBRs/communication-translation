@@ -11,30 +11,30 @@ and is being modified for novel emergent-communication experimentation by the
 **University of Washington CLMBR Lab**, under Shane Steinert-Threlkeld.
 
 ## Dependencies
-The source code is built aroud PyTorch, and has the following main dependencies
+The source code is built aroud PyTorch, and has the following main dependencies:
 
 - Python 3.6
 - PyTorch 1.7.0
 - transformers 4.0.1
 
-For more extensive dependencies, see `requirements.txt`
+For more extensive dependencies, see `requirements.txt`.
 
     pip install -r requirements.txt
 
 ## Style Guide
 Source code can be largely automatically formatted using yapf. Make sure you
-have yapf installed (it is included in requirements.txt)
+have yapf installed (it is included in requirements.txt).
 
     pip install yapf
 
 The repository style can be changed as we need, but for now the configuration
 can be found in `setup.cfg`. To automatically format source code in place, use
-the following command
+the following command:
 
     yapf -ir src_file_or_directory
 
 We recommend running this command after you add any code, and *before you
-commit*
+commit*.
 
 Please also follow other style best practices that yapf does not enforce:
 
