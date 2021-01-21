@@ -36,6 +36,7 @@ the following command
 Please also follow other style best practices that yapf does not enforce:
 
 - Always break up lines over 80 characters
+- Name variables with **full, descriptive words**, space permitting
 - Include one blank line at the end of every file
 - Organize imports into the following three groups, alphabetizing within each
 group
@@ -92,7 +93,6 @@ Optional: run baseline
 cd ./BASELINENMT
 sh run_training.sh
  ```
-   
 
 ## Acknowledgements
 
