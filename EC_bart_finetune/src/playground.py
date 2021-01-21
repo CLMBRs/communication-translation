@@ -20,8 +20,7 @@ from models import *
 from bart_models import *
 from dataloader import *
 from forward import *
-random = np.random
-random.seed(42)
+
 # General comments here:
 # -Instead of using print, maybe we use logger?
 # -Don't like the way how they define epoch, we should probably follow HF's
@@ -31,7 +30,11 @@ random.seed(42)
 # -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
 
-if __name__ == '__main__':
+def main():
+    # TODO: The seed should be a setable parameter
+    random = np.random
+    random.seed(42)
+
     parser = argparse.ArgumentParser(description='Ref Game Engine')
     parser.add_argument("--config", type=str)
     args = parser.parse_args()
@@ -215,3 +218,6 @@ if __name__ == '__main__':
         model.train()
     end_time = time.time()
     print("Total Runtime :", end_time - start_time)
+
+if __name__ == '__main__':
+    main()
