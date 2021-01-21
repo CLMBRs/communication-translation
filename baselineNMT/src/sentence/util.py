@@ -18,10 +18,10 @@ def gen_ref(path_org, num, path_new):
         os.remove(path_new)
     except OSError:
         pass
-    g = open(path_org,"r")
+    g = open(path_org, "r")
     lines = g.readlines()
     g.close()
-    
+
     num = set(num)
     with open(path_new, "w") as f:
         for k in range(len(lines)):
@@ -29,10 +29,7 @@ def gen_ref(path_org, num, path_new):
                 f.write(lines[k])
 
 
-
-
-
-def filter_bad(src,trg):
+def filter_bad(src, trg):
     note = []
     s_ = set([])
     for i in range(len(src)):
@@ -42,31 +39,38 @@ def filter_bad(src,trg):
         else:
             s_.add(s)
     return set(note)
-def return_valid_test(src,trg,bad,w2i_trg):
 
-    print("src trg :", len(src),len(trg),len(src[0]),len(trg[0]))
+
+def return_valid_test(src, trg, bad, w2i_trg):
+
+    print("src trg :", len(src), len(trg), len(src[0]), len(trg[0]))
     valid_list = []
     for i in range(len(trg)):
         if i not in bad:
-            if (trg[i][0][-2] == w2i_trg['.']) or (trg[i][0][-2] == w2i_trg['?']):
+            if (trg[i][0][-2]
+                == w2i_trg['.']) or (trg[i][0][-2] == w2i_trg['?']):
                 len_trg = len(trg[i][0])
                 len_src = len(src[i][0])
-                if len_src > 3 and len_trg > 3 and len_src < 26 and len_trg < 26: 
+                if len_src > 3 and len_trg > 3 and len_src < 26 and len_trg < 26:
                     valid_list.append(i)
-    return valid_list   
-def return_train(src,trg,bad,w2i_trg,valid_list,test_list): 
+    return valid_list
+
+
+def return_train(src, trg, bad, w2i_trg, valid_list, test_list):
     train_list = []
     for i in range(len(trg)):
         if (i not in bad) and (i not in valid_list) and (i not in test_list):
             if trg[i][0][-2] == w2i_trg['.'] or trg[i][0][-2] == w2i_trg['?']:
                 len_trg = len(trg[i][0])
                 len_src = len(src[i][0])
-                if len_src > 3 and len_trg > 3 and len_src < 26 and len_trg < 26: 
+                if len_src > 3 and len_trg > 3 and len_src < 26 and len_trg < 26:
                     train_list.append(i)
-    return train_list   
+    return train_list
+
+
 def make_ref(valid_list, test_list, path_valid, path_test, path_train):
-    path_valid = path_valid 
-    path_test = path_test 
+    path_valid = path_valid
+    path_test = path_test
     try:
         os.remove(path_valid)
     except OSError:
@@ -75,29 +79,36 @@ def make_ref(valid_list, test_list, path_valid, path_test, path_train):
         os.remove(path_test)
     except OSError:
         pass
-    g = open(path_train,"r")
+    g = open(path_train, "r")
     lines = g.readlines()
     g.close()
     with open(path_valid, "w") as f:
         for k in valid_list:
             sen = lines[k]
-            final = " ".join(["".join(w.split()) for w in sen.split("▁")]).strip()
-            f.write(final+'\n')
+            final = " ".join(["".join(w.split())
+                              for w in sen.split("▁")]).strip()
+            f.write(final + '\n')
     with open(path_test, "w") as f:
         for k in test_list:
             sen = lines[k]
-            final = " ".join(["".join(w.split()) for w in sen.split("▁")]).strip()           
-            f.write(final+'\n')
+            final = " ".join(["".join(w.split())
+                              for w in sen.split("▁")]).strip()
+            f.write(final + '\n')
 
 
-def restore(i2w_en,i2w_l2,s_en,s_l2):
+def restore(i2w_en, i2w_l2, s_en, s_l2):
     sen = [i2w_en[i] for i in s_en]
     sl2 = [i2w_l2[i] for i in s_l2]
     sen = " ".join(sen)
     sl2 = " ".join(sl2)
-    print(len(s_en)," ".join(["".join(w.split()) for w in sen.split("▁")]).strip())
-    print(len(s_l2)," ".join(["".join(w.split()) for w in sl2.split("▁")]).strip())
-
+    print(
+        len(s_en),
+        " ".join(["".join(w.split()) for w in sen.split("▁")]).strip()
+    )
+    print(
+        len(s_l2),
+        " ".join(["".join(w.split()) for w in sl2.split("▁")]).strip()
+    )
 
 
 def make_ref_tmp(valid_data, path_valid, i2w):
@@ -109,9 +120,9 @@ def make_ref_tmp(valid_data, path_valid, i2w):
         for sen in valid_data:
             seq = [i2w[i] for i in sen[0][1:-1]]
             seq = " ".join(seq)
-            final = " ".join(["".join(w.split()) for w in seq.split("▁")]).strip()
-            f.write(final+'\n')
-
+            final = " ".join(["".join(w.split())
+                              for w in seq.split("▁")]).strip()
+            f.write(final + '\n')
 
 
 def return_work_list_and_count(path, voc_size):
@@ -130,9 +141,11 @@ def return_work_list_and_count(path, voc_size):
                     word_list.append(tok)
                     count.append(1)
                     idx += 1
-    count_idx = sorted(range(len(count)), key=lambda k: count[k],reverse=True)
+    count_idx = sorted(range(len(count)), key=lambda k: count[k], reverse=True)
     new_word_list = [word_list[i] for i in count_idx]
-    return new_word_list[:voc_size-4], sorted(count,reverse=True)[:voc_size-4]
+    return new_word_list[:voc_size - 4], sorted(count,
+                                                reverse=True)[:voc_size - 4]
+
 
 def return_dic(w2i, i2w, path, voc_size):
     word_list, _ = return_work_list_and_count(path, voc_size)
@@ -142,6 +155,7 @@ def return_dic(w2i, i2w, path, voc_size):
         i2w[k] = w
         k += 1
     return w2i, i2w
+
 
 def return_data(w2i, i2w, path):
     data = []
@@ -156,30 +170,32 @@ def return_data(w2i, i2w, path):
                     sent.append(w2i['<UNK>'])
             sent.append(w2i['<EOS>'])
             data.append([sent])
-    return data    
+    return data
+
 
 def final_return_w2i_i2w():
-    train_en_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.en" 
+    train_en_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.en"
     valid_en_path = "/workspace/multi30k/dataset/data/task1/tok/val.lc.norm.tok.en"
     test_en_path = "/workspace/multi30k/dataset/data/task1/tok/test_2016_flickr.lc.norm.tok.en"
-    train_de_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.de" 
+    train_de_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.de"
     valid_de_path = "/workspace/multi30k/dataset/data/task1/tok/val.lc.norm.tok.de"
     test_de_path = "/workspace/multi30k/dataset/data/task1/tok/test_2016_flickr.lc.norm.tok.de"
     voc_size_en = 4035
     voc_size_de = 5445
-    w2i_en = {'<PAD>':0, '<UNK>':1, '<BOS>':2, '<EOS>':3}
-    i2w_en = {0: '<PAD>', 1:'<UNK>', 2:'<BOS>',3:'<EOS>'}
-    w2i_l2 = {'<PAD>':0, '<UNK>':1, '<BOS>':2, '<EOS>':3}
-    i2w_l2 = {0: '<PAD>', 1:'<UNK>', 2:'<BOS>',3:'<EOS>'}
+    w2i_en = {'<PAD>': 0, '<UNK>': 1, '<BOS>': 2, '<EOS>': 3}
+    i2w_en = {0: '<PAD>', 1: '<UNK>', 2: '<BOS>', 3: '<EOS>'}
+    w2i_l2 = {'<PAD>': 0, '<UNK>': 1, '<BOS>': 2, '<EOS>': 3}
+    i2w_l2 = {0: '<PAD>', 1: '<UNK>', 2: '<BOS>', 3: '<EOS>'}
     w2i_en, i2w_en = return_dic(w2i_en, i2w_en, train_en_path, voc_size_en)
     w2i_l2, i2w_l2 = return_dic(w2i_l2, i2w_l2, train_de_path, voc_size_de)
     return w2i_en, i2w_en, w2i_l2, i2w_l2
 
+
 def final_return_data(w2i_en, i2w_en, w2i_l2, i2w_l2):
-    train_en_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.en" 
+    train_en_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.en"
     valid_en_path = "/workspace/multi30k/dataset/data/task1/tok/val.lc.norm.tok.en"
     test_en_path = "/workspace/multi30k/dataset/data/task1/tok/test_2016_flickr.lc.norm.tok.en"
-    train_de_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.de" 
+    train_de_path = "/workspace/multi30k/dataset/data/task1/tok/train.lc.norm.tok.de"
     valid_de_path = "/workspace/multi30k/dataset/data/task1/tok/val.lc.norm.tok.de"
     test_de_path = "/workspace/multi30k/dataset/data/task1/tok/test_2016_flickr.lc.norm.tok.de"
 
@@ -192,7 +208,7 @@ def final_return_data(w2i_en, i2w_en, w2i_l2, i2w_l2):
     return train_org_en, valid_org_en, test_org_en, train_org_l2, valid_org_l2, test_org_l2
 
 
-def pretrained_emb(i2w_en,i2w_l2):
+def pretrained_emb(i2w_en, i2w_l2):
     path_emb_en = "/media/data/enwiki_20180420_300d.txt"
     path_emb_l2 = "/media/data/dewiki_20180420_300d.txt"
     en_vectors = {}
@@ -205,7 +221,7 @@ def pretrained_emb(i2w_en,i2w_l2):
             if i > 0:
                 s = line.strip()
                 word = s[:s.find(' ')]
-                vector = s[s.find(' ')+1:]
+                vector = s[s.find(' ') + 1:]
                 en_vectors[word] = vector
     print("Reading L2 W2V EMB")
     with open(path_emb_l2) as f:
@@ -215,9 +231,8 @@ def pretrained_emb(i2w_en,i2w_l2):
             if i > 0:
                 s = line.strip()
                 word = s[:s.find(' ')]
-                vector = s[s.find(' ')+1:]
+                vector = s[s.find(' ') + 1:]
                 l2_vectors[word] = vector
-
 
     en_embed = []
     en_oow = []
@@ -232,9 +247,9 @@ def pretrained_emb(i2w_en,i2w_l2):
             vector = list(map(float, en_vectors[word.strip("@")].split()))
         else:
             en_oow.append(i)
-            vector = [0.0]*300
+            vector = [0.0] * 300
         en_embed.append(vector)
-    en_embed = np.array(en_embed, dtype=np.float32) 
+    en_embed = np.array(en_embed, dtype=np.float32)
 
     print("Constructing L2 EMB LAYER")
     for i in range(len(i2w_l2)):
@@ -245,11 +260,10 @@ def pretrained_emb(i2w_en,i2w_l2):
             vector = list(map(float, l2_vectors[word.strip("@")].split()))
         else:
             l2_oow.append(i)
-            vector = [0.0]*300
+            vector = [0.0] * 300
         l2_embed.append(vector)
-    l2_embed = np.array(l2_embed, dtype=np.float32) 
+    l2_embed = np.array(l2_embed, dtype=np.float32)
     return en_embed, l2_embed, en_oow, l2_oow
-
 
 
 class AverageMeter(object):
@@ -269,8 +283,10 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+
 def sum_num_captions(org):
     return sum([len(x) for x in org])
+
 
 def get_coco_idx():
     a, b = 56644, 56643
@@ -294,17 +310,19 @@ def get_coco_idx():
             cand += 1
         cand = cand % 56643
 
-    assert( len(set(a_)) == 14500 )
-    assert( len(set(b_)) == 14500 )
+    assert (len(set(a_)) == 14500)
+    assert (len(set(b_)) == 14500)
 
     return a_, b_
+
 
 def recur_mkdir(dir):
     ll = dir.split("/")
     ll = [x for x in ll if x != ""]
     for idx in range(len(ll)):
-        ss = "/".join(ll[0:idx+1])
-        check_mkdir("/"+ss)
+        ss = "/".join(ll[0:idx + 1])
+        check_mkdir("/" + ss)
+
 
 class Logger(object):
     def __init__(self, path, no_write=False, no_terminal=False):
@@ -312,7 +330,7 @@ class Logger(object):
         if self.no_write:
             print("Don't write to file")
         else:
-            self.log = codecs.open(path+"log.log", "wb", encoding="utf8")
+            self.log = codecs.open(path + "log.log", "wb", encoding="utf8")
 
         self.no_terminal = no_terminal
         self.terminal = sys.stdout
@@ -329,25 +347,42 @@ class Logger(object):
         #you might want to specify some extra behavior here.
         pass
 
+
 def check_dataset_sanity(args):
     assert args.dataset == "coco" or args.dataset == "multi30k"
     if args.dataset == "coco":
-        assert (args.src, args.trg) == ("en", "jp") or (args.src, args.trg) == ("jp", "en")
+        assert (args.src, args.trg) == ("en",
+                                        "jp") or (args.src,
+                                                  args.trg) == ("jp", "en")
     elif args.dataset == "multi30k":
-       
-        assert (args.src, args.trg) == ("en", "de") or (args.src, args.trg) == ("de", "en") or (args.src, args.trg) == ("cs", "en") or (args.src, args.trg) == ("en", "cs") or (args.src, args.trg) == ("en", "tr") or (args.src, args.trg) == ("tr", "en") or (args.src, args.trg) == ("en", "ro") or (args.src, args.trg) == ("ro", "en") or (args.src, args.trg) == ("fr", "en") or (args.src, args.trg) == ("en", "fr")
+
+        assert (args.src, args.trg) == ("en", "de") or (args.src, args.trg) == (
+            "de", "en"
+        ) or (args.src, args.trg) == ("cs", "en") or (args.src, args.trg) == (
+            "en", "cs"
+        ) or (args.src, args.trg) == ("en", "tr") or (args.src, args.trg) == (
+            "tr", "en"
+        ) or (args.src, args.trg) == ("en", "ro") or (args.src, args.trg) == (
+            "ro", "en"
+        ) or (args.src, args.trg) == ("fr", "en") or (args.src,
+                                                      args.trg) == ("en", "fr")
+
 
 def scr_path():
-    return "~/mosesdecoder/scripts/generic" #enter your root
+    return "~/mosesdecoder/scripts/generic"  #enter your root
+
 
 def saved_results_path():
-    return "/gscratch/ark/xuhuizh/UMT_data/multi30k_reorg/" #enter your root
+    return "/gscratch/ark/xuhuizh/UMT_data/multi30k_reorg/"  #enter your root
+
 
 def multi30k_reorg_path():
-    return "/gscratch/ark/xuhuizh/UMT_data/multi30k_reorg/" #enter your root
+    return "/gscratch/ark/xuhuizh/UMT_data/multi30k_reorg/"  #enter your root
+
 
 def coco_path():
-    return "" #enter your root
+    return ""  #enter your root
+
 
 def sort_per_len(caps):
     lens = [(idx, len(cap)) for idx, cap in enumerate(caps)]
@@ -356,10 +391,19 @@ def sort_per_len(caps):
     assert len(lens) == len(caps)
     return lens
 
+
 def trim_caps(caps, minlen, maxlen):
-    new_cap = [ [ cap for cap in cap_i if len(cap) <= maxlen and len(cap) >= minlen] for cap_i in caps]
-    print("Before : {} captions / After : {} captions".format( sum_num_captions(caps), sum_num_captions(new_cap) ))
+    new_cap = [
+        [cap for cap in cap_i if len(cap) <= maxlen and len(cap) >= minlen]
+        for cap_i in caps
+    ]
+    print(
+        "Before : {} captions / After : {} captions".format(
+            sum_num_captions(caps), sum_num_captions(new_cap)
+        )
+    )
     return new_cap
+
 
 def print_params_naka(names, sizes):
     comps = "decoder_trg encoder_src encoder_trg beholder".split()
@@ -371,7 +415,9 @@ def print_params_naka(names, sizes):
     for name, size in zip(names, sizes):
         name_ = name.split(".")
         cc, rest = name_[0], ".".join(name_[1:])
-        dd[cc][rest] = "{} ({})".format(rest, size[0]) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
+        dd[cc][rest] = "{} ({})".format(
+            rest, size[0]
+        ) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
 
     ss = ""
     for cc in comps:
@@ -382,6 +428,7 @@ def print_params_naka(names, sizes):
             ss += "\n"
 
     return ss
+
 
 def print_params_nmt(names, sizes):
     comps = "encoder decoder".split()
@@ -393,7 +440,9 @@ def print_params_nmt(names, sizes):
     for name, size in zip(names, sizes):
         name_ = name.split(".")
         cc, rest = name_[0], ".".join(name_[1:])
-        dd[cc][rest] = "{} ({})".format(rest, size[0]) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
+        dd[cc][rest] = "{} ({})".format(
+            rest, size[0]
+        ) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
 
     ss = ""
     for cc in comps:
@@ -404,6 +453,7 @@ def print_params_nmt(names, sizes):
             ss += "\n"
 
     return ss
+
 
 def print_params(names, sizes):
     agents = "l1_agent l2_agent".split()
@@ -418,7 +468,9 @@ def print_params(names, sizes):
     for name, size in zip(names, sizes):
         name_ = name.split(".")
         aa, cc, rest = name_[0], name_[1], ".".join(name_[2:])
-        dd[aa][cc][rest] = "{} ({})".format(rest, size[0]) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
+        dd[aa][cc][rest] = "{} ({})".format(
+            rest, size[0]
+        ) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
 
     ss = ""
     for aa in agents:
@@ -432,13 +484,22 @@ def print_params(names, sizes):
 
     return ss
 
+
 def print_captions(gen_indices, i2w, joiner):
 
-    return [ joiner.join( [i2w[ii] for ii in gen_idx] ).replace("@@ ", "") for gen_idx in gen_indices]
+    return [
+        joiner.join([i2w[ii] for ii in gen_idx]).replace("@@ ", "")
+        for gen_idx in gen_indices
+    ]
+
 
 def decode(gen_indices, i2w):
 
-    return [ " ".join( [i2w[ii] for ii in gen_idx] ).replace("@@ ", "") for gen_idx in gen_indices]
+    return [
+        " ".join([i2w[ii] for ii in gen_idx]).replace("@@ ", "")
+        for gen_idx in gen_indices
+    ]
+
 
 def pick(i1, i2, whichs):
     res = []
@@ -447,7 +508,8 @@ def pick(i1, i2, whichs):
         res.append(img[which][idx])
     return res
 
-def idx_to_onehot(indices, nb_digits): # input numpy array
+
+def idx_to_onehot(indices, nb_digits):  # input numpy array
     y = torch.LongTensor(indices).view(-1, 1)
     y_onehot = torch.FloatTensor(indices.shape[0], nb_digits)
 
@@ -456,6 +518,7 @@ def idx_to_onehot(indices, nb_digits): # input numpy array
 
     return y_onehot
 
+
 def max_logit_to_onehot(logits):
     max_element, max_idx = torch.max(logits.cuda(), 1)
     onehot = torch.FloatTensor(logits.size())
@@ -463,6 +526,7 @@ def max_logit_to_onehot(logits):
     onehot.scatter_(1, max_idx.data.long().cpu(), 1)
     onehot = Variable(torch.FloatTensor(onehot), requires_grad=False).cuda()
     return onehot, max_idx.data
+
 
 def sample_logit_to_onehot(logits):
     indices = torch.multinomial(logits, 1)
@@ -473,94 +537,120 @@ def sample_logit_to_onehot(logits):
     onehot = Variable(onehot, requires_grad=False).cuda()
     return onehot, indices.data
 
-def logit_to_acc(logits, y): # logits: [batch_size, num_of_classes]
-    y_max, y_max_idx = torch.max(logits, 1) # [batch_size]
+
+def logit_to_acc(logits, y):  # logits: [batch_size, num_of_classes]
+    y_max, y_max_idx = torch.max(logits, 1)  # [batch_size]
     eq = torch.eq(y_max_idx, y)
     acc = float(eq.sum().data) / float(eq.nelement())
     return acc
 
-def logit_to_top_k(logits, y, k): # logits: [batch_size, num_of_classes]
+
+def logit_to_top_k(logits, y, k):  # logits: [batch_size, num_of_classes]
     logits_sorted, indices = torch.sort(logits, 1, descending=True)
     y = y.view(-1, 1)
-    indices = indices[:,:k]
+    indices = indices[:, :k]
     y_big = y.expand(indices.size())
     eq = torch.eq(indices, y_big)
     eq2 = torch.sum(eq, 1)
     return eq2.sum().data[0], eq2.nelement()
+
 
 def loss_and_acc(logits, labels, loss_fn):
     loss = loss_fn(logits, labels)
     acc = logit_to_acc(logits, labels)
     return (loss, acc)
 
+
 def loss_acc_dict():
     return {
-        "spk":{\
-               "loss":0},\
-        "lsn":{\
-               "loss":0,\
-               "acc":0 }\
+        "spk": {\
+               "loss": 0},\
+        "lsn": {\
+               "loss": 0,\
+               "acc": 0 } \
         }
+
 
 def loss_acc_meter():
     return {
-        "spk":{\
-               "loss":AverageMeter()},\
-        "lsn":{\
-               "loss":AverageMeter(),\
-               "acc":AverageMeter() }\
+        "spk": {\
+               "loss": AverageMeter()},\
+        "lsn": {\
+               "loss": AverageMeter(),\
+               "acc": AverageMeter() } \
         }
 
+
 def get_loss_dict():
-    return { "l1":loss_acc_dict(), "l2":loss_acc_dict() }
+    return {"l1": loss_acc_dict(), "l2": loss_acc_dict()}
+
 
 def get_log_loss_dict():
-    return {"l1":loss_acc_meter(), "l2":loss_acc_meter() }
+    return {"l1": loss_acc_meter(), "l2": loss_acc_meter()}
+
 
 def get_avg_from_loss_dict(log_loss_dict):
     res = get_loss_dict()
-    for k1, v1 in log_loss_dict.items(): # en_agent / fr_agent
-        for k2, v2 in v1.items(): # spk / lsn
-            for k3, v3 in v2.items(): # loss / acc
+    for k1, v1 in log_loss_dict.items():  # en_agent / fr_agent
+        for k2, v2 in v1.items():  # spk / lsn
+            for k3, v3 in v2.items():  # loss / acc
                 res[k1][k2][k3] = v3.avg
     return res
+
 
 def l3_print_loss(epoch, alpha, avg_loss_dict, mode="train"):
     prt_msg = ""
     for pair in "en_de en_fr de_fr".split():
         prt_msg += "epoch {:5d} {} || {} |".format(epoch, mode, pair.upper())
         for agent in pair.split("_"):
-            prt_msg += "| " # en_agent / fr_agent
+            prt_msg += "| "  # en_agent / fr_agent
 
             for person in "spk lsn".split():
-                prt_msg += " {}_{}".format(agent, person) # spk / lsn
+                prt_msg += " {}_{}".format(agent, person)  # spk / lsn
 
                 if person == "spk":
-                    prt_msg += " {:.3f}".format(avg_loss_dict[pair][agent][person]["loss"])
+                    prt_msg += " {:.3f}".format(
+                        avg_loss_dict[pair][agent][person]["loss"]
+                    )
                 elif person == "lsn":
-                    prt_msg += " {:.3f} * {} = {:.3f}".format(avg_loss_dict[pair][agent][person]["loss"], alpha, avg_loss_dict[pair][agent][person]["loss"] * alpha)
-                    prt_msg += " {:.2f}%".format(avg_loss_dict[pair][agent][person]["acc"])
+                    prt_msg += " {:.3f} * {} = {:.3f}".format(
+                        avg_loss_dict[pair][agent][person]["loss"], alpha,
+                        avg_loss_dict[pair][agent][person]["loss"] * alpha
+                    )
+                    prt_msg += " {:.2f}%".format(
+                        avg_loss_dict[pair][agent][person]["acc"]
+                    )
                 prt_msg += " |"
         prt_msg += "\n"
     return prt_msg
 
+
 def print_loss(epoch, alpha, avg_loss_dict, mode="train"):
     prt_msg = "epoch {:5d} {} ".format(epoch, mode)
     for agent in "l1 l2".split():
-        prt_msg += "| " # en_agent / fr_agent
+        prt_msg += "| "  # en_agent / fr_agent
         for person in "spk lsn".split():
-            prt_msg += " {}_{}".format(agent, person) # spk / lsn
+            prt_msg += " {}_{}".format(agent, person)  # spk / lsn
             if person == "spk":
-                prt_msg += " {:.3f}".format(avg_loss_dict[agent][person]["loss"])
+                prt_msg += " {:.3f}".format(
+                    avg_loss_dict[agent][person]["loss"]
+                )
             elif person == "lsn":
-                prt_msg += " {:.3f} * {} = {:.3f}".format(avg_loss_dict[agent][person]["loss"], alpha, avg_loss_dict[agent][person]["loss"] * alpha)
-                prt_msg += " {:.2f}%".format(avg_loss_dict[agent][person]["acc"])
+                prt_msg += " {:.3f} * {} = {:.3f}".format(
+                    avg_loss_dict[agent][person]["loss"], alpha,
+                    avg_loss_dict[agent][person]["loss"] * alpha
+                )
+                prt_msg += " {:.2f}%".format(
+                    avg_loss_dict[agent][person]["acc"]
+                )
             prt_msg += " |"
     return prt_msg
+
 
 def clip_grad(v, min, max):
     v.register_hook(lambda g: g.clamp(min, max))
     return v
+
 
 def check_mkdir(dir):
     try:
@@ -568,9 +658,9 @@ def check_mkdir(dir):
     except:
         os.mkdir(dir)
 
+
 def idx_to_emb(idx, maxmax, tt):
-    ans = tt.ByteTensor( len(idx), maxmax ).fill_(0)
+    ans = tt.ByteTensor(len(idx), maxmax).fill_(0)
     for aaa, iii in enumerate(idx):
         ans[aaa][iii] = 1
     return Variable(ans, requires_grad=False)
-

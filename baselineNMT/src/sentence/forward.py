@@ -23,16 +23,20 @@ from dataloader import next_batch_nmt
 millis = int(round(time.time() * 10000)) % 10000
 random.seed(millis)
 
+
 def forward_nmt(labels, model, loss_dict, args, loss_fn, tt, valid=False):
     if valid == False:
         batch = args.batch_size
     else:
         batch = args.valid_batch_size
-    src_caps_in, src_caps_in_lens, trg_sorted_idx, trg_caps_in, trg_caps_in_lens, trg_caps_out = next_batch_nmt(labels["src"], labels["trg"], batch, tt)
-    dec_logits = model(src_caps_in, src_caps_in_lens, trg_sorted_idx, trg_caps_in, trg_caps_in_lens)
+    src_caps_in, src_caps_in_lens, trg_sorted_idx, trg_caps_in, trg_caps_in_lens, trg_caps_out = next_batch_nmt(
+        labels["src"], labels["trg"], batch, tt
+    )
+    dec_logits = model(
+        src_caps_in, src_caps_in_lens, trg_sorted_idx, trg_caps_in,
+        trg_caps_in_lens
+    )
 
     loss = loss_fn['xent'](dec_logits, trg_caps_out)
     loss_dict['loss'].update(loss.data)
     return loss
-
-

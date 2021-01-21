@@ -28,7 +28,7 @@ random.seed(42)
 # style.
 # -General model part is good, it is flexible and we could replace any model we
 # want
-# -We want to rewrite the data-loader part in the data_loader.py 
+# -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
 
 if __name__ == '__main__':
@@ -38,9 +38,8 @@ if __name__ == '__main__':
     args_dict = vars(args)
     with open(args_dict["config"], "r") as config_file:
         args_dict.update(yaml.load(config_file))
-
-      start_time = time.time()
-      print("Entering Main")
+        start_time = time.time()
+        print("Entering Main")
     if args.dataset == "coco":
         feat_path = coco_path()
         data_path = coco_path()
@@ -57,25 +56,25 @@ if __name__ == '__main__':
 
     print("Dataset Loaded")
     fixed, learned = [], ["lsn"]
-    if args.fix_spk:      #False
+    if args.fix_spk:  #False
         fixed.append("spk")
     else:
         learned.append("spk")
 
-    if args.fix_bhd:      #False
+    if args.fix_bhd:  #False
         fixed.append("bhd")
     else:
         learned.append("bhd")
 
     fixed, learned = "_".join(sorted(fixed)), "_".join(sorted(learned))
 
-    assert args.which_loss in "joint lsn".split() #which_loss = 'joint'
-    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/" #fixed_.learned_bhd_lsn_spk.joint_loss/
+    assert args.which_loss in "joint lsn".split()  #which_loss = 'joint'
+    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/"  #fixed_.learned_bhd_lsn_spk.joint_loss/
     if args.bart:
         model_str = "bart." + model_str
-    if args.pretrain_spk: #False
+    if args.pretrain_spk:  #False
         model_str = "pretrain_spk." + model_str
-    if args.no_share_bhd: #False
+    if args.no_share_bhd:  #False
         model_str = "no_share_bhd." + model_str
 
     mill = int(round(time.time() * 1000)) % 1000
@@ -93,8 +92,14 @@ if __name__ == '__main__':
     print(args)
     print(model_str)
     print(hyperparam_str)
-    dir_dic = {"feat_path":feat_path, "data_path":data_path, "task_path":task_path, "path":path, "path_dir":path_dir}
-    data = torch.cat([train_img1, train_img2, valid_img, test_img],dim=0)
+    dir_dic = {
+        "feat_path": feat_path,
+        "data_path": data_path,
+        "task_path": task_path,
+        "path": path,
+        "path_dir": path_dir
+    }
+    data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
     train_data, valid_data = remove_duplicate(data)
     train_data = train_data[:50000]
     print('train_img :', type(train_data), train_data.shape)
@@ -121,17 +126,26 @@ if __name__ == '__main__':
             in_params.append(param)
             in_names.append(name)
 
-    in_size, out_size = [x.size() for x in in_params], [x.size() for x in out_params]
-    in_sum, out_sum = sum([np.prod(x) for x in in_size]), sum([np.prod(x) for x in out_size])
+    in_size, out_size = [x.size()
+                         for x in in_params], [x.size() for x in out_params]
+    in_sum, out_sum = sum([np.prod(x) for x in in_size]), sum(
+        [np.prod(x) for x in out_size]
+    )
 
     print("IN    : {} params".format(in_sum))
     print("OUT   : {} params".format(out_sum))
     print("TOTAL : {} params".format(in_sum + out_sum))
 
-    loss_fn = {'xent':nn.CrossEntropyLoss(), 'mse':nn.MSELoss(), 'mrl':nn.MarginRankingLoss(), 'mlml':nn.MultiLabelMarginLoss(), 'mml':nn.MultiMarginLoss()}
+    loss_fn = {
+        'xent': nn.CrossEntropyLoss(),
+        'mse': nn.MSELoss(),
+        'mrl': nn.MarginRankingLoss(),
+        'mlml': nn.MultiLabelMarginLoss(),
+        'mml': nn.MultiMarginLoss()
+    }
     tt = torch
     if not args.cpu:
-        loss_fn = {k:v.cuda() for (k,v) in loss_fn.items()}
+        loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
         tt = torch.cuda
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -140,7 +154,10 @@ if __name__ == '__main__':
     train_loss_dict_ = get_log_loss_dict_()
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        loss, _ = forward_joint(train_data, model, train_loss_dict_, args, loss_fn, args.num_dist, tt)
+        loss, _ = forward_joint(
+            train_data, model, train_loss_dict_, args, loss_fn, args.num_dist,
+            tt
+        )
         optimizer.zero_grad()
         loss.backward()
         total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
@@ -157,8 +174,11 @@ if __name__ == '__main__':
                 valid_loss_dict_ = get_log_loss_dict_()
                 output_ids = True
                 for idx in range(args.print_every):
-                    _, output_ids_batch = forward_joint(valid_data, model, valid_loss_dict_, args, loss_fn, args.num_dist_, tt)
-                if output_ids==True:
+                    _, output_ids_batch = forward_joint(
+                        valid_data, model, valid_loss_dict_, args, loss_fn,
+                        args.num_dist_, tt
+                    )
+                if output_ids == True:
                     output_ids = output_ids_batch
                 output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
                 avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
@@ -166,13 +186,18 @@ if __name__ == '__main__':
                 print(s_new)
                 if float(s_new.split()[-6][:-2]) > 85.0:
                     path_model = path_dir + f"model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt"
-                    torch.save(output_ids, output_id_path+'bart_output_ids.pt')
+                    torch.save(
+                        output_ids, output_id_path + 'bart_output_ids.pt'
+                    )
                     torch.save(model.state_dict(), path_model)
-                    print("Epoch :", epoch, "Prediction Accuracy =", float(s_new.split()[-6][:-2]), "Saved to Path :", path_dir)
+                    print(
+                        "Epoch :", epoch, "Prediction Accuracy =",
+                        float(s_new.split()[-6][:-2]), "Saved to Path :",
+                        path_dir
+                    )
                     if args.TransferH:
-                        args.hard=True
-
+                        args.hard = True
 
         model.train()
     end_time = time.time()
-    print("Total Runtime :", end_time-start_time)
+    print("Total Runtime :", end_time - start_time)
