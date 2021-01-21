@@ -1,21 +1,61 @@
 # UNMT_wEye: Unsupervised Neural Machine Translation with Image as finetuning signal
-This repository follows the official PyTorch implementation of the following paper: 
+This repository follows the official PyTorch implementation of the following
+paper: 
 
-Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. *Emergent Communication Pretraining for Few-Shot Machine Translation*. In Proceedings of the 28th International Conference on Computational Linguistics (COLING 2020). [LINK](https://www.aclweb.org/anthology/2020.coling-main.416.pdf)
+Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. 
+*Emergent Communication Pretraining for Few-Shot Machine Translation*. In
+Proceedings of the 28th International Conference on Computational Linguistics
+(COLING 2020). [LINK](https://www.aclweb.org/anthology/2020.coling-main.416.pdf)
 
-For now, I barely changes anything but upgrade the pytorch and huggingface version we should use.
-~~(The bart model version should come soon!)~~ The bart model version is coming now :)
+and is being modified for novel emergent-communication experimentation by the
+**University of Washington CLMBR Lab**, under Shane Steinert-Threlkeld.
 
 ## Dependencies
-We should use the same dependency as below to obtain comparable results.
-- ~~PyTorch 1.3.1~~ PyTorch 1.7.0
+The source code is built aroud PyTorch, and has the following main dependencies
+
 - Python 3.6
+- PyTorch 1.7.0
 - transformers 4.0.1
 
-## Data
-COCO image features are available in the sub-folder `half_feats` [here](https://drive.google.com/open?id=14XUGgnXbt--rwfyM-raz9BKKJlnV1zXh). Preprocessed EN-DE (DE-EN) data for translation are available in the sub-folder `task1` [here](https://drive.google.com/open?id=14059L8cfNxxtR8jwRmOS45NmP0J7Rg9r). Both are obtained from [Translagent](https://github.com/facebookresearch/translagent).
+For more extensive dependencies, see `requirements.txt`
 
-Please find the data for translation in the other language pairs (EN-CS, EN-RO, EN-FR) in the links below.
+    pip install -r requirements.txt
+
+## Style Guide
+Source code can be largely automatically formatted using yapf. Make sure you
+have yapf installed (it is included in requirements.txt)
+
+    pip install yapf
+
+The repository style can be changed as we need, but for now the configuration
+can be found in `setup.cfg`. To automatically format source code in place, use
+the following command
+
+    yapf -ir src_file_or_directory
+
+Please also follow other style best practices that yapf does not enforce:
+
+- Always break up lines over 80 characters
+- Include one blank line at the end of every file
+- Organize imports into the following three groups, alphabetizing within each
+group
+    - `import a`
+    - `import a as b`
+    - `from a import b`
+- **Comment any code you add**
+    - "Imperative" style is preferred, e.g. `# save variable to cache`
+
+## Data
+COCO image features are available in the sub-folder `half_feats` 
+[here](https://drive.google.com/open?id=14XUGgnXbt--rwfyM-raz9BKKJlnV1zXh). 
+Preprocessed EN-DE (DE-EN) data for translation are available in the sub-folder 
+`task1` 
+[here](https://drive.google.com/open?id=14059L8cfNxxtR8jwRmOS45NmP0J7Rg9r). Both
+are obtained from 
+[Translagent](https://github.com/facebookresearch/translagent).
+
+Please find the data for translation in the other language pairs (EN-CS, EN-RO, 
+EN-FR) in the links below.
  
 | Dictionaries | Train Sentence Pairs | Reference Translations |
 | ------------ | -------------------- | ---------------------- |
@@ -39,7 +79,8 @@ cd ./ECPRETRAIN
 sh run_training.sh
  ```
                          
-Step 2: run NMT fine-tuning (please modify the roots for training data, pretrained model and saved path before).
+Step 2: run NMT fine-tuning (please modify the roots for training data, 
+pretrained model and saved path before).
 ```bash
 cd ./NMT
 sh run_training.sh
@@ -55,7 +96,14 @@ sh run_training.sh
 
 ## Acknowledgements
 
-Part of the code is based on [Translagent](https://github.com/facebookresearch/translagent). 
+Part of the code is based on 
+[Translagent](https://github.com/facebookresearch/translagent). 
 
-The datasets for our experiments include [MS COCO](http://cocodataset.org/#home) for Emergent Communication pretraining, [Multi30k Task 1](https://github.com/multi30k/dataset) and [Europarl](http://www.statmt.org/europarl/v7/) for NMT fine-tuning. Text preprocessing is based on [Moses](https://github.com/moses-smt/mosesdecoder "Moses") and [Subword-NMT](https://github.com/rsennrich/subword-nmt "Subword-NMT"). 
+The datasets for our experiments include [MS COCO](http://cocodataset.org/#home)
+for Emergent Communication pretraining, 
+[Multi30k Task 1](https://github.com/multi30k/dataset) and 
+[Europarl](http://www.statmt.org/europarl/v7/) for NMT fine-tuning. Text 
+preprocessing is based on 
+[Moses](https://github.com/moses-smt/mosesdecoder "Moses") and 
+[Subword-NMT](https://github.com/rsennrich/subword-nmt "Subword-NMT"). 
 
