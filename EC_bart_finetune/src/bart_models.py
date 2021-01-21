@@ -49,7 +49,8 @@ class BartAgent(torch.nn.Module):
         self.D_hid = args.D_hid
 
     def forward(self, data1, spk_sample_how):
-        a_spk_img, b_lsn_imgs, a_spk_caps_in, a_spk_cap_lens = data1  # spk_imgs : (batch_size, 2048)
+        # spk_imgs : (batch_size, 2048)
+        a_spk_img, b_lsn_imgs, a_spk_caps_in, a_spk_cap_lens = data1
 
         num_dist = b_lsn_imgs.size()[1]
 
@@ -89,8 +90,8 @@ class BartAgent(torch.nn.Module):
         )  # (batch_size, num_dist, D_hid)
 
         #import pdb; pdb.set_trace()
-        return spk_embeds, (lis_hid,
-                            lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (
+        # TODO: This is really bad style, need to fix when we figure out how
+        return spk_embeds, (lis_hid, lsn_h_imgs), spk_msg,(end_idx_, end_loss_), (
                                 torch.min(spk_cap_len_.float()),
                                 torch.mean(spk_cap_len_.float()),
                                 torch.max(spk_cap_len_.float())
@@ -163,7 +164,8 @@ class RnnListener(torch.nn.Module):
 class Speaker(torch.nn.Module):
     def __init__(self, bart, lang, args):
         super(Speaker, self).__init__()
-        #self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers, batch_first=True)
+        # self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers, 
+        # batch_first=True)
         self.spk = bart
         self.project = nn.Linear(args.D_hid, args.seq_len * args.D_emb)
 
@@ -180,11 +182,12 @@ class Speaker(torch.nn.Module):
         self.seq_len = args.seq_len
 
     def forward(self, h_img, caps_in, caps_in_lens):
-
-        batch_size = h_img.size()[0]  # caps_in.size()[0]
+        # caps_in.size()[0]
+        batch_size = h_img.size()[0]
 
         h_img = self.project(h_img)
         h_img = h_img.view(-1, self.seq_len, self.D_emb)
-        input_ids, input_embeds, cap_len = \
-            self.spk.gumbel_generate(input_images=h_img, num_beams=1, max_length=self.seq_len)
+        input_ids, input_embeds, cap_len = self.spk.gumbel_generate(
+            input_images=h_img, num_beams=1, max_length=self.seq_len
+        )
         return input_ids, input_embeds, cap_len

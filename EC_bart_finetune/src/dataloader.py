@@ -21,16 +21,16 @@ def next_batch_joint(images, batch_size, num_dist, tt):
     keys = range(len(images))
     assert len(keys) >= num_dist
     for batch_idx in range(batch_size):
-
         img_indices = random.permutation(len(images))[:num_dist]
-
-        which = random.randint(0, num_dist)  # (1)
-
+        # (1)
+        which = random.randint(0, num_dist)
         spk_img = img_indices[which]
-        spk_imgs.append(spk_img)  # (batch_size, 2048)
-        lsn_imgs += list(img_indices)  # batch_size * num_dist
-
-        whichs.append(which)  # (batch_size)
+        # (batch_size, 2048)
+        spk_imgs.append(spk_img)
+        # batch_size * num_dist
+        lsn_imgs += list(img_indices)
+        # (batch_size)
+        whichs.append(which)
     spk_imgs = torch.index_select(images, 0, torch.tensor(spk_imgs)).numpy()
     lsn_imgs = torch.index_select(images, 0, torch.tensor(lsn_imgs)).view(
         batch_size, num_dist, -1

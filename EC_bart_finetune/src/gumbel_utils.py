@@ -22,7 +22,8 @@ def gumbel_softmax_sample(logits, temp, tt=torch, idx_=10):
 
 
 def gumbel_softmax(logits, temp, hard, tt=torch, idx_=10):
-    y = gumbel_softmax_sample(logits, temp, tt, idx_)  # (batch_size, num_cat)
+    # (batch_size, num_cat)
+    y = gumbel_softmax_sample(logits, temp, tt, idx_)
     y_max, y_max_idx = torch.max(y, 1, keepdim=True)
     if hard:
         y_hard = tt.FloatTensor(y.size()).zero_().scatter_(1, y_max_idx.data, 1)

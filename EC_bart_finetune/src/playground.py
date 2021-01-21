@@ -51,8 +51,12 @@ if __name__ == '__main__':
         #Xuhui: we should be able to use any img
 
     # Xuhui: this is loading the pre-computed ResNet Image representation
-    (train_img1, train_img2, valid_img, test_img) = [torch.load(f'{feat_path}/half_feats/{x}') \
-        for x in f"train_en_feats train_{args.l2}_feats valid_feats test_feats".split() ]
+    (train_img1, train_img2, valid_img, test_img) = [
+        torch.load(f'{feat_path}/half_feats/{x}')
+        for x in (
+            f"train_en_feats train_{args.l2}_feats valid_feats test_feats"
+        ).split()
+    ]
 
     print("Dataset Loaded")
     fixed, learned = [], ["lsn"]
@@ -69,7 +73,9 @@ if __name__ == '__main__':
     fixed, learned = "_".join(sorted(fixed)), "_".join(sorted(learned))
 
     assert args.which_loss in "joint lsn".split()  #which_loss = 'joint'
-    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/"  #fixed_.learned_bhd_lsn_spk.joint_loss/
+
+    #fixed_.learned_bhd_lsn_spk.joint_loss/
+    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/"
     if args.bart:
         model_str = "bart." + model_str
     if args.pretrain_spk:  #False
@@ -81,14 +87,21 @@ if __name__ == '__main__':
 
     big = f"{saved_results_path()}sentence_level/{task_path}"
     path = f"{saved_results_path()}sentence_level/{task_path}/joint_model/"
-    hyperparam_str = f"{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}.num_dist_{args.num_dist}.vocab_size_{args.vocab_size}_{args.vocab_size}.hard_{args.hard}/"
+    hyperparam_str = (
+        f"{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}"
+        f".temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}"
+        f".num_dist_{args.num_dist}.vocab_size_{args.vocab_size}"
+        f"_{args.vocab_size}.hard_{args.hard}/"
+    )
     path_dir = path + model_str + hyperparam_str
     # Xuhui: I actually do not like the way how they make the directory, any
     # better thoughts?
     if not args.no_write:
         recur_mkdir(path_dir)
 
-    #sys.stdout = Logger(path_dir, no_write=args.no_write, no_terminal=args.no_terminal)
+    # sys.stdout = Logger(
+    #     path_dir, no_write=args.no_write, no_terminal=args.no_terminal
+    # )
     print(args)
     print(model_str)
     print(hyperparam_str)
@@ -114,6 +127,7 @@ if __name__ == '__main__':
     if not args.cpu:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
+    
     #Xuhui: This module is showing the model parameter, maybe we do not need
     in_params, out_params = [], []
     in_names, out_names = [], []

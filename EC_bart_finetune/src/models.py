@@ -31,7 +31,8 @@ def gumbel_softmax_sample(logits, temp, tt=torch, idx_=10):
 
 
 def gumbel_softmax(logits, temp, hard, tt=torch, idx_=10):
-    y = gumbel_softmax_sample(logits, temp, tt, idx_)  # (batch_size, num_cat)
+    # (batch_size, num_cat)
+    y = gumbel_softmax_sample(logits, temp, tt, idx_)
     y_max, y_max_idx = torch.max(y, 1, keepdim=True)
     if hard:
         y_hard = tt.FloatTensor(y.size()).zero_().scatter_(1, y_max_idx.data, 1)
@@ -64,7 +65,8 @@ class SingleAgent(torch.nn.Module):
         self.D_hid = args.D_hid
 
     def forward(self, data1, spk_sample_how):
-        a_spk_img, b_lsn_imgs, a_spk_caps_in, a_spk_cap_lens = data1  # spk_imgs : (batch_size, 2048)
+        # spk_imgs : (batch_size, 2048)
+        a_spk_img, b_lsn_imgs, a_spk_caps_in, a_spk_cap_lens = data1
 
         num_dist = b_lsn_imgs.size()[1]
 
