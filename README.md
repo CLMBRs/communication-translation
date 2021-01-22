@@ -50,6 +50,9 @@ group
 - **Comment any code you add**
     - "Imperative" style is preferred, e.g. `# save variable to cache`
 
+## Code Guide
+To get started, checkout the folder `EC_bart_finetune`. 
+
 ## Data
 COCO image features are available in the sub-folder `half_feats` 
 [here](https://drive.google.com/open?id=14XUGgnXbt--rwfyM-raz9BKKJlnV1zXh). 
