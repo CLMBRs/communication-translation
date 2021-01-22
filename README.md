@@ -38,7 +38,8 @@ commit*.
 
 Please also follow other style best practices that yapf does not enforce:
 
-- Always break up lines over 80 characters
+- Always break up lines over 80 characters (*in most text editors you can
+display a ruler to check*)
 - Name variables with **full, descriptive words**, space permitting
 - Include one blank line at the end of every file
 - Organize imports into the following three groups, alphabetizing within each

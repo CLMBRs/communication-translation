@@ -50,8 +50,8 @@ def main():
         args.l2 = "jp"
     else:
         print("image dataset should be set as coco")
-        #here to insert alternative imgae data set
-        #Xuhui: we should be able to use any img
+        # Here to insert alternative imgae data set
+        # Xuhui: we should be able to use any img
 
     # Xuhui: this is loading the pre-computed ResNet Image representation
     (train_img1, train_img2, valid_img, test_img) = [
