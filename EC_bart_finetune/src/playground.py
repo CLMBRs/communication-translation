@@ -240,7 +240,6 @@ def main():
                 avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
                 s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
                 logger.info(s_new)
-                # Okay, what the fuck
                 if float(s_new.split()[-6][:-2]) > 85.0:
                     path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
                     torch.save(
