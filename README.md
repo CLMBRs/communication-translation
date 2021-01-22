@@ -43,7 +43,7 @@ display a ruler to check*)
 - Name variables with **full, descriptive words**, space permitting
 - Include one blank line at the end of every file
 - Organize imports into the following three groups, alphabetizing within each
-group
+group (and within group, put Python library imports before external package ones)
     - `import a`
     - `import a as b`
     - `from a import b`
