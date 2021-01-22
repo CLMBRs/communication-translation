@@ -51,8 +51,6 @@ group
     - "Imperative" style is preferred, e.g. `# save variable to cache`
 
 ## Code Guide
-Here is a brief intro to the code base.
-
 To get started, checkout the folder `EC_bart_finetune`. 
 
 ## Data
