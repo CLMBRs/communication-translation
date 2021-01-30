@@ -4,6 +4,7 @@ import copy
 import logging
 import math
 import os
+import random
 import sys
 import yaml
 import numpy as np
@@ -29,6 +30,12 @@ from torchfile import load as load_lua
 # -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
 
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.n_gpu > 0:
+        torch.cuda.manual_seed_all(args.seed)
 
 def main():
     """
@@ -55,9 +62,10 @@ def main():
         args_dict.update(yaml.load(config_file))
 
     # TODO: The seed should be a setable parameter
-    random = np.random
-    random.seed(42)
+    # set random seed
+    set_seed(args.seed)
     
+    # Xuhui: Do we really need this? 
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
