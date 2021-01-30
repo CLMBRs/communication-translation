@@ -14,11 +14,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-# TODO: again, we probably want to set a global random seed
-millis = int(round(time.time() * 1000))
-torch.manual_seed(millis)
-torch.cuda.manual_seed(millis)
-
 
 class BartAgent(torch.nn.Module):
     def __init__(self, args):

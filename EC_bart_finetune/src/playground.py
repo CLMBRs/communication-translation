@@ -30,12 +30,14 @@ from torchfile import load as load_lua
 # -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
 
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
+
 
 def main():
     """
@@ -64,12 +66,12 @@ def main():
     # TODO: The seed should be a setable parameter
     # set random seed
     set_seed(args.seed)
-    
-    # Xuhui: Do we really need this? 
+
+    # Xuhui: Do we really need this?
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
-    
+
     # TODO: allow use of other image datasets
     if args.dataset == 'coco':
         feat_path = coco_path()
@@ -105,7 +107,7 @@ def main():
     else:
         learned.append('bhd')
     fixed, learned = '_'.join(sorted(fixed)), '_'.join(sorted(learned))
-    
+
     assert args.which_loss in ['joint', 'lsn']
     model_str = f'fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/'
     if args.bart:
@@ -150,7 +152,7 @@ def main():
         'path': path,
         'path_dir': path_dir
     }
-    
+
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
     data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
@@ -168,7 +170,7 @@ def main():
 
     logger.info("Model Info:")
     print(model)
-    
+
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
     if not args.cpu:

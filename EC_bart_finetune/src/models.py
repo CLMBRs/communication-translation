@@ -12,10 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-millis = int(round(time.time() * 1000))
-torch.manual_seed(millis)
-torch.cuda.manual_seed(millis)
-
 
 def sample_gumbel(shape, tt=torch, eps=1e-20):
     U = Variable(tt.FloatTensor(shape).uniform_(0, 1))

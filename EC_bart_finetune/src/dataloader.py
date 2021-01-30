@@ -11,10 +11,6 @@ import torch
 from torch.autograd import Variable
 from torchfile import load as load_lua
 
-# TODO: We probably should only set this once in the main script
-random = np.random
-random.seed(1234)
-
 
 def next_batch_joint(images, batch_size, num_dist, tt):
     spk_imgs, spk_caps, lsn_imgs, lsn_caps, whichs = [], [], [], [], []
