@@ -13,6 +13,7 @@ from torchfile import load as load_lua
 
 
 def next_batch_joint(images, batch_size, num_dist, tt):
+    # weird stuff here
     spk_imgs, spk_caps, lsn_imgs, lsn_caps, whichs = [], [], [], [], []
     total_indices = []
     keys = range(len(images))
