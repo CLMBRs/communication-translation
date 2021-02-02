@@ -1,2 +1,0 @@
-./src/sentence/train_seq_joint.py:229: UserWarning: torch.nn.utils.clip_grad_norm is now deprecated in favor of torch.nn.utils.clip_grad_norm_.
-  total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
