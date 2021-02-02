@@ -7,6 +7,7 @@ import numpy as np
 import pickle as pkl
 from modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
+from models import Beholder
 from util import *
 
 import torch
@@ -31,8 +32,8 @@ class BartAgent(torch.nn.Module):
             'facebook/bart-large'
         )
 
-        self.speaker = Speaker(model, self.native, args)
-        self.listener = RnnListener(model, self.foreign, args)
+        self.speaker = BartSpeaker(model, self.native, args)
+        self.listener = BartListener(model, self.foreign, args)
         self.tt = torch if args.cpu else torch.cuda
         self.native, self.foreign = 'en', args.l2
         self.unit_norm = args.unit_norm
@@ -93,37 +94,9 @@ class BartAgent(torch.nn.Module):
                             )
 
 
-class Beholder(torch.nn.Module):
-    def __init__(self, args):
-        super(Beholder, self).__init__()
-        self.img_to_hid = torch.nn.Linear(
-            args.D_img, args.D_hid
-        )  # shared visual system
-        self.unit_norm = args.unit_norm
-        self.drop = nn.Dropout(p=args.dropout)
-        self.two_fc = args.two_fc
-        if self.two_fc:
-            self.hid_to_hid = torch.nn.Linear(args.D_hid, args.D_hid)
-
-    def forward(self, img):
-        h_img = img
-
-        h_img = self.img_to_hid(h_img)
-
-        h_img = self.drop(h_img)
-
-        if self.two_fc:
-            h_img = self.hid_to_hid(F.relu(h_img))
-
-        if self.unit_norm:
-            norm = torch.norm(h_img, p=2, dim=1, keepdim=True).detach() + 1e-9
-            h_img = h_img / norm.expand_as(h_img)
-        return h_img
-
-
-class RnnListener(torch.nn.Module):
+class BartListener(torch.nn.Module):
     def __init__(self, bart, lang, args):
-        super(RnnListener, self).__init__()
+        super(BartListener, self).__init__()
         self.hid_to_hid = nn.Linear(1024, args.D_hid)
         self.drop = nn.Dropout(p=args.dropout)
 
@@ -156,9 +129,9 @@ class RnnListener(torch.nn.Module):
         return out
 
 
-class Speaker(torch.nn.Module):
+class BartSpeaker(torch.nn.Module):
     def __init__(self, bart, lang, args):
-        super(Speaker, self).__init__()
+        super(BartSpeaker, self).__init__()
         # self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers,
         # batch_first=True)
         self.spk = bart

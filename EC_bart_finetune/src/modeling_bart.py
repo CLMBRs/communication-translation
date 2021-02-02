@@ -23,7 +23,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
-from gumbel_utils import *
+from gumbel_utils import gumbel_softmax
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
