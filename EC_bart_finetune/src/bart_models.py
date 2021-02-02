@@ -84,7 +84,6 @@ class BartAgent(torch.nn.Module):
             1, num_dist, 1
         )  # (batch_size, num_dist, D_hid)
 
-        #import pdb; pdb.set_trace()
         # TODO: This is really bad style, need to fix when we figure out how
         return spk_embeds, (lis_hid,
                             lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (

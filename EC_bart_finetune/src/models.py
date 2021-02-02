@@ -102,8 +102,6 @@ class SingleAgent(torch.nn.Module):
             1, num_dist, 1
         )  # (batch_size, num_dist, D_hid)
 
-        import pdb
-        pdb.set_trace()
         return spk_logits, (rnn_hid,
                             lsn_h_imgs), comm_action, (end_idx_, end_loss_), (
                                 torch.min(spk_cap_len_.float()),
@@ -242,8 +240,6 @@ class Speaker(torch.nn.Module):
             out_, hid_ = self.rnn(input_, hid_)
             logits_.append(c_logit_.unsqueeze(1))
             labels_.append(comm_label_)
-        import pdb
-        pdb.set_trace()
         logits_ = torch.cat(logits_, dim=1)
         labels_ = torch.cat(labels_, dim=-1)
         tmp = torch.zeros(logits_.size(-1))
