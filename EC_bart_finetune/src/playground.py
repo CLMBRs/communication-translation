@@ -20,6 +20,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torchfile import load as load_lua
 
 # General comments here (Xuhui):
@@ -65,7 +66,7 @@ def main():
 
     # TODO: The seed should be a setable parameter
     # set random seed
-    set_seed(args.seed)
+    set_seed(args)
 
     # Xuhui: Do we really need this?
     # Start the clock for the beginning of the main function
@@ -84,6 +85,7 @@ def main():
         raise ValueError('image dataset should be set as coco')
 
     # Load the pre-computed ResNet Image representation
+    # Xuhui: Consider moving the data loading process to the new MyDataset obj
     data_names = [
         'train_en_feats', f'train_{args.l2}_feats', 'valid_feats', 'test_feats'
     ]
@@ -139,6 +141,7 @@ def main():
         recur_mkdir(path_dir)
 
     # Log the general model information
+
     logger.info('Configuration:')
     print(args)
     logger.info('Model Name:')
@@ -153,39 +156,42 @@ def main():
         'path_dir': path_dir
     }
 
+
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
     data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
     train_data, valid_data = remove_duplicate(data)
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
-    logger.info('train_img :', type(train_data), train_data.shape)
-    logger.info('valid_img :', type(valid_data), valid_data.shape)
+    #logger.info('train_img :', type(train_data), train_data.shape)
+    #logger.info('valid_img :', type(valid_data), valid_data.shape)
 
     # TODO: Choose between Bart or... what else?
+    # Xuhui: The default is RNN
     if args.bart:
         model = BartAgent(args)
     else:
         model = SingleAgent(args)
 
-    logger.info("Model Info:")
-    print(model)
+    #logger.info("Model Info:")
+    #print(model)
 
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
-    if not args.cpu:
+    if args.n_gpu>0:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
 
     # Loop through the named parameters to find the number of input and output
     # parameters
     # Xuhui: This module is showing the model parameter, maybe we do not need
+
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
         speaker_named = ('speaker' in name and args.fix_spk)
         beholder_named = ('beholder' in name and args.fix_bhd)
-        if speaker_named or beholder_names:
+        if speaker_named or beholder_named:
             out_params.append(param)
             out_names.append(name)
         else:
@@ -201,6 +207,7 @@ def main():
     logger.info(f'OUT   : {out_sum} params')
     logger.info(f'TOTAL : {in_sum + out_sum} params')
 
+
     loss_fn = {
         'xent': nn.CrossEntropyLoss(),
         'mse': nn.MSELoss(),
@@ -208,10 +215,23 @@ def main():
         'mlml': nn.MultiLabelMarginLoss(),
         'mml': nn.MultiMarginLoss()
     }
+    # Xuhui: This chunck of code seems redundant to me.
     tt = torch
     if not args.cpu:
         loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
         tt = torch.cuda
+
+    # Initialize the dataloader 
+    training_params = {"batch_size": args.batch_size,
+                                              "shuffle": True,
+                                              "drop_last": True}
+    test_params = {"batch_size": args.batch_size,
+                                      "shuffle": False,
+                                      "drop_last": False}
+    training_set = MyDataset(train_data, args.num_dist_, tt)
+    training_generator = DataLoader(training_set, **training_params)
+    valid_set = MyDataset(valid_data, args.num_dist_, tt)
+    valid_generator = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
@@ -220,14 +240,22 @@ def main():
     # TODO: this path should be parameterized
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        loss, _ = forward_joint(
-            train_data, model, train_loss_dict_, args, loss_fn, args.num_dist,
-            tt
-        )
-        optimizer.zero_grad()
-        loss.backward()
-        total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
-        optimizer.step()
+        for step, batch in enumerate(training_generator):
+
+            # Xuhui: Added this to inform the training started. 
+            model.train()
+
+            # Xuhui: Added this to move data to the GPU
+            batch = tuple(t.to(args.device) for t in batch)
+
+            loss, _ = forward_joint(
+                batch, model, train_loss_dict_, args, loss_fn, args.num_dist,
+                tt
+            )
+            optimizer.zero_grad()
+            loss.backward()
+            total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
+            optimizer.step()
 
         if epoch % args.print_every == 0:
             avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)

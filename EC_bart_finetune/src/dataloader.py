@@ -2,18 +2,44 @@ import copy
 import json
 import operator
 import time
+import random
 import numpy as np
 import pickle as pkl
 from collections import OrderedDict
 from util import *
 
 import torch
+from torch.utils.data.dataset import Dataset
 from torch.autograd import Variable
 from torchfile import load as load_lua
 
 
+class MyDataset(Dataset):
+    def __init__(self, images, num_dist, tt):
+        super(MyDataset, self).__init__()
+        self.images = images
+        self.img_index = list(range(len(images)))
+        self.num_dist = num_dist
+        self.tt = tt
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        dist_candidates = self.img_index[:index] + self.img_index[index+1:]
+        dist_img = random.sample(dist_candidates, k = self.num_dist)
+
+        spk_img = self.images[index]
+        lsn_imgs = dist_img+[index]
+        random.shuffle(lsn_imgs)
+
+        which = lsn_imgs.index(index)
+        lsn_imgs = torch.index_select(self.images, 0, torch.tensor(lsn_imgs)).numpy()
+
+        return (spk_img, lsn_imgs, 0, 0, 0, 0, 0, which)
+
+
 def next_batch_joint(images, batch_size, num_dist, tt):
-    # weird stuff here
     spk_imgs, spk_caps, lsn_imgs, lsn_caps, whichs = [], [], [], [], []
     total_indices = []
     keys = range(len(images))
@@ -57,3 +83,5 @@ def weave_out(caps_out):
             if idx < len(sublst):
                 ans.append(sublst[idx])
     return ans
+
+

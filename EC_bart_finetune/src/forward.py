@@ -11,10 +11,10 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+# Xuhui: I am questioning whether we need this extra function here now?  
+def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
 
-def forward_joint(images, model, loss_dict_, args, loss_fn, num_dist, tt):
-
-    en_batch = next_batch_joint(images, args.batch_size, num_dist, tt)
+    en_batch = batch
     l2_batch = en_batch
     output_en, output_l2, comm_actions, end_loss_, len_info = model(
         en_batch[:4], args.sample_how

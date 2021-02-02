@@ -4,6 +4,7 @@ D_hid: 512
 D_img: 2048
 ECemb: 5000
 seed: 42
+n_gpu: 1
 TransferH: false
 alpha: 1.0
 bart: true
