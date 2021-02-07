@@ -27,7 +27,7 @@ class MyDataset(Dataset):
 
     def __getitem__(self, index):
         dist_candidates = self.img_index[:index] + self.img_index[index+1:]
-        dist_img = random.sample(dist_candidates, k = self.num_dist)
+        dist_img = random.sample(dist_candidates, k = self.num_dist-1)
 
         spk_img = self.images[index]
         lsn_imgs = dist_img+[index]

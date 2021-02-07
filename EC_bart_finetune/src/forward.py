@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-# Xuhui: I am questioning whether we need this extra function here now?  
+# Xuhui: Whether we need this extra function here now?  
 def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
 
     en_batch = batch

@@ -10,6 +10,8 @@ import yaml
 import numpy as np
 import pickle as pkl
 import subprocess as commands
+from tqdm import tqdm, trange
+
 from bart_models import *
 from dataloader import *
 from forward import *
@@ -72,6 +74,10 @@ def main():
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
+
+    # Setup CUDA, GPU  
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    args.device = device
 
     # TODO: allow use of other image datasets
     if args.dataset == 'coco':
@@ -228,7 +234,7 @@ def main():
     test_params = {"batch_size": args.batch_size,
                                       "shuffle": False,
                                       "drop_last": False}
-    training_set = MyDataset(train_data, args.num_dist_, tt)
+    training_set = MyDataset(train_data, args.num_dist, tt)
     training_generator = DataLoader(training_set, **training_params)
     valid_set = MyDataset(valid_data, args.num_dist_, tt)
     valid_generator = DataLoader(valid_set, **test_params)
@@ -240,7 +246,8 @@ def main():
     # TODO: this path should be parameterized
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        for step, batch in enumerate(training_generator):
+        epoch_iterator = tqdm(training_generator, desc="Iteration")
+        for step, batch in enumerate(epoch_iterator):
 
             # Xuhui: Added this to inform the training started. 
             model.train()
@@ -248,7 +255,7 @@ def main():
             # Xuhui: Added this to move data to the GPU
             batch = tuple(t.to(args.device) for t in batch)
 
-            loss, _ = forward_joint(
+            loss = forward_joint(
                 batch, model, train_loss_dict_, args, loss_fn, args.num_dist,
                 tt
             )
@@ -268,6 +275,7 @@ def main():
                 valid_loss_dict_ = get_log_loss_dict_()
                 output_ids = True
                 for idx in range(args.print_every):
+                    utput_l2[0]
                     _, output_ids_batch = forward_joint(
                         valid_data, model, valid_loss_dict_, args, loss_fn,
                         args.num_dist_, tt
