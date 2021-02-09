@@ -30,8 +30,8 @@ norm_pow: 0.0
 num_directions: 1
 
 # Total number of pictures for listeners, the first one is for training. 
-num_dist: 256
-num_dist_: 128
+num_distractors_train: 255
+num_distractors_valid: 127
 num_games: 30000
 num_layers: 1
 pretrain_spk: false

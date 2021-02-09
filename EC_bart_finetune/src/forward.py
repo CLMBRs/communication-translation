@@ -11,9 +11,15 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-# Xuhui: Whether we need this extra function here now?  
+
+# Xuhui: Whether we need this extra function here now?
 def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
 
+    # TODO: The model usues batch items 0:4, and batch item 7 is used elsewhere
+    # in the script. What are items 4, 5, and 6 used for?? The data loaders just
+    # set them as zeros
+    # TODO: Why are en_batch and l2_batch set to be the same thing? I suppose we
+    # don't really have one of each since the batch is just the images?
     en_batch = batch
     l2_batch = en_batch
     output_en, output_l2, comm_actions, end_loss_, len_info = model(
@@ -21,6 +27,10 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
     )
 
     final_loss = 0
+    
+    # TODO: We either need to figure out what `lenlen` was being used for, or
+    # just delete these blocks because right now this is nonsensical and the
+    # blocks never execute
     lenlen = False
     if lenlen:
         en_spk_loss = loss_fn['xent'](

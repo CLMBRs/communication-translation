@@ -1,81 +1,86 @@
-import copy
-import json
-import operator
-import time
 import random
+import torch
 import numpy as np
-import pickle as pkl
-from collections import OrderedDict
+from numpy import ndarray
+from torch.autograd import Variable
+from torch.utils.data.dataset import Dataset
 from util import *
 
-import torch
-from torch.utils.data.dataset import Dataset
-from torch.autograd import Variable
-from torchfile import load as load_lua
 
+class ImageIdentificationDataset(Dataset):
+    """
+    PyTorch Dataset subclass for image-identification games in which a "speaker"
+    agent takes in an image and communicates it, and a "listener" identifies the
+    correct image from among a selection of distractors
 
-class MyDataset(Dataset):
-    def __init__(self, images, num_dist, tt):
+    Args:
+        images: A NumPy array of image data??
+        num_distractors: Number of distractor images to show to the "listener"
+            alongside the target image
+    """
+    def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
         super(MyDataset, self).__init__()
         self.images = images
         self.img_index = list(range(len(images)))
-        self.num_dist = num_dist
-        self.tt = tt
+        self.num_distractors = num_distractors
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.images)
 
-    def __getitem__(self, index):
-        dist_candidates = self.img_index[:index] + self.img_index[index+1:]
-        dist_img = random.sample(dist_candidates, k = self.num_dist-1)
+    def __getitem__(self, index: int):
+        # Randomly sample the distractor images out of the remainder of the
+        # dataset
+        distractor_candidates = (
+            self.img_index[:index] + self.img_index[index + 1:]
+        )
+        distractor_imgages = (
+            random.sample(dist_candidates, k=self.num_distractors)
+        )
+        listener_images = distractor_images + [index]
+        random.shuffle(listener_images)
+        which = listener_images.index(index)
 
-        spk_img = self.images[index]
-        lsn_imgs = dist_img+[index]
-        random.shuffle(lsn_imgs)
+        # Get the actual image embedding data to be returned
+        speaker_image = self.images[index]
+        listener_images = torch.index_select(
+            self.images, 0, torch.tensor(listener_images)
+        ).numpy()
 
-        which = lsn_imgs.index(index)
-        lsn_imgs = torch.index_select(self.images, 0, torch.tensor(lsn_imgs)).numpy()
-
-        return (spk_img, lsn_imgs, 0, 0, 0, 0, 0, which)
+        # TODO: what are all these zeros?
+        return (speaker_image, listener_images, 0, 0, 0, 0, 0, which)
 
 
-def next_batch_joint(images, batch_size, num_dist, tt):
-    spk_imgs, spk_caps, lsn_imgs, lsn_caps, whichs = [], [], [], [], []
-    total_indices = []
-    keys = range(len(images))
-    assert len(keys) >= num_dist
+def next_batch_joint(images, batch_size, num_distractors):
+    # TODO: is this entire function deprecated in favor of our data loader??
+    speaker_images, speaker_caps, listener_images, listener_caps, whichs = (
+        [], [], [], [], []
+    )
+    assert len(images) - 1 >= num_distractors
     for batch_idx in range(batch_size):
-        img_indices = random.permutation(len(images))[:num_dist]
-        # (1)
+        image_indices = random.permutation(len(images))[:num_dist]
+        # Shape: (1)
         which = random.randint(0, num_dist)
-        spk_img = img_indices[which]
-        # (batch_size, 2048)
-        spk_imgs.append(spk_img)
-        # batch_size * num_dist
-        lsn_imgs += list(img_indices)
-        # (batch_size)
+        speaker_image = image_indices[which]
+        # Shape: (batch_size, 2048)
+        speaker_images.append(speaker_image)
+        # Shape: batch_size * num_dist
+        listener_images += list(image_indices)
+        # Shape: (batch_size)
         whichs.append(which)
-    spk_imgs = torch.index_select(images, 0, torch.tensor(spk_imgs)).numpy()
-    lsn_imgs = torch.index_select(images, 0, torch.tensor(lsn_imgs)).view(
-        batch_size, num_dist, -1
-    ).numpy()
-    whichs = np.array(whichs)
-    spk_imgs = Variable(torch.from_numpy(spk_imgs),
-                        requires_grad=False).view(batch_size, -1)
-    lsn_imgs = torch.from_numpy(lsn_imgs)
-    lsn_imgs = Variable(lsn_imgs,
-                        requires_grad=False).view(batch_size, num_dist, -1)
 
-    whichs = Variable(torch.LongTensor(whichs),
-                      requires_grad=False).view(batch_size)
-    if tt == torch.cuda:
-        spk_imgs = spk_imgs.cuda()
-        lsn_imgs = lsn_imgs.cuda()
-        whichs = whichs.cuda()
+    speaker_images = torch.index_select(
+        images, 0, torch.tensor(speaker_images)
+    ).view(batch_size, -1)
+    listener_images = torch.index_select(
+        images, 0, torch.tensor(listener_images)
+    ).view(batch_size, num_dist, -1)
+    whichs = torch.LongTensor(whichs).view(batch_size, -1)
+    
     return (spk_imgs, lsn_imgs, 0, 0, 0, 0, 0, whichs)
 
 
 def weave_out(caps_out):
+    # TODO: figure out why this function exists
     ans = []
     seq_len = max([len(x) for x in caps_out])
     for idx in range(seq_len):
@@ -83,5 +88,3 @@ def weave_out(caps_out):
             if idx < len(sublst):
                 ans.append(sublst[idx])
     return ans
-
-

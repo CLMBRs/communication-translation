@@ -13,7 +13,7 @@ import subprocess as commands
 from tqdm import tqdm, trange
 
 from bart_models import *
-from dataloader import *
+from dataloader import ImageIdentificationDataset
 from forward import *
 from models import *
 from util import *
@@ -75,7 +75,7 @@ def main():
     start_time = time.time()
     logging.info('Entering main run script')
 
-    # Setup CUDA, GPU  
+    # Setup CUDA, GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
@@ -135,7 +135,7 @@ def main():
     hyperparam_str = (
         f'{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}'
         f'.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}'
-        f'.num_dist_{args.num_dist}.vocab_size_{args.vocab_size}'
+        f'.num_dist_{args.num_distractors_train}.vocab_size_{args.vocab_size}'
         f'_{args.vocab_size}.hard_{args.hard}/'
     )
 
@@ -162,7 +162,6 @@ def main():
         'path_dir': path_dir
     }
 
-
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
     data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
@@ -184,7 +183,7 @@ def main():
 
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
-    if args.n_gpu>0:
+    if args.n_gpu > 0:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
 
@@ -213,7 +212,6 @@ def main():
     logger.info(f'OUT   : {out_sum} params')
     logger.info(f'TOTAL : {in_sum + out_sum} params')
 
-
     loss_fn = {
         'xent': nn.CrossEntropyLoss(),
         'mse': nn.MSELoss(),
@@ -227,16 +225,20 @@ def main():
         loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
         tt = torch.cuda
 
-    # Initialize the dataloader 
-    training_params = {"batch_size": args.batch_size,
-                                              "shuffle": True,
-                                              "drop_last": True}
-    test_params = {"batch_size": args.batch_size,
-                                      "shuffle": False,
-                                      "drop_last": False}
-    training_set = MyDataset(train_data, args.num_dist, tt)
+    # Initialize the dataloader
+    training_params = {
+        "batch_size": args.batch_size,
+        "shuffle": True,
+        "drop_last": True
+    }
+    test_params = {
+        "batch_size": args.batch_size,
+        "shuffle": False,
+        "drop_last": False
+    }
+    training_set = ImageIdentificationDataset(train_data, args.num_distractors_train)
     training_generator = DataLoader(training_set, **training_params)
-    valid_set = MyDataset(valid_data, args.num_dist_, tt)
+    valid_set = ImageIdentificationDataset(valid_data, args.num_distractors_valid)
     valid_generator = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -249,15 +251,14 @@ def main():
         epoch_iterator = tqdm(training_generator, desc="Iteration")
         for step, batch in enumerate(epoch_iterator):
 
-            # Xuhui: Added this to inform the training started. 
+            # Xuhui: Added this to inform the training started.
             model.train()
 
             # Xuhui: Added this to move data to the GPU
             batch = tuple(t.to(args.device) for t in batch)
 
             loss = forward_joint(
-                batch, model, train_loss_dict_, args, loss_fn, args.num_dist,
-                tt
+                batch, model, train_loss_dict_, args, loss_fn, args.num_distractors_train, tt
             )
             optimizer.zero_grad()
             loss.backward()
@@ -278,7 +279,7 @@ def main():
                     utput_l2[0]
                     _, output_ids_batch = forward_joint(
                         valid_data, model, valid_loss_dict_, args, loss_fn,
-                        args.num_dist_, tt
+                        args.num_distractors_valid, tt
                     )
                 if output_ids == True:
                     output_ids = output_ids_batch
