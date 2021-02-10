@@ -40,7 +40,7 @@ seq_len: 15
 stop_after: 30
 temp: 1.0
 translate_every: 2000
-two_fc: false
+two_ffwd: false
 unit_norm: false
 valid_batch_size: 128
 valid_every: 250

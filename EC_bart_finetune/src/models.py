@@ -91,29 +91,27 @@ class SingleAgent(torch.nn.Module):
 class Beholder(torch.nn.Module):
     def __init__(self, args):
         super(Beholder, self).__init__()
-        self.img_to_hid = torch.nn.Linear(
+        self.image_to_hidden = torch.nn.Linear(
             args.D_img, args.D_hid
-        )  # shared visual system
+        )
         self.unit_norm = args.unit_norm
-        self.drop = nn.Dropout(p=args.dropout)
-        self.two_fc = args.two_fc
-        if self.two_fc:
-            self.hid_to_hid = torch.nn.Linear(args.D_hid, args.D_hid)
+        self.dropout = nn.Dropout(p=args.dropout)
+        self.two_ffwd = args.two_ffwd
+        if self.two_ffwd:
+            self.hidden_to_hidden = torch.nn.Linear(args.D_hid, args.D_hid)
 
-    def forward(self, img):
-        h_img = img
+    def forward(self, image):
+        h_image = image
+        h_image = self.image_to_hidden(h_image)
+        h_image = self.dropout(h_image)
 
-        h_img = self.img_to_hid(h_img)
-
-        h_img = self.drop(h_img)
-
-        if self.two_fc:
-            h_img = self.hid_to_hid(F.relu(h_img))
+        if self.two_ffwd:
+            h_image = self.hidden_to_hidden(F.relu(h_image))
 
         if self.unit_norm:
-            norm = torch.norm(h_img, p=2, dim=1, keepdim=True).detach() + 1e-9
-            h_img = h_img / norm.expand_as(h_img)
-        return h_img
+            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
+            h_image = h_image / norm.expand_as(h_image)
+        return h_image
 
 
 class RnnListener(torch.nn.Module):
