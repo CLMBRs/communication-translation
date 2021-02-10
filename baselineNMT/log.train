@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "./src/sentence/nmt.py", line 13, in <module>
-    from torchfile import load as load_lua
-ModuleNotFoundError: No module named 'torchfile'
