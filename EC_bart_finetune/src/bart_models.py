@@ -16,9 +16,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-class BartAgent(torch.nn.Module):
+class ECagent(torch.nn.Module):
     def __init__(self, args):
-        super(BartAgent, self).__init__()
+        super(ECagenet, self).__init__()
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = Beholder(args)
@@ -27,13 +27,20 @@ class BartAgent(torch.nn.Module):
             print("Sharing visual system for each agent.")
             self.beholder = Beholder(args)
         self.native, self.foreign = 'en', args.l2
-        tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
-        model = BartForConditionalGeneration.from_pretrained(
-            'facebook/bart-large'
-        )
 
-        self.speaker = BartSpeaker(model, self.native, args)
-        self.listener = BartListener(model, self.foreign, args)
+        # Initialize speaker and listener
+        if args.model=='bart':
+            tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
+            model = BartForConditionalGeneration.from_pretrained(
+                'facebook/bart-large'
+            )
+
+            self.speaker = BartSpeaker(model, self.native, args)
+            self.listener = BartListener(model, self.foreign, args)
+        else if args.model=='rnn':
+            self.speaker = Speaker(self.native, args)
+            self.listener = RnnListener(self.foreign, args)
+
         self.tt = torch if args.cpu else torch.cuda
         self.native, self.foreign = 'en', args.l2
         self.unit_norm = args.unit_norm
@@ -55,7 +62,7 @@ class BartAgent(torch.nn.Module):
         else:
             spk_h_img = self.beholder(a_spk_img)  # shared
 
-        spk_msg, spk_embeds, spk_cap_len_ = self.speaker(
+        spk_logits, spk_msg, spk_cap_len_ = self.speaker(
             spk_h_img, a_spk_caps_in, a_spk_cap_lens
         )  # NOTE argmax / gumbel
 
@@ -80,13 +87,13 @@ class BartAgent(torch.nn.Module):
         else:
             lsn_h_imgs = self.beholder(lsn_imgs)
         lsn_h_imgs = lsn_h_imgs.view(-1, num_dist, self.D_hid)
-        lis_hid = self.listener(spk_msg, spk_embeds)
+        lis_hid = self.listener(spk_msg, spk_logits)
         lis_hid = lis_hid.unsqueeze(1).repeat(
             1, num_dist, 1
         )  # (batch_size, num_dist, D_hid)
 
         # TODO: This is really bad style, need to fix when we figure out how
-        return spk_embeds, (lis_hid,
+        return spk_logits, (lis_hid,
                             lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (
                                 torch.min(spk_cap_len_.float()),
                                 torch.mean(spk_cap_len_.float()),
@@ -110,11 +117,12 @@ class BartListener(torch.nn.Module):
         self.tt = torch if args.cpu else torch.cuda
         self.lis = bart.gumbel_encoder
 
-    def forward(self, spk_msg, spk_msg_emb):
+    def forward(self, spk_msg, spk_msg_lens, spk_logit=0):
         # spk_msg : (batch_size, seq_len)
         # spk_msg_lens : (batch_size)
         batch_size = spk_msg.size()[0]
         seq_len = spk_msg.size()[1]
+
 
         spk_msg_emb = self.drop(spk_msg_emb)
 
@@ -155,7 +163,128 @@ class BartSpeaker(torch.nn.Module):
 
         h_img = self.project(h_img)
         h_img = h_img.view(-1, self.seq_len, self.D_emb)
-        input_ids, input_embeds, cap_len = self.spk.gumbel_generate(
+        input_ids, input_logits, cap_len = self.spk.gumbel_generate(
             input_images=h_img, num_beams=1, max_length=self.seq_len
         )
-        return input_ids, input_embeds, cap_len
+        return input_logits, input_ids, cap_len
+
+
+class RnnListener(torch.nn.Module):
+    def __init__(self, lang, args):
+        super(RnnListener, self).__init__()
+        self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers, batch_first=True) if args.num_directions == 1 else \
+                   nn.GRU(args.D_emb, args.D_hid, args.num_layers, batch_first=True, bidirectional=True)
+        self.emb = nn.Embedding(args.vocab_size, args.D_emb, padding_idx=0)
+        self.hid_to_hid = nn.Linear(
+            args.num_directions * args.D_hid, args.D_hid
+        )
+        self.drop = nn.Dropout(p=args.dropout)
+
+        self.D_hid = args.D_hid
+        self.D_emb = args.D_emb
+        self.num_layers = args.num_layers
+        self.num_directions = args.num_directions
+        self.vocab_size = args.vocab_size
+        self.unit_norm = args.unit_norm
+
+        self.tt = torch if args.cpu else torch.cuda
+
+    def forward(self, spk_msg, spk_msg_lens, spk_logit=0):
+        # spk_msg : (batch_size, seq_len)
+        # spk_msg_lens : (batch_size)
+        batch_size = spk_msg.size()[0]
+        seq_len = spk_msg.size()[1]
+
+        h_0 = Variable(
+            self.tt.FloatTensor(
+                self.num_layers * self.num_directions, batch_size, self.D_hid
+            ).zero_()
+        )
+
+        spk_msg_emb = torch.matmul(spk_logit, self.emb.weight)
+        spk_msg_emb = self.drop(spk_msg_emb)
+
+        pack = torch.nn.utils.rnn.pack_padded_sequence(
+            spk_msg_emb,
+            spk_msg_lens.cpu(),
+            batch_first=True,
+            enforce_sorted=False
+        )
+
+        _, h_n = self.rnn(pack, h_0)
+
+        h_n = h_n[-self.num_directions:, :, :]
+        out = h_n.transpose(0, 1).contiguous().view(
+            batch_size, self.num_directions * self.D_hid
+        )
+        out = self.hid_to_hid(out)
+
+        if self.unit_norm:
+            norm = torch.norm(out, p=2, dim=1, keepdim=True).detach() + 1e-9
+            out = out / norm.expand_as(out)
+
+        return out
+
+
+class RnnSpeaker(torch.nn.Module):
+    def __init__(self, lang, args):
+        super(Speaker, self).__init__()
+        self.rnn = nn.GRU(
+            args.D_emb, args.D_hid, args.num_layers, batch_first=True
+        )
+        self.emb = nn.Embedding(args.vocab_size, args.D_emb, padding_idx=0)
+
+        self.hid_to_voc = nn.Linear(args.D_hid, args.vocab_size)
+
+        self.D_emb = args.D_emb
+        self.D_hid = args.D_hid
+        self.num_layers = args.num_layers
+        self.drop = nn.Dropout(p=args.dropout)
+
+        self.vocab_size = args.vocab_size
+        self.temp = args.temp
+        self.hard = args.hard
+        self.tt = torch if args.cpu else torch.cuda
+        self.tt_ = torch
+        self.seq_len = args.seq_len
+
+    def forward(self, h_img, caps_in, caps_in_lens, sample_how):
+
+        batch_size = h_img.size()[0]  # caps_in.size()[0]
+
+        h_img = h_img.view(1, batch_size,
+                           self.D_hid).repeat(self.num_layers, 1, 1)
+
+        initial_input = self.emb(
+            torch.ones([batch_size, 1], dtype=torch.int64).cuda() * 2
+        )
+        out_, hid_ = self.rnn(initial_input, h_img)
+        logits_ = []
+        labels_ = []
+        for idx in range(self.seq_len):
+            logit_ = self.hid_to_voc(out_.view(-1, self.D_hid))
+            c_logit_, comm_label_ = gumbel_softmax(
+                logit_, self.temp, self.hard, self.tt, idx
+            )
+
+            input_ = torch.matmul(c_logit_.unsqueeze(1), self.emb.weight)
+            out_, hid_ = self.rnn(input_, hid_)
+            logits_.append(c_logit_.unsqueeze(1))
+            labels_.append(comm_label_)
+        logits_ = torch.cat(logits_, dim=1)
+        labels_ = torch.cat(labels_, dim=-1)
+        tmp = torch.zeros(logits_.size(-1))
+        tmp[3] = 1
+        logits_[:, -1, :] = tmp
+        labels_[:, -1] = 3
+        pad_g = ((labels_ == 3).cumsum(1) == 0)
+        labels_ = pad_g * labels_
+        pad_ = torch.zeros(logits_.size()).cuda()
+        pad_[:, :, 0] = 1
+        logits_ = torch.where(
+            pad_g.unsqueeze(-1).repeat(1, 1, logits_.size(-1)), logits_, pad_
+        )
+
+        cap_len = pad_g.cumsum(1).max(1).values + 1
+
+        return logits_, labels_, cap_len

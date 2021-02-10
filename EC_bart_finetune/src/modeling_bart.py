@@ -1705,12 +1705,21 @@ class BartForConditionalGeneration(PretrainedBartModel):
         pad_token_embed = self.embed_tokens(
             torch.tensor(pad_token_id, device=input_ids.device)
         )
+        pad_token_logits = torch.tensor(
+            torch.arange(0,self.embed_tokens_size)==pad_token_id,
+            dtype=torch.float,
+            device=input_ids.device)
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             input_ids, max_length
         )
         input_embeds = self.embed_tokens(input_ids)
+        input_logits = torch.tensor(
+            torch.arange(0,self.embed_tokens_size).unsqueeze(0)==input_ids,
+            dtype=torch.float,
+            device=input_ids.device)
+
 
         while cur_len < max_length:
             # prepare model inputs
@@ -1731,7 +1740,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 scores, 1.0, False, torch.cuda, cur_len
             )
             next_tokens = next_tokens.squeeze()
-            next_embed = torch.matmul(c_logit_, self.embed_tokens.weight)
+            next_logits = c_logit_
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
@@ -1739,14 +1748,14 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 next_tokens = next_tokens * unfinished_sequences + (
                     pad_token_id
                 ) * (1 - unfinished_sequences)
-                next_embed = next_embed.T * unfinished_sequences + \
-                (pad_token_embed.unsqueeze(dim=1)) * (1 - unfinished_sequences)
-                next_embed = next_embed.T
+                next_logits = next_logits.T * unfinished_sequences + \
+                (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                next_logits = next_logits.T
 
             # add token and increase length by one
             input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-            input_embeds = torch.cat(
-                [input_embeds, next_embed[:, None]], dim=-2
+            input_logits = torch.cat(
+                [input_logits, next_logits[:, None]], dim=-2
             )
 
             # update sequence length
@@ -1771,215 +1780,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             cur_len = cur_len + 1
         cap_len = (~(input_ids == pad_token_id)).sum(dim=1)
 
-        return (input_ids, input_embeds, cap_len)
-
-
-@add_start_docstrings(
-    """
-    Bart model with a sequence classification/head on top (a linear layer on top of the pooled output) e.g. for GLUE
-    tasks.
-    """,
-    BART_START_DOCSTRING,
-)
-class BartForSequenceClassification(PretrainedBartModel):
-    def __init__(self, config: BartConfig, **kwargs):
-        super().__init__(config, **kwargs)
-        self.model = BartModel(config)
-        self.classification_head = BartClassificationHead(
-            config.d_model,
-            config.d_model,
-            config.num_labels,
-            config.classifier_dropout,
-        )
-        self.model._init_weights(self.classification_head.dense)
-        self.model._init_weights(self.classification_head.out_proj)
-
-    @add_start_docstrings_to_model_forward(BART_INPUTS_DOCSTRING)
-    @add_code_sample_docstrings(
-        tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="facebook/bart-large",
-        output_type=Seq2SeqSequenceClassifierOutput,
-        config_class=_CONFIG_FOR_DOC,
-    )
-    def forward(
-        self,
-        input_ids,
-        attention_mask=None,
-        decoder_input_ids=None,
-        decoder_attention_mask=None,
-        encoder_outputs=None,
-        labels=None,
-        use_cache=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        r"""
-        labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for computing the sequence classification/regression loss. Indices should be in :obj:`[0, ...,
-            config.num_labels - 1]`. If :obj:`config.num_labels > 1` a classification loss is computed (Cross-Entropy).
-        """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        if labels is not None:
-            use_cache = False
-
-        outputs = self.model(
-            input_ids,
-            attention_mask=attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=decoder_attention_mask,
-            encoder_outputs=encoder_outputs,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-        x = outputs[0]  # last hidden state
-        eos_mask = input_ids.eq(self.config.eos_token_id)
-        if len(torch.unique(eos_mask.sum(1))) > 1:
-            raise ValueError(
-                "All examples must have the same number of <eos> tokens."
-            )
-        sentence_representation = x[eos_mask, :].view(
-            x.size(0), -1, x.size(-1)
-        )[:, -1, :]
-        logits = self.classification_head(sentence_representation)
-
-        loss = None
-        if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(
-                logits.view(-1, self.config.num_labels), labels.view(-1)
-            )
-
-        if not return_dict:
-            output = (logits, ) + outputs[1:]
-            return ((loss, ) + output) if loss is not None else output
-
-        return Seq2SeqSequenceClassifierOutput(
-            loss=loss,
-            logits=logits,
-            past_key_values=outputs.past_key_values,
-            decoder_hidden_states=outputs.decoder_hidden_states,
-            decoder_attentions=outputs.decoder_attentions,
-            cross_attentions=outputs.cross_attentions,
-            encoder_last_hidden_state=outputs.encoder_last_hidden_state,
-            encoder_hidden_states=outputs.encoder_hidden_states,
-            encoder_attentions=outputs.encoder_attentions,
-        )
-
-
-@add_start_docstrings(
-    """
-    BART Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
-    layer on top of the hidden-states output to compute `span start logits` and `span end logits`).
-    """,
-    BART_START_DOCSTRING,
-)
-class BartForQuestionAnswering(PretrainedBartModel):
-    def __init__(self, config):
-        super().__init__(config)
-
-        config.num_labels = 2
-        self.num_labels = config.num_labels
-
-        self.model = BartModel(config)
-        self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
-
-        self.model._init_weights(self.qa_outputs)
-
-    @add_start_docstrings_to_model_forward(BART_INPUTS_DOCSTRING)
-    @add_code_sample_docstrings(
-        tokenizer_class=_TOKENIZER_FOR_DOC,
-        checkpoint="facebook/bart-large",
-        output_type=Seq2SeqQuestionAnsweringModelOutput,
-        config_class=_CONFIG_FOR_DOC,
-    )
-    def forward(
-        self,
-        input_ids,
-        attention_mask=None,
-        decoder_input_ids=None,
-        decoder_attention_mask=None,
-        encoder_outputs=None,
-        start_positions=None,
-        end_positions=None,
-        use_cache=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
-        r"""
-        start_positions (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for position (index) of the start of the labelled span for computing the token classification loss.
-            Positions are clamped to the length of the sequence (`sequence_length`). Position outside of the sequence
-            are not taken into account for computing the loss.
-        end_positions (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
-            Labels for position (index) of the end of the labelled span for computing the token classification loss.
-            Positions are clamped to the length of the sequence (`sequence_length`). Position outside of the sequence
-            are not taken into account for computing the loss.
-        """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        if start_positions is not None and end_positions is not None:
-            use_cache = False
-
-        outputs = self.model(
-            input_ids,
-            attention_mask=attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=decoder_attention_mask,
-            encoder_outputs=encoder_outputs,
-            use_cache=use_cache,
-            output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
-        )
-
-        sequence_output = outputs[0]
-
-        logits = self.qa_outputs(sequence_output)
-        start_logits, end_logits = logits.split(1, dim=-1)
-        start_logits = start_logits.squeeze(-1)
-        end_logits = end_logits.squeeze(-1)
-
-        total_loss = None
-        if start_positions is not None and end_positions is not None:
-            # If we are on multi-GPU, split add a dimension
-            if len(start_positions.size()) > 1:
-                start_positions = start_positions.squeeze(-1)
-            if len(end_positions.size()) > 1:
-                end_positions = end_positions.squeeze(-1)
-            # sometimes the start/end positions are outside our model inputs, we ignore these terms
-            ignored_index = start_logits.size(1)
-            start_positions.clamp_(0, ignored_index)
-            end_positions.clamp_(0, ignored_index)
-
-            loss_fct = CrossEntropyLoss(ignore_index=ignored_index)
-            start_loss = loss_fct(start_logits, start_positions)
-            end_loss = loss_fct(end_logits, end_positions)
-            total_loss = (start_loss + end_loss) / 2
-
-        if not return_dict:
-            output = (
-                start_logits,
-                end_logits,
-            ) + outputs[1:]
-            return (
-                (total_loss, ) + output
-            ) if total_loss is not None else output
-
-        return Seq2SeqQuestionAnsweringModelOutput(
-            loss=total_loss,
-            start_logits=start_logits,
-            end_logits=end_logits,
-            past_key_values=outputs.past_key_values,
-            decoder_hidden_states=outputs.decoder_hidden_states,
-            decoder_attentions=outputs.decoder_attentions,
-            cross_attentions=outputs.cross_attentions,
-            encoder_last_hidden_state=outputs.encoder_last_hidden_state,
-            encoder_hidden_states=outputs.encoder_hidden_states,
-            encoder_attentions=outputs.encoder_attentions,
-        )
+        return (input_logits, input_ids, cap_len)
 
 
 class SinusoidalPositionalEmbedding(nn.Embedding):

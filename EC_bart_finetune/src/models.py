@@ -221,6 +221,7 @@ class RnnSpeaker(torch.nn.Module):
         logits_ = torch.cat(logits_, dim=1)
         labels_ = torch.cat(labels_, dim=-1)
         tmp = torch.zeros(logits_.size(-1))
+        # Xuhui: Not sure what does this part means
         tmp[3] = 1
         logits_[:, -1, :] = tmp
         labels_[:, -1] = 3
