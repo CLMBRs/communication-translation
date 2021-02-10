@@ -271,8 +271,9 @@ def main():
             if epoch % args.valid_every == 0:
                 valid_loss_dict_ = get_log_loss_dict_()
                 output_ids = True
+                # Satisfying the linter for now by making sure this exists
+                output_ids_batch = None
                 for idx in range(args.print_every):
-                    utput_l2[0]
                     _, output_ids_batch = forward_joint(
                         valid_data, model, valid_loss_dict_, args, loss_fn,
                         args.num_distractors_valid, tt
