@@ -5,7 +5,7 @@ import sys
 import time
 import numpy as np
 import pickle as pkl
-from util import *
+from .util import *
 
 import torch
 import torch.nn as nn

@@ -2,10 +2,11 @@ import math
 import operator
 import os
 import numpy as np
-from util import *
+from .util import *
 
 import torch
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 
 def sample_gumbel(shape, tt=torch, eps=1e-20):

@@ -5,9 +5,9 @@ import sys
 import time
 import numpy as np
 import pickle as pkl
-from modeling_bart import BartForConditionalGeneration
+from .modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
-from util import *
+from .util import *
 
 import torch
 import torch.nn as nn
