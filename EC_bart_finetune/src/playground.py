@@ -12,18 +12,18 @@ import pickle as pkl
 import subprocess as commands
 from tqdm import tqdm, trange
 
-from bart_models import *
-from dataloader import ImageIdentificationDataset
-from forward import *
-from models import *
-from util import *
+# TODO: I'm an advocate of only importing what you need
+from .bart_models import *
+from .dataloader import ImageIdentificationDataset
+from .forward import *
+from .models import *
+from .util import *
 
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from torchfile import load as load_lua
 
 # General comments here (Xuhui):
 # -Don't like the way how they define epoch, we should probably follow HF's
@@ -168,8 +168,6 @@ def main():
     train_data, valid_data = remove_duplicate(data)
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
-    #logger.info('train_img :', type(train_data), train_data.shape)
-    #logger.info('valid_img :', type(valid_data), valid_data.shape)
 
     # TODO: Choose between Bart or... what else?
     # Xuhui: The default is RNN
@@ -177,9 +175,6 @@ def main():
         model = BartAgent(args)
     else:
         model = SingleAgent(args)
-
-    #logger.info("Model Info:")
-    #print(model)
 
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
@@ -237,9 +232,9 @@ def main():
         "drop_last": False
     }
     training_set = ImageIdentificationDataset(train_data, args.num_distractors_train)
-    training_generator = DataLoader(training_set, **training_params)
+    training_dataloader = DataLoader(training_set, **training_params)
     valid_set = ImageIdentificationDataset(valid_data, args.num_distractors_valid)
-    valid_generator = DataLoader(valid_set, **test_params)
+    valid_dataloader = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
@@ -248,14 +243,15 @@ def main():
     # TODO: this path should be parameterized
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        epoch_iterator = tqdm(training_generator, desc="Iteration")
+        epoch_iterator = tqdm(training_dataloader, desc="Iteration")
         for step, batch in enumerate(epoch_iterator):
-
+            
             # Xuhui: Added this to inform the training started.
             model.train()
 
             # Xuhui: Added this to move data to the GPU
-            batch = tuple(t.to(args.device) for t in batch)
+            batch['speaker_image'] = batch['speaker_image'].to(device)
+            batch['listener_images'] = batch['listener_images'].to(device)
 
             loss = forward_joint(
                 batch, model, train_loss_dict_, args, loss_fn, args.num_distractors_train, tt
