@@ -4,6 +4,7 @@ D_hid: 512
 D_img: 2048
 ECemb: 5000
 seed: 42
+n_gpu: 1
 TransferH: false
 alpha: 1.0
 bart: true
@@ -27,8 +28,10 @@ no_terminal: false
 no_write: false
 norm_pow: 0.0
 num_directions: 1
-num_dist: 256
-num_dist_: 128
+
+# Total number of pictures for listeners, the first one is for training. 
+num_distractors_train: 255
+num_distractors_valid: 127
 num_games: 30000
 num_layers: 1
 pretrain_spk: false

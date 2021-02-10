@@ -1,54 +1,61 @@
-import copy
-import json
-import operator
-import time
-import numpy as np
-import pickle as pkl
-from collections import OrderedDict
-from util import *
-
+import random
 import torch
-from torch.autograd import Variable
-from torchfile import load as load_lua
+import numpy as np
+from numpy import ndarray
+from torch.utils.data.dataset import Dataset
 
 
-def next_batch_joint(images, batch_size, num_dist, tt):
-    spk_imgs, spk_caps, lsn_imgs, lsn_caps, whichs = [], [], [], [], []
-    total_indices = []
-    keys = range(len(images))
-    assert len(keys) >= num_dist
-    for batch_idx in range(batch_size):
-        img_indices = random.permutation(len(images))[:num_dist]
-        # (1)
-        which = random.randint(0, num_dist)
-        spk_img = img_indices[which]
-        # (batch_size, 2048)
-        spk_imgs.append(spk_img)
-        # batch_size * num_dist
-        lsn_imgs += list(img_indices)
-        # (batch_size)
-        whichs.append(which)
-    spk_imgs = torch.index_select(images, 0, torch.tensor(spk_imgs)).numpy()
-    lsn_imgs = torch.index_select(images, 0, torch.tensor(lsn_imgs)).view(
-        batch_size, num_dist, -1
-    ).numpy()
-    whichs = np.array(whichs)
-    spk_imgs = Variable(torch.from_numpy(spk_imgs),
-                        requires_grad=False).view(batch_size, -1)
-    lsn_imgs = torch.from_numpy(lsn_imgs)
-    lsn_imgs = Variable(lsn_imgs,
-                        requires_grad=False).view(batch_size, num_dist, -1)
+class ImageIdentificationDataset(Dataset):
+    """
+    PyTorch Dataset subclass for image-identification games in which a "speaker"
+    agent takes in an image and communicates it, and a "listener" identifies the
+    correct image from among a selection of distractors
 
-    whichs = Variable(torch.LongTensor(whichs),
-                      requires_grad=False).view(batch_size)
-    if tt == torch.cuda:
-        spk_imgs = spk_imgs.cuda()
-        lsn_imgs = lsn_imgs.cuda()
-        whichs = whichs.cuda()
-    return (spk_imgs, lsn_imgs, 0, 0, 0, 0, 0, whichs)
+    Args:
+        images: A NumPy array of image data
+        num_distractors: Number of distractor images to show to the "listener"
+            alongside the target image
+    """
+    
+    def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
+        super(ImageIdentificationDataset, self).__init__()
+        self.images = images
+        self.img_index = list(range(len(images)))
+        self.num_distractors = num_distractors
+
+    def __len__(self) -> int:
+        return len(self.images)
+
+    def __getitem__(self, index: int) -> dict:
+        # Randomly sample the distractor images out of the remainder of the
+        # dataset
+        distractor_candidates = (
+            self.img_index[:index] + self.img_index[index + 1:]
+        )
+        distractor_images = (
+            random.sample(distractor_candidates, k=self.num_distractors)
+        )
+        listener_images = distractor_images + [index]
+        random.shuffle(listener_images)
+        which = listener_images.index(index)
+
+        # Get the actual image embedding data to be returned
+        speaker_image = self.images[index]
+        listener_images = torch.index_select(
+            self.images, 0, torch.tensor(listener_images)
+        )
+
+        return {
+            'speaker_image': speaker_image, 
+            'listener_images': listener_images, 
+            'speaker_caps_in': 0,
+            'speaker_cap_lens': 0,
+            'target': which
+        }
 
 
 def weave_out(caps_out):
+    # TODO: figure out why this function exists
     ans = []
     seq_len = max([len(x) for x in caps_out])
     for idx in range(seq_len):

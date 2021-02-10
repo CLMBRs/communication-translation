@@ -5,8 +5,8 @@ import sys
 import time
 import numpy as np
 import pickle as pkl
-from util import *
-from gumbel_utils import gumbel_softmax
+from .util import *
+from .gumbel_utils import gumbel_softmax
 
 import torch
 import torch.nn as nn
