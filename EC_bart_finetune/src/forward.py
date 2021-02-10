@@ -49,7 +49,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
         l2_lsn_loss = loss_fn['xent'](l2_logits, l2_batch[-1])
         l2_lsn_acc = logit_to_acc(l2_logits, l2_batch[7]) * 100
         final_loss += l2_lsn_loss
-    elif args.loss_type == "mse":
+    else:
         en_diff_dist = torch.mean(
             torch.pow(output_en[1][0] - output_en[1][1], 2), 2
         ).view(-1, args.num_dist)
