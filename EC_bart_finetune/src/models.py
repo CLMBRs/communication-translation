@@ -25,7 +25,7 @@ class SingleAgent(torch.nn.Module):
             print("Sharing visual system for each agent.")
             self.beholder = Beholder(args)
         self.native, self.foreign = 'en', args.l2
-        self.speaker = Speaker(self.native, args)
+        self.speaker = RnnSpeaker(self.native, args)
         self.listener = RnnListener(self.foreign, args)
         self.tt = torch if args.cpu else torch.cuda
         self.native, self.foreign = 'en', args.l2
@@ -173,7 +173,7 @@ class RnnListener(torch.nn.Module):
 
 class RnnSpeaker(torch.nn.Module):
     def __init__(self, lang, args):
-        super(Speaker, self).__init__()
+        super(RnnSpeaker, self).__init__()
         self.rnn = nn.GRU(
             args.D_emb, args.D_hid, args.num_layers, batch_first=True
         )
