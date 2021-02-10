@@ -6,34 +6,12 @@ import time
 import numpy as np
 import pickle as pkl
 from .util import *
+from .gumbel_utils import gumbel_softmax
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-
-
-def sample_gumbel(shape, tt=torch, eps=1e-20):
-    U = Variable(tt.FloatTensor(shape).uniform_(0, 1))
-    return -torch.log(-torch.log(U + eps) + eps)
-
-
-def gumbel_softmax_sample(logits, temp, tt=torch, idx_=10):
-    y = (logits + sample_gumbel(logits.size(), tt)) / temp
-    if idx_ == 0:
-        y[:, 3] = -float('inf')
-    return F.softmax(y, dim=-1)
-
-
-def gumbel_softmax(logits, temp, hard, tt=torch, idx_=10):
-    # (batch_size, num_cat)
-    y = gumbel_softmax_sample(logits, temp, tt, idx_)
-    y_max, y_max_idx = torch.max(y, 1, keepdim=True)
-    if hard:
-        y_hard = tt.FloatTensor(y.size()).zero_().scatter_(1, y_max_idx.data, 1)
-        y = Variable(y_hard - y.data, requires_grad=False) + y
-
-    return y, y_max_idx
 
 
 class SingleAgent(torch.nn.Module):
@@ -102,8 +80,6 @@ class SingleAgent(torch.nn.Module):
             1, num_dist, 1
         )  # (batch_size, num_dist, D_hid)
 
-        import pdb
-        pdb.set_trace()
         return spk_logits, (rnn_hid,
                             lsn_h_imgs), comm_action, (end_idx_, end_loss_), (
                                 torch.min(spk_cap_len_.float()),
@@ -115,29 +91,27 @@ class SingleAgent(torch.nn.Module):
 class Beholder(torch.nn.Module):
     def __init__(self, args):
         super(Beholder, self).__init__()
-        self.img_to_hid = torch.nn.Linear(
+        self.image_to_hidden = torch.nn.Linear(
             args.D_img, args.D_hid
-        )  # shared visual system
+        )
         self.unit_norm = args.unit_norm
-        self.drop = nn.Dropout(p=args.dropout)
-        self.two_fc = args.two_fc
-        if self.two_fc:
-            self.hid_to_hid = torch.nn.Linear(args.D_hid, args.D_hid)
+        self.dropout = nn.Dropout(p=args.dropout)
+        self.two_ffwd = args.two_ffwd
+        if self.two_ffwd:
+            self.hidden_to_hidden = torch.nn.Linear(args.D_hid, args.D_hid)
 
-    def forward(self, img):
-        h_img = img
+    def forward(self, image):
+        h_image = image
+        h_image = self.image_to_hidden(h_image)
+        h_image = self.dropout(h_image)
 
-        h_img = self.img_to_hid(h_img)
-
-        h_img = self.drop(h_img)
-
-        if self.two_fc:
-            h_img = self.hid_to_hid(F.relu(h_img))
+        if self.two_ffwd:
+            h_image = self.hidden_to_hidden(F.relu(h_image))
 
         if self.unit_norm:
-            norm = torch.norm(h_img, p=2, dim=1, keepdim=True).detach() + 1e-9
-            h_img = h_img / norm.expand_as(h_img)
-        return h_img
+            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
+            h_image = h_image / norm.expand_as(h_image)
+        return h_image
 
 
 class RnnListener(torch.nn.Module):
@@ -197,7 +171,7 @@ class RnnListener(torch.nn.Module):
         return out
 
 
-class Speaker(torch.nn.Module):
+class RnnSpeaker(torch.nn.Module):
     def __init__(self, lang, args):
         super(Speaker, self).__init__()
         self.rnn = nn.GRU(
@@ -242,8 +216,6 @@ class Speaker(torch.nn.Module):
             out_, hid_ = self.rnn(input_, hid_)
             logits_.append(c_logit_.unsqueeze(1))
             labels_.append(comm_label_)
-        import pdb
-        pdb.set_trace()
         logits_ = torch.cat(logits_, dim=1)
         labels_ = torch.cat(labels_, dim=-1)
         tmp = torch.zeros(logits_.size(-1))
