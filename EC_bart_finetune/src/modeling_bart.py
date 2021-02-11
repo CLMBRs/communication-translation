@@ -1714,7 +1714,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             input_ids, max_length
         )
-        input_embeds = self.embed_tokens(input_ids)
         input_logits = torch.tensor(
             torch.arange(0,self.embed_tokens_size).unsqueeze(0)==input_ids,
             dtype=torch.float,

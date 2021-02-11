@@ -87,7 +87,7 @@ class ECagent(torch.nn.Module):
         else:
             lsn_h_imgs = self.beholder(lsn_imgs)
         lsn_h_imgs = lsn_h_imgs.view(-1, num_dist, self.D_hid)
-        lis_hid = self.listener(spk_msg, spk_logits)
+        lis_hid = self.listener(spk_msg, spk_cap_len_, spk_logits)
         lis_hid = lis_hid.unsqueeze(1).repeat(
             1, num_dist, 1
         )  # (batch_size, num_dist, D_hid)
@@ -116,14 +116,13 @@ class BartListener(torch.nn.Module):
 
         self.tt = torch if args.cpu else torch.cuda
         self.lis = bart.gumbel_encoder
+        self.emb = bart.model.shared
 
     def forward(self, spk_msg, spk_msg_lens, spk_logit=0):
         # spk_msg : (batch_size, seq_len)
         # spk_msg_lens : (batch_size)
         batch_size = spk_msg.size()[0]
-        seq_len = spk_msg.size()[1]
-
-
+        spk_msg_emb = torch.matmul(spk_logit, self.emb.weight)
         spk_msg_emb = self.drop(spk_msg_emb)
 
         output = self.lis(spk_msg, spk_msg_emb)
@@ -248,7 +247,7 @@ class RnnSpeaker(torch.nn.Module):
         self.tt_ = torch
         self.seq_len = args.seq_len
 
-    def forward(self, h_img, caps_in, caps_in_lens, sample_how):
+    def forward(self, h_img, caps_in, caps_in_lens):
 
         batch_size = h_img.size()[0]  # caps_in.size()[0]
 
