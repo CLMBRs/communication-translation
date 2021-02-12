@@ -65,12 +65,17 @@ def main():
 
     # TODO: The seed should be a setable parameter
     # set random seed
-    set_seed(args.seed)
+    set_seed(args)
 
     # Xuhui: Do we really need this?
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
+
+    # Setup CUDA, GPU
+    device = torch.device("cuda" if torch.cuda.is_available() else
+                                  "cpu")
+    args.device = device
 
     # TODO: allow use of other image datasets
     if args.dataset == 'coco':
@@ -162,11 +167,8 @@ def main():
     logger.info('train_img :', type(train_data), train_data.shape)
     logger.info('valid_img :', type(valid_data), valid_data.shape)
 
-    # TODO: Choose between Bart or... what else?
-    if args.bart:
-        model = BartAgent(args)
-    else:
-        model = SingleAgent(args)
+    # Initialize agent        
+    model = EC_agent(args)
 
     logger.info("Model Info:")
     print(model)
@@ -185,7 +187,7 @@ def main():
     for name, param in model.named_parameters():
         speaker_named = ('speaker' in name and args.fix_spk)
         beholder_named = ('beholder' in name and args.fix_bhd)
-        if speaker_named or beholder_names:
+        if speaker_named or beholder_named:
             out_params.append(param)
             out_names.append(name)
         else:

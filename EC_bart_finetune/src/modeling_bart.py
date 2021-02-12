@@ -1182,6 +1182,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
         self.model = base_model
         self.gumbel_encoder = BartGumbelEncoder(config, self.model.shared)
         self.embed_tokens = self.model.shared
+        # Obtain the number of tokens from the embed matrix
+        self.embed_tokens_size = self.embed_tokens.weight.size()[0]
         self.register_buffer(
             "final_logits_bias",
             torch.zeros((1, self.model.shared.num_embeddings))
@@ -1736,7 +1738,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             # argmax
             #next_tokens = torch.argmax(scores, dim=-1)
             c_logit_, next_tokens = gumbel_softmax(
-                scores, 1.0, False, torch.cuda, cur_len
+                scores, 1.0, False, self.tt, cur_len
             )
             next_tokens = next_tokens.squeeze()
             next_logits = c_logit_

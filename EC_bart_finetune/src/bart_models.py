@@ -16,9 +16,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-class ECagent(torch.nn.Module):
+class EC_agent(torch.nn.Module):
     def __init__(self, args):
-        super(ECagenet, self).__init__()
+        super(EC_agent, self).__init__()
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = Beholder(args)
@@ -37,7 +37,8 @@ class ECagent(torch.nn.Module):
 
             self.speaker = BartSpeaker(model, self.native, args)
             self.listener = BartListener(model, self.foreign, args)
-        else if args.model=='rnn':
+
+        elif args.model=='rnn':
             self.speaker = Speaker(self.native, args)
             self.listener = RnnListener(self.foreign, args)
 
@@ -130,7 +131,6 @@ class BartListener(torch.nn.Module):
         output = torch.mean(output.last_hidden_state, dim=1)
 
         # Transform the dim to match the img dim
-
         out = self.hid_to_hid(output)
 
         return out
@@ -152,7 +152,7 @@ class BartSpeaker(torch.nn.Module):
         self.vocab_size = args.vocab_size
         self.temp = args.temp
         self.hard = args.hard
-        self.tt = torch if args.cpu else torch.cuda
+        self.spk.tt = torch if args.cpu else torch.cuda
         self.tt_ = torch
         self.seq_len = args.seq_len
 

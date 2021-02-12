@@ -18,9 +18,9 @@ def next_batch_joint(images, batch_size, num_dist, tt):
     keys = range(len(images))
     assert len(keys) >= num_dist
     for batch_idx in range(batch_size):
-        img_indices = random.permutation(len(images))[:num_dist]
+        img_indices = np.random.permutation(len(images))[:num_dist]
         # (1)
-        which = random.randint(0, num_dist)
+        which = np.random.randint(0, num_dist)
         spk_img = img_indices[which]
         # (batch_size, 2048)
         spk_imgs.append(spk_img)
