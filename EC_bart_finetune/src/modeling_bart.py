@@ -1717,9 +1717,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
             input_ids, max_length
         )
         input_logits = torch.tensor(
-            torch.arange(0,self.embed_tokens_size).unsqueeze(0)==input_ids,
+            torch.arange(0,self.embed_tokens_size, device=input_ids.device).unsqueeze(0)==input_ids,
             dtype=torch.float,
             device=input_ids.device)
+        input_logits = input_logits.unsqueeze(-2)
 
 
         while cur_len < max_length:
@@ -1781,7 +1782,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             cur_len = cur_len + 1
         cap_len = (~(input_ids == pad_token_id)).sum(dim=1)
 
-        return (input_logits, input_ids, cap_len)
+        return (input_ids, input_logits, cap_len)
 
 
 class SinusoidalPositionalEmbedding(nn.Embedding):

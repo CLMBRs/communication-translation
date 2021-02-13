@@ -80,4 +80,4 @@ def forward_joint(images, model, loss_dict_, args, loss_fn, num_dist, tt):
         final_loss += l2_lsn_loss
     loss_dict_["accuracy"].update(l2_lsn_acc)
     loss_dict_["loss"].update(l2_lsn_loss.data)
-    return final_loss
+    return final_loss, comm_actions

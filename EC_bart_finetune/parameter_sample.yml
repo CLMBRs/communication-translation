@@ -13,7 +13,7 @@ alpha: 1.0
 bart: true
 batch_size: 16
 beam_width: 12
-cpu: True
+cpu: False
 dataset: coco
 decode_how: beam
 dropout: 0.1
