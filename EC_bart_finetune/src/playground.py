@@ -13,7 +13,8 @@ import subprocess as commands
 from tqdm import tqdm, trange
 
 # TODO: I'm an advocate of only importing what you need
-from .bart_models import *
+# Xuhui: Why writing the "." in front of every file? This is causing the error.
+from .bart_models import BartAgent
 from .dataloader import ImageIdentificationDataset
 from .forward import *
 from .models import *
