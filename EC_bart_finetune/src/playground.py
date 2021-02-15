@@ -42,6 +42,25 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+def evaluate(args, model, tokenizer, prefix=""):
+    eval_outputs_dirs = args.output_dir
+    results = {}
+    valid_loss_dict_ = get_log_loss_dict_()
+    output_ids = True
+    # Satisfying the linter for now by making sure this exists
+    output_ids_batch = None
+    for idx in range(args.print_every):
+        _, output_ids_batch = forward_joint(
+            valid_data, model, valid_loss_dict_, args, loss_fn,
+            args.num_distractors_valid, tt
+        )
+    if output_ids == True:
+        output_ids = output_ids_batch
+    output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+    avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
+    s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
+    logger.info(s_new)
+    return s_new
 
 def main():
     """
@@ -270,22 +289,8 @@ def main():
         # TODO: I think that the if epoch %... conditional should come first
         with torch.no_grad():
             if epoch % args.valid_every == 0:
-                valid_loss_dict_ = get_log_loss_dict_()
-                output_ids = True
-                # Satisfying the linter for now by making sure this exists
-                output_ids_batch = None
-                for idx in range(args.print_every):
-                    _, output_ids_batch = forward_joint(
-                        valid_data, model, valid_loss_dict_, args, loss_fn,
-                        args.num_distractors_valid, tt
-                    )
-                if output_ids == True:
-                    output_ids = output_ids_batch
-                output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
-                avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
-                s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
-                logger.info(s_new)
-                if float(s_new.split()[-6][:-2]) > 85.0:
+                results = evaluate(models, valid_dataloader)
+                if float(results['acc']) > 85.0:
                     path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
                     torch.save(
                         output_ids, output_id_path + 'bart_output_ids.pt'
@@ -299,8 +304,8 @@ def main():
                     if args.TransferH:
                         args.hard = True
 
-    end_time = time.time()
-    logger.info('Total Runtime :', end_time - start_time)
+end_time = time.time()
+logger.info('Total Runtime :', end_time - start_time)
 
 
 if __name__ == '__main__':
