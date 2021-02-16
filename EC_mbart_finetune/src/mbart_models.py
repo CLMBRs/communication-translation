@@ -31,7 +31,9 @@ class MBartAgent(torch.nn.Module):
             print("Sharing visual system for each agent.")
             self.beholder = Beholder(args)
         # model = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
-        model = MBartForConditionalGeneration.from_pretrained('facebook/mbart-large-cc25')
+        model = MBartForConditionalGeneration.from_pretrained(
+            'facebook/mbart-large-cc25'
+        )
 
         self.speaker = MBartSpeaker(model, args)
         self.listener = MBartListener(model, args)
@@ -57,13 +59,19 @@ class MBartAgent(torch.nn.Module):
         else:
             spk_h_img = self.beholder(a_spk_img)  # shared
 
-        spk_msg, spk_embeds, spk_cap_len_ = self.speaker(spk_h_img, a_spk_caps_in, a_spk_cap_lens, lang_ids, lang_masks)
+        spk_msg, spk_embeds, spk_cap_len_ = self.speaker(
+            spk_h_img, a_spk_caps_in, a_spk_cap_lens, lang_ids, lang_masks
+        )
 
         lenlen = False
         if lenlen:
             print(spk_cap_len_[:10])
-            end_idx = torch.max(torch.ones(spk_cap_len_.size()).cuda(),(spk_cap_len_-2).float())
-            end_idx_ = torch.arange(0,end_idx.size(0)).cuda() * spk_logits.size(1)+end_idx.int()
+            end_idx = torch.max(
+                torch.ones(spk_cap_len_.size()).cuda(),
+                (spk_cap_len_ - 2).float()
+            )
+            end_idx_ = torch.arange(0, end_idx.size(0)
+                                   ).cuda() * spk_logits.size(1) + end_idx.int()
 
             end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
         else:
@@ -77,11 +85,16 @@ class MBartAgent(torch.nn.Module):
             lsn_h_imgs = self.beholder(lsn_imgs)
         lsn_h_imgs = lsn_h_imgs.view(-1, num_dist, self.D_hid)
         lis_hid = self.listener(spk_msg, spk_embeds)
-        lis_hid = lis_hid.unsqueeze(1).repeat(1, num_dist, 1)  # (batch_size, num_dist, D_hid)
+        lis_hid = lis_hid.unsqueeze(1).repeat(
+            1, num_dist, 1
+        )  # (batch_size, num_dist, D_hid)
 
-        return spk_embeds, (lis_hid,lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (torch.min(spk_cap_len_.float()),
-                                                                                  torch.mean(spk_cap_len_.float()),
-                                                                                  torch.max(spk_cap_len_.float()))
+        return spk_embeds, (lis_hid,
+                            lsn_h_imgs), spk_msg, (end_idx_, end_loss_), (
+                                torch.min(spk_cap_len_.float()),
+                                torch.mean(spk_cap_len_.float()),
+                                torch.max(spk_cap_len_.float())
+                            )
 
 
 class Beholder(torch.nn.Module):
@@ -91,7 +104,9 @@ class Beholder(torch.nn.Module):
     """
     def __init__(self, args):
         super(Beholder, self).__init__()
-        self.img_to_hid = torch.nn.Linear(args.D_img, args.D_hid)  # shared visual system
+        self.img_to_hid = torch.nn.Linear(
+            args.D_img, args.D_hid
+        )  # shared visual system
         self.unit_norm = args.unit_norm
         self.drop = nn.Dropout(p=args.dropout)
         self.two_fc = args.two_fc
@@ -129,7 +144,6 @@ class MBartListener(torch.nn.Module):
 
         self.tt = torch if args.cpu else torch.cuda
         self.lis = mbart.gumbel_encoder
-
 
     def forward(self, spk_msg, spk_msg_emb):
         # spk_msg : (batch_size, seq_len)
@@ -181,4 +195,3 @@ class MBartSpeaker(torch.nn.Module):
             self.spk.gumbel_generate(input_images=img_hidden, num_beams=1, max_length=self.seq_len, masks=lang_masks,
                                      decoder_input_ids=lang_ids.view(batch_size, -1))
         return input_ids, input_embeds, cap_len
-

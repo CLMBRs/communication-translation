@@ -91,9 +91,7 @@ class SingleAgent(torch.nn.Module):
 class Beholder(torch.nn.Module):
     def __init__(self, args):
         super(Beholder, self).__init__()
-        self.image_to_hidden = torch.nn.Linear(
-            args.D_img, args.D_hid
-        )
+        self.image_to_hidden = torch.nn.Linear(args.D_img, args.D_hid)
         self.unit_norm = args.unit_norm
         self.dropout = nn.Dropout(p=args.dropout)
         self.two_ffwd = args.two_ffwd

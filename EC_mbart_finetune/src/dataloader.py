@@ -14,6 +14,7 @@ from EC_mbart_finetune.src.util import *
 random = np.random
 random.seed(1234)
 
+
 def next_batch_joint(images, batch_size, num_distractor, lang_info, tt):
     """
     This function create batched images for listener and speaker, including creation of distractors
@@ -41,7 +42,7 @@ def next_batch_joint(images, batch_size, num_distractor, lang_info, tt):
 
         img_indices = random.permutation(len(images))[:num_distractor]
 
-        correct_idx = random.randint(0, num_distractor) # (1)
+        correct_idx = random.randint(0, num_distractor)  # (1)
 
         spk_img = img_indices[correct_idx]
         spk_imgs.append(spk_img)  # (batch_size, 2048)
@@ -60,12 +61,18 @@ def next_batch_joint(images, batch_size, num_distractor, lang_info, tt):
 
     spk_imgs = torch.index_select(images, 0, torch.tensor(spk_imgs))
     spk_imgs = torch.tensor(spk_imgs, requires_grad=False).view(batch_size, -1)
-    lsn_imgs = torch.index_select(images, 0, torch.tensor(lsn_imgs)).view(batch_size, num_distractor, -1)
+    lsn_imgs = torch.index_select(images, 0, torch.tensor(lsn_imgs)).view(
+        batch_size, num_distractor, -1
+    )
     lsn_imgs = torch.tensor(lsn_imgs, requires_grad=False)
     spk_lang_ids = torch.tensor(spk_lang_ids, requires_grad=False)
-    spk_lang_masks = torch.stack(spk_lang_masks) if len(spk_lang_masks) > 0 else torch.tensor([])
+    spk_lang_masks = torch.stack(spk_lang_masks
+                                ) if len(spk_lang_masks) > 0 else torch.tensor(
+                                    []
+                                )
 
-    correct_indices = torch.tensor(correct_indices, requires_grad=False).view(batch_size)
+    correct_indices = torch.tensor(correct_indices,
+                                   requires_grad=False).view(batch_size)
     assert correct_indices.dtype == torch.int64  # LongTensor
     if torch.cuda.is_available():
         spk_imgs = spk_imgs.cuda()
@@ -73,9 +80,10 @@ def next_batch_joint(images, batch_size, num_distractor, lang_info, tt):
         spk_lang_ids = spk_lang_ids.cuda()
         spk_lang_masks = spk_lang_masks.cuda()
         correct_indices = correct_indices.cuda()
-    return (spk_imgs, lsn_imgs, 0, 0, spk_lang_ids, spk_lang_masks, 0, 0, 0, correct_indices)
-
-
+    return (
+        spk_imgs, lsn_imgs, 0, 0, spk_lang_ids, spk_lang_masks, 0, 0, 0,
+        correct_indices
+    )
 
 
 def weave_out(caps_out):

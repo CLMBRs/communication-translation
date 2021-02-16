@@ -42,6 +42,7 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
+
 def evaluate(args, model, dataloader):
     eval_outputs_dirs = args.output_dir
     results = {}
@@ -59,7 +60,8 @@ def evaluate(args, model, dataloader):
         batch['listener_images'] = batch['listener_images'].to(device)
 
         _, output_ids_batch = forward_joint(
-            batch, model, valid_loss_dict_, args, loss_fn, args.num_distractors_train, tt
+            batch, model, valid_loss_dict_, args, loss_fn,
+            args.num_distractors_train, tt
         )
 
         if output_ids == True:
@@ -262,9 +264,13 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    training_set = ImageIdentificationDataset(train_data, args.num_distractors_train)
+    training_set = ImageIdentificationDataset(
+        train_data, args.num_distractors_train
+    )
     training_dataloader = DataLoader(training_set, **training_params)
-    valid_set = ImageIdentificationDataset(valid_data, args.num_distractors_valid)
+    valid_set = ImageIdentificationDataset(
+        valid_data, args.num_distractors_valid
+    )
     valid_dataloader = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -276,7 +282,7 @@ def main():
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
         for step, batch in enumerate(epoch_iterator):
-            
+
             # Xuhui: Added this to inform the training started.
             model.train()
 
@@ -285,7 +291,8 @@ def main():
             batch['listener_images'] = batch['listener_images'].to(device)
 
             loss = forward_joint(
-                batch, model, train_loss_dict_, args, loss_fn, args.num_distractors_train, tt
+                batch, model, train_loss_dict_, args, loss_fn,
+                args.num_distractors_train, tt
             )
             optimizer.zero_grad()
             loss.backward()
@@ -315,9 +322,9 @@ def main():
                     if args.TransferH:
                         args.hard = True
 
+
 end_time = time.time()
 logger.info('Total Runtime :', end_time - start_time)
-
 
 if __name__ == '__main__':
     main()

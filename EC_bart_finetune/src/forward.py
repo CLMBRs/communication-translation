@@ -18,7 +18,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
     # don't really have one of each since the batch is just the images?
     targets = batch['target']
     en_batch = (
-        batch['speaker_image'], batch['listener_images'], 
+        batch['speaker_image'], batch['listener_images'],
         batch['speaker_caps_in'], batch['speaker_cap_lens']
     )
     l2_batch = en_batch
@@ -27,7 +27,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
     )
 
     final_loss = 0
-    
+
     # TODO: We either need to figure out what `lenlen` was being used for, or
     # just delete these blocks because right now this is nonsensical and the
     # blocks never execute
