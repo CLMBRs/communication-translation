@@ -1026,13 +1026,15 @@ class LearnedPositionalEmbedding(nn.Embedding):
 
 
 def LayerNorm(normalized_shape, eps=1e-5, elementwise_affine=True):
+    # Commenting this out for now. Apex's dependencies are broken
+    '''
     if torch.cuda.is_available():
         try:
             from apex.normalization import FusedLayerNorm
-
             return FusedLayerNorm(normalized_shape, eps, elementwise_affine)
         except ImportError:
             pass
+    '''
     return torch.nn.LayerNorm(normalized_shape, eps, elementwise_affine)
 
 
@@ -1546,17 +1548,28 @@ class BartForConditionalGeneration(PretrainedBartModel):
             )
         '''
 
+        # determine generation mode
+        is_greedy_gen_mode = (num_beams == 1) and do_sample is False
+        is_sample_gen_mode = (num_beams == 1) and do_sample is True
+        is_beam_gen_mode = (num_beams > 1) and do_sample is False
+        is_beam_sample_gen_mode = (num_beams > 1) and do_sample is True
+
         # special case if pad_token_id is not defined
         if pad_token_id is None and eos_token_id is not None:
             logger.warning(
                 f"Setting `pad_token_id` to `eos_token_id`:{eos_token_id} for open-end generation."
             )
             pad_token_id = eos_token_id
+        
+        # Need this to stop the linter from yelling at us
+        # If not self.config.is_encoder_decoder, `input_ids` is unbound, and is required for greedy
+        # generation mode
+        input_ids = None
 
         if self.config.is_encoder_decoder:
             # add image_outputs to model_kwargs
             # model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(input_ids, model_kwargs)
-            model_kwargs["encoder_outputs"]: ModelOutput = BaseModelOutput(
+            model_kwargs["encoder_outputs"] = BaseModelOutput(
                 last_hidden_state=input_images
             )
 
@@ -1574,12 +1587,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 raise ValueError(
                     "Make sure that `model_kwargs` include `encoder_outputs` of type `ModelOutput`."
                 )
-
-        # determine generation mode
-        is_greedy_gen_mode = (num_beams == 1) and do_sample is False
-        is_sample_gen_mode = (num_beams == 1) and do_sample is True
-        is_beam_gen_mode = (num_beams > 1) and do_sample is False
-        is_beam_sample_gen_mode = (num_beams > 1) and do_sample is True
 
         # set model_kwargs
         model_kwargs["use_cache"] = use_cache

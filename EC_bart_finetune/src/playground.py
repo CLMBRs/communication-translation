@@ -10,8 +10,11 @@ import yaml
 import numpy as np
 import pickle as pkl
 import subprocess as commands
+from tqdm import tqdm, trange
+
+# TODO: I'm an advocate of only importing what you need
 from bart_models import *
-from dataloader import *
+from dataloader import ImageIdentificationDataset
 from forward import *
 from models import *
 from util import *
@@ -20,7 +23,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 from torch.autograd import Variable
-from torchfile import load as load_lua
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 
 # General comments here (Xuhui):
 # -Don't like the way how they define epoch, we should probably follow HF's
@@ -73,8 +76,7 @@ def main():
     logging.info('Entering main run script')
 
     # Setup CUDA, GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else
-                                  "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
     # TODO: allow use of other image datasets
@@ -89,6 +91,7 @@ def main():
         raise ValueError('image dataset should be set as coco')
 
     # Load the pre-computed ResNet Image representation
+    # Xuhui: Consider moving the data loading process to the new MyDataset obj
     data_names = [
         'train_en_feats', f'train_{args.l2}_feats', 'valid_feats', 'test_feats'
     ]
@@ -132,7 +135,7 @@ def main():
     hyperparam_str = (
         f'{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}'
         f'.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}'
-        f'.num_dist_{args.num_dist}.vocab_size_{args.vocab_size}'
+        f'.num_dist_{args.num_distractors_train}.vocab_size_{args.vocab_size}'
         f'_{args.vocab_size}.hard_{args.hard}/'
     )
 
@@ -144,6 +147,7 @@ def main():
         recur_mkdir(path_dir)
 
     # Log the general model information
+
     logger.info('Configuration:')
     print(args)
     logger.info('Model Name:')
@@ -164,24 +168,20 @@ def main():
     train_data, valid_data = remove_duplicate(data)
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
-    logger.info('train_img :', type(train_data), train_data.shape)
-    logger.info('valid_img :', type(valid_data), valid_data.shape)
 
     # Initialize agent        
     model = EC_agent(args)
 
-    logger.info("Model Info:")
-    print(model)
-
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
-    if not args.cpu:
+    if args.n_gpu > 0:
         torch.cuda.set_device(args.gpuid)
         model = model.cuda()
 
     # Loop through the named parameters to find the number of input and output
     # parameters
     # Xuhui: This module is showing the model parameter, maybe we do not need
+
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
@@ -210,10 +210,27 @@ def main():
         'mlml': nn.MultiLabelMarginLoss(),
         'mml': nn.MultiMarginLoss()
     }
+    # Xuhui: This chunck of code seems redundant to me.
     tt = torch
     if not args.cpu:
         loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
         tt = torch.cuda
+
+    # Initialize the dataloader
+    training_params = {
+        "batch_size": args.batch_size,
+        "shuffle": True,
+        "drop_last": True
+    }
+    test_params = {
+        "batch_size": args.batch_size,
+        "shuffle": False,
+        "drop_last": False
+    }
+    training_set = ImageIdentificationDataset(train_data, args.num_distractors_train)
+    training_dataloader = DataLoader(training_set, **training_params)
+    valid_set = ImageIdentificationDataset(valid_data, args.num_distractors_valid)
+    valid_dataloader = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
@@ -222,14 +239,23 @@ def main():
     # TODO: this path should be parameterized
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
-        loss, _ = forward_joint(
-            train_data, model, train_loss_dict_, args, loss_fn, args.num_dist,
-            tt
-        )
-        optimizer.zero_grad()
-        loss.backward()
-        total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
-        optimizer.step()
+        epoch_iterator = tqdm(training_dataloader, desc="Iteration")
+        for step, batch in enumerate(epoch_iterator):
+            
+            # Xuhui: Added this to inform the training started.
+            model.train()
+
+            # Xuhui: Added this to move data to the GPU
+            batch['speaker_image'] = batch['speaker_image'].to(device)
+            batch['listener_images'] = batch['listener_images'].to(device)
+
+            loss = forward_joint(
+                batch, model, train_loss_dict_, args, loss_fn, args.num_distractors_train, tt
+            )
+            optimizer.zero_grad()
+            loss.backward()
+            total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
+            optimizer.step()
 
         if epoch % args.print_every == 0:
             avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
@@ -241,10 +267,12 @@ def main():
             if epoch % args.valid_every == 0:
                 valid_loss_dict_ = get_log_loss_dict_()
                 output_ids = True
+                # Satisfying the linter for now by making sure this exists
+                output_ids_batch = None
                 for idx in range(args.print_every):
                     _, output_ids_batch = forward_joint(
                         valid_data, model, valid_loss_dict_, args, loss_fn,
-                        args.num_dist_, tt
+                        args.num_distractors_valid, tt
                     )
                 if output_ids == True:
                     output_ids = output_ids_batch

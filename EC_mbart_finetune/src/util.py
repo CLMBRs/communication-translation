@@ -1,15 +1,16 @@
+import pprint
 import codecs
 import os
-import pprint
+import json
 import sys
 import time
-import numpy as np
 import pickle as pkl
+import numpy as np
 from collections import OrderedDict
+from transformers import PreTrainedTokenizer
 
 import torch
 from torch.autograd import Variable
-
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -28,10 +29,8 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
-
 def sum_num_captions(org):
     return sum([len(x) for x in org])
-
 
 def get_coco_idx():
     a, b = 56644, 56643
@@ -55,19 +54,17 @@ def get_coco_idx():
             cand += 1
         cand = cand % 56643
 
-    assert (len(set(a_)) == 14500)
-    assert (len(set(b_)) == 14500)
+    assert( len(set(a_)) == 14500 )
+    assert( len(set(b_)) == 14500 )
 
     return a_, b_
-
 
 def recur_mkdir(dir):
     ll = dir.split("/")
     ll = [x for x in ll if x != ""]
     for idx in range(len(ll)):
-        ss = "/".join(ll[0:idx + 1])
-        check_mkdir("/" + ss)
-
+        ss = "/".join(ll[0:idx+1])
+        check_mkdir(ss)
 
 class Logger(object):
     def __init__(self, path, no_write=False, no_terminal=False):
@@ -75,7 +72,7 @@ class Logger(object):
         if self.no_write:
             print("Don't write to file")
         else:
-            self.log = codecs.open(path + "log.log", "wb", encoding="utf8")
+            self.log = codecs.open(path+"log.log", "wb", encoding="utf8")
 
         self.no_terminal = no_terminal
         self.terminal = sys.stdout
@@ -92,34 +89,24 @@ class Logger(object):
         #you might want to specify some extra behavior here.
         pass
 
-
 def check_dataset_sanity(args):
     assert args.dataset == "coco" or args.dataset == "multi30k"
     if args.dataset == "coco":
-        assert (args.src, args.trg) == ("en",
-                                        "jp") or (args.src,
-                                                  args.trg) == ("jp", "en")
+        assert (args.src, args.trg) == ("en", "jp") or (args.src, args.trg) == ("jp", "en")
     elif args.dataset == "multi30k":
-        assert (args.src, args.trg) == ("en",
-                                        "de") or (args.src,
-                                                  args.trg) == ("de", "en")
-
+        assert (args.src, args.trg) == ("en", "de") or (args.src, args.trg) == ("de", "en")
 
 def scr_path():
-    return ""  #enter your root
-
+    return "" #enter your root
 
 def saved_results_path():
-    return "/gscratch/ark/xuhuizh/UMT_data"  #enter your root
-
+    return "../UMT_data" #enter your root
 
 def multi30k_reorg_path():
-    return ""  #enter your root
-
+    return "" #enter your root
 
 def coco_path():
-    return "/gscratch/ark/xuhuizh/UMT_data/coco_new"  #enter your root
-
+    return "../UMT_data/coco_new" #enter your root
 
 def sort_per_len(caps):
     lens = [(idx, len(cap)) for idx, cap in enumerate(caps)]
@@ -128,17 +115,9 @@ def sort_per_len(caps):
     assert len(lens) == len(caps)
     return lens
 
-
 def trim_caps(caps, minlen, maxlen):
-    new_cap = [
-        [cap for cap in cap_i if len(cap) <= maxlen and len(cap) >= minlen]
-        for cap_i in caps
-    ]
-    print(
-        "Before : {} captions / After : {} captions".format(
-            sum_num_captions(caps), sum_num_captions(new_cap)
-        )
-    )
+    new_cap = [ [ cap for cap in cap_i if len(cap) <= maxlen and len(cap) >= minlen] for cap_i in caps]
+    print("Before : {} captions / After : {} captions".format( sum_num_captions(caps), sum_num_captions(new_cap) ))
     return new_cap
 
 
@@ -155,9 +134,7 @@ def print_params(names, sizes):
     for name, size in zip(names, sizes):
         name_ = name.split(".")
         aa, cc, rest = name_[0], name_[1], ".".join(name_[2:])
-        dd[aa][cc][rest] = "{} ({})".format(
-            rest, size[0]
-        ) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
+        dd[aa][cc][rest] = "{} ({})".format(rest, size[0]) if len(size) == 1 else "{} ({}, {})".format(rest, size[0], size[1])
 
     ss = ""
     for aa in agents:
@@ -171,21 +148,12 @@ def print_params(names, sizes):
 
     return ss
 
-
 def print_captions(gen_indices, i2w, joiner):
-    return [
-        joiner.join([i2w[ii] for ii in gen_idx]).replace("@@ ", "")
-        for gen_idx in gen_indices
-    ]
-
+    return [ joiner.join( [i2w[ii] for ii in gen_idx] ).replace("@@ ", "") for gen_idx in gen_indices]
 
 def decode(gen_indices, i2w):
-
-    return [
-        " ".join([i2w[ii] for ii in gen_idx]).replace("@@ ", "")
-        for gen_idx in gen_indices
-    ]
-
+    
+    return [ " ".join( [i2w[ii] for ii in gen_idx] ).replace("@@ ", "") for gen_idx in gen_indices]
 
 def pick(i1, i2, whichs):
     res = []
@@ -194,8 +162,7 @@ def pick(i1, i2, whichs):
         res.append(img[which][idx])
     return res
 
-
-def idx_to_onehot(indices, nb_digits):  # input numpy array
+def idx_to_onehot(indices, nb_digits): # input numpy array
     y = torch.LongTensor(indices).view(-1, 1)
     y_onehot = torch.FloatTensor(indices.shape[0], nb_digits)
 
@@ -204,7 +171,6 @@ def idx_to_onehot(indices, nb_digits):  # input numpy array
 
     return y_onehot
 
-
 def max_logit_to_onehot(logits):
     max_element, max_idx = torch.max(logits.cuda(), 1)
     onehot = torch.FloatTensor(logits.size())
@@ -212,7 +178,6 @@ def max_logit_to_onehot(logits):
     onehot.scatter_(1, max_idx.data.long().cpu(), 1)
     onehot = Variable(torch.FloatTensor(onehot), requires_grad=False).cuda()
     return onehot, max_idx.data
-
 
 def sample_logit_to_onehot(logits):
     indices = torch.multinomial(logits, 1)
@@ -223,70 +188,55 @@ def sample_logit_to_onehot(logits):
     onehot = Variable(onehot, requires_grad=False).cuda()
     return onehot, indices.data
 
-
-def logit_to_acc(logits, y):  # logits: [batch_size, num_of_classes]
-    y_max, y_max_idx = torch.max(logits, 1)  # [batch_size]
+def logit_to_acc(logits, y): # logits: [batch_size, num_of_classes]
+    y_max, y_max_idx = torch.max(logits, 1) # [batch_size]
     eq = torch.eq(y_max_idx, y)
     acc = float(eq.sum().data) / float(eq.nelement())
     return acc
 
-
-def logit_to_top_k(logits, y, k):  # logits: [batch_size, num_of_classes]
+def logit_to_top_k(logits, y, k): # logits: [batch_size, num_of_classes]
     logits_sorted, indices = torch.sort(logits, 1, descending=True)
     y = y.view(-1, 1)
-    indices = indices[:, :k]
+    indices = indices[:,:k]
     y_big = y.expand(indices.size())
     eq = torch.eq(indices, y_big)
     eq2 = torch.sum(eq, 1)
     return eq2.sum().data[0], eq2.nelement()
-
 
 def loss_and_acc(logits, labels, loss_fn):
     loss = loss_fn(logits, labels)
     acc = logit_to_acc(logits, labels)
     return (loss, acc)
 
-
-# TODO: I think the dictionary formatting can be a lot simpler than this
 def loss_acc_dict():
     return {
-        "spk": {\
-               "loss": 0},\
-        "lsn": {\
-               "loss": 0,\
-               "acc": 0 }     \
+        "spk":{\
+               "loss":0},\
+        "lsn":{\
+               "loss":0,\
+               "acc":0 }\
         }
-
 
 def loss_acc_meter():
     return {
-        "spk": {\
-               "loss": AverageMeter()},\
-        "lsn": {\
-               "loss": AverageMeter(),\
-               "acc": AverageMeter() }     \
+        "spk":{\
+               "loss":AverageMeter()},\
+        "lsn":{\
+               "loss":AverageMeter(),\
+               "acc":AverageMeter() }\
         }
 
-
 def get_loss_dict():
-    return {"l1": loss_acc_dict(), "l2": loss_acc_dict()}
-
+    return { "l1":loss_acc_dict(), "l2":loss_acc_dict() }
 
 def get_log_loss_dict():
-    return {"l1": loss_acc_meter(), "l2": loss_acc_meter()}
-
+    return {"l1":loss_acc_meter(), "l2":loss_acc_meter() }
 
 def get_loss_dict_():
-    return {"loss": 0, "accuracy": 0, "average_len": 0}
-
+    return {"loss":0, "accuracy":0, "average_len":0}
 
 def get_log_loss_dict_():
-    return {
-        "loss": AverageMeter(),
-        "accuracy": AverageMeter(),
-        "average_len": AverageMeter()
-    }
-
+    return {"loss":AverageMeter(), "accuracy":AverageMeter(), "average_len":AverageMeter()}
 
 def get_avg_from_loss_dict_(log_loss_dict):
     res = get_loss_dict_()
@@ -297,20 +247,19 @@ def get_avg_from_loss_dict_(log_loss_dict):
 
 def get_avg_from_loss_dict(log_loss_dict):
     res = get_loss_dict()
-    for k1, v1 in log_loss_dict.items():  # en_agent / fr_agent
-        for k2, v2 in v1.items():  # spk / lsn
-            for k3, v3 in v2.items():  # loss / acc
+    for k1, v1 in log_loss_dict.items(): # en_agent / fr_agent
+        for k2, v2 in v1.items(): # spk / lsn
+            for k3, v3 in v2.items(): # loss / acc
                 res[k1][k2][k3] = v3.avg
     return res
 
-
 def print_loss_(epoch, alpha, avg_loss_dict, mode="train"):
     prt_msg = "epoch {:5d} {} ".format(epoch, mode)
-    prt_msg += "| loss"
+    prt_msg += "| loss" 
     prt_msg += " {:.4f}".format(avg_loss_dict["loss"])
-    prt_msg += "| prediction accuracy"
+    prt_msg += "| prediction accuracy" 
     prt_msg += " {:.2f}%".format(avg_loss_dict["accuracy"])
-    prt_msg += "| average message length"
+    prt_msg += "| average message length" 
     prt_msg += " {:.4f}".format(avg_loss_dict["average_len"])
     prt_msg += " |"
     return prt_msg
@@ -319,29 +268,20 @@ def print_loss_(epoch, alpha, avg_loss_dict, mode="train"):
 def print_loss(epoch, alpha, avg_loss_dict, mode="train"):
     prt_msg = "epoch {:5d} {} ".format(epoch, mode)
     for agent in "l1 l2".split():
-        prt_msg += "| "  # en_agent / fr_agent
+        prt_msg += "| " # en_agent / fr_agent
         for person in "spk lsn".split():
-            prt_msg += " {}_{}".format(agent, person)  # spk / lsn
+            prt_msg += " {}_{}".format(agent, person) # spk / lsn
             if person == "spk":
-                prt_msg += " {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"]
-                )
+                prt_msg += " {:.3f}".format(avg_loss_dict[agent][person]["loss"])
             elif person == "lsn":
-                prt_msg += " {:.3f} * {} = {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"], alpha,
-                    avg_loss_dict[agent][person]["loss"] * alpha
-                )
-                prt_msg += " {:.2f}%".format(
-                    avg_loss_dict[agent][person]["acc"]
-                )
+                prt_msg += " {:.3f} * {} = {:.3f}".format(avg_loss_dict[agent][person]["loss"], alpha, avg_loss_dict[agent][person]["loss"] * alpha)
+                prt_msg += " {:.2f}%".format(avg_loss_dict[agent][person]["acc"])
             prt_msg += " |"
     return prt_msg
-
 
 def clip_grad(v, min, max):
     v.register_hook(lambda g: g.clamp(min, max))
     return v
-
 
 def check_mkdir(dir):
     try:
@@ -349,42 +289,56 @@ def check_mkdir(dir):
     except:
         os.mkdir(dir)
 
-
 def idx_to_emb(idx, maxmax, tt):
-    ans = tt.ByteTensor(len(idx), maxmax).fill_(0)
+    ans = tt.ByteTensor( len(idx), maxmax ).fill_(0)
     for aaa, iii in enumerate(idx):
         ans[aaa][iii] = 1
     return Variable(ans, requires_grad=False)
 
 
 def remove_duplicate(data):
-    hash_0 = list(np.round(data[:, 0].numpy(), 3))
-    hash_1 = list(np.round(data[:, 1].numpy(), 3))
-    hash_2 = list(np.round(data[:, 2].numpy(), 3))
-    hash_1000 = list(np.round(data[:, 1000].numpy(), 3))
-    hash_2046 = list(np.round(data[:, 2046].numpy(), 3))
-    hash_2047 = list(np.round(data[:, 2047].numpy(), 3))
+    hash_0 = list(np.round(data[:,0].numpy(),3))
+    hash_1 = list(np.round(data[:,1].numpy(),3))
+    hash_2 = list(np.round(data[:,2].numpy(),3))
+    hash_1000 = list(np.round(data[:,1000].numpy(),3))
+    hash_2046 = list(np.round(data[:,2046].numpy(),3))
+    hash_2047 = list(np.round(data[:,2047].numpy(),3))
 
     seen_e2i = {}
     string_ = []
     for idx in range(len(hash_0)):
-        keystr = str(hash_0[idx]) + '/' + str(hash_1[idx]) + '/' + str(
-            hash_2[idx]
-        ) + '/' + str(hash_1000[idx]) + '/' + str(hash_2046[idx]
-                                                 ) + '/' + str(hash_2047[idx])
+        keystr = str(hash_0[idx])+'/'+str(hash_1[idx])+'/'+str(hash_2[idx])+'/'+str(hash_1000[idx])+'/'+str(hash_2046[idx])+'/'+str(hash_2047[idx])
         if keystr in seen_e2i:
-            string_.append([seen_e2i[keystr], idx])
+            string_.append([seen_e2i[keystr],idx])
         else:
             seen_e2i[keystr] = idx
 
+
     string_2 = []
     for pair in string_:
-        if torch.sum(torch.abs(data[pair[0]] - data[pair[1]])).numpy() < 15:
+        if torch.sum(torch.abs(data[pair[0]]-data[pair[1]])).numpy() < 15:
             string_2.append(pair)
     s = set([i[-1] for i in string_2])
     index_ = []
     for i in range(len(data)):
-        if i not in s:
-            index_.append(i)
-    data = torch.index_select(data, 0, torch.tensor(index_, dtype=torch.int64))
+            if i not in s:
+                    index_.append(i)
+    data = torch.index_select(data,0,torch.tensor(index_,dtype=torch.int64))
     return data[:-10000], data[-10000:]
+
+
+def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
+    token_freq = list(json.load(open("../UMT_data/cc/ja_smaller_count_dict.json", "r")).items())
+    sorted_tokens = sorted(token_freq, key=lambda x: x[1], reverse=True)
+    # we kept 99% most-occurring words
+    # Think this is too loose, but don't understand what exactly did mBART do
+    good_token_ids = {int(k): v for k, v in sorted_tokens[:-int(0.01 * len(sorted_tokens))]}
+    bad_token_ids = []
+    for k, v in tokenizer.vocab.items():
+        if v in good_token_ids:
+            continue
+        bad_token_ids.append(v)
+
+    mask = torch.zeros(len(tokenizer))
+    mask[bad_token_ids] = -float("inf")
+    return mask

@@ -227,7 +227,7 @@ class RnnListener(torch.nn.Module):
 
 class RnnSpeaker(torch.nn.Module):
     def __init__(self, lang, args):
-        super(Speaker, self).__init__()
+        super(RnnSpeaker, self).__init__()
         self.rnn = nn.GRU(
             args.D_emb, args.D_hid, args.num_layers, batch_first=True
         )
