@@ -1,6 +1,5 @@
 import random
 import torch
-import numpy as np
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
 

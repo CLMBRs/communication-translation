@@ -1,30 +1,22 @@
 import argparse
-import codecs
-import copy
 import logging
-import math
-import os
 import random
 import sys
+import time
 import yaml
 import numpy as np
-import pickle as pkl
-import subprocess as commands
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 # TODO: I'm an advocate of only importing what you need
-# Xuhui: Why writing the "." in front of every file? This is causing the error.
-from .bart_models import BartAgent
-from .dataloader import ImageIdentificationDataset
-from .forward import *
-from .models import *
-from .util import *
+from agents import ECAgent
+from dataloader import ImageIdentificationDataset
+from forward import *
+from models import *
+from util import *
 
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
-from torch.autograd import Variable
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import DataLoader
 
 # General comments here (Xuhui):
 # -Don't like the way how they define epoch, we should probably follow HF's
@@ -43,14 +35,14 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader):
+def evaluate(args, model, dataloader, device, logger):
     eval_outputs_dirs = args.output_dir
     results = {}
     valid_loss_dict_ = get_log_loss_dict_()
     output_ids = True
     # Satisfying the linter for now by making sure this exists
     output_ids_batch = None
-    epoch_iterator = tqdm(training_dataloader, desc="Iteration")
+    epoch_iterator = tqdm(dataloader, desc="Iteration")
     for step, batch in enumerate(epoch_iterator):
         # Xuhui: Added this to inform the training started.
         model.eval()
@@ -202,12 +194,8 @@ def main():
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
 
-    # TODO: Choose between Bart or... what else?
-    # Xuhui: The default is RNN
-    if args.bart:
-        model = BartAgent(args)
-    else:
-        model = SingleAgent(args)
+    # Initialize agent        
+    model = ECAgent(args)
 
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
@@ -323,8 +311,8 @@ def main():
                         args.hard = True
 
 
-end_time = time.time()
-logger.info('Total Runtime :', end_time - start_time)
+    end_time = time.time()
+    logger.info('Total Runtime :', end_time - start_time)
 
 if __name__ == '__main__':
     main()
