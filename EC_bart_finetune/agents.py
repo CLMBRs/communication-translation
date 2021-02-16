@@ -1,7 +1,6 @@
 from gumbel_utils import gumbel_softmax
 from modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
-from models import Beholder
 from util import *
 
 import torch
@@ -10,9 +9,9 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-class EC_agent(torch.nn.Module):
+class ECAgent(torch.nn.Module):
     def __init__(self, args):
-        super(EC_agent, self).__init__()
+        super(ECAgent, self).__init__()
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = Beholder(args)
@@ -94,6 +93,30 @@ class EC_agent(torch.nn.Module):
                                 torch.mean(spk_cap_len_.float()),
                                 torch.max(spk_cap_len_.float())
                             )
+
+
+class Beholder(torch.nn.Module):
+    def __init__(self, args):
+        super(Beholder, self).__init__()
+        self.image_to_hidden = torch.nn.Linear(args.D_img, args.D_hid)
+        self.unit_norm = args.unit_norm
+        self.dropout = nn.Dropout(p=args.dropout)
+        self.two_ffwd = args.two_ffwd
+        if self.two_ffwd:
+            self.hidden_to_hidden = torch.nn.Linear(args.D_hid, args.D_hid)
+
+    def forward(self, image):
+        h_image = image
+        h_image = self.image_to_hidden(h_image)
+        h_image = self.dropout(h_image)
+
+        if self.two_ffwd:
+            h_image = self.hidden_to_hidden(F.relu(h_image))
+
+        if self.unit_norm:
+            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
+            h_image = h_image / norm.expand_as(h_image)
+        return h_image
 
 
 class BartListener(torch.nn.Module):
