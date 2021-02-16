@@ -12,9 +12,13 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 
-def forward_joint(images, model, loss_dict_, args, loss_fn, num_dist, lang_info, tt):
+def forward_joint(
+    images, model, loss_dict_, args, loss_fn, num_dist, lang_info, tt
+):
 
-    en_batch = next_batch_joint(images, args.batch_size, num_dist, lang_info, tt)
+    en_batch = next_batch_joint(
+        images, args.batch_size, num_dist, lang_info, tt
+    )
     l2_batch = en_batch
     output_en, output_l2, output_ids_batch, end_loss_, len_info = model(
         en_batch[:6], args.sample_how
@@ -31,7 +35,8 @@ def forward_joint(images, model, loss_dict_, args, loss_fn, num_dist, lang_info,
             ), end_loss_[1]
         )
     else:
-        en_spk_loss = torch.tensor(0).float().cuda() if tt == torch.cuda else torch.tensor(0).float()
+        en_spk_loss = torch.tensor(0).float().cuda(
+        ) if tt == torch.cuda else torch.tensor(0).float()
     loss_dict_["average_len"].update(len_info[1].item())
     if args.loss_type == "xent":
         l2_diff_dist = torch.mean(torch.pow(output_l2[0] - output_l2[1], 2),

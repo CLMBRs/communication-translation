@@ -1,29 +1,22 @@
 import argparse
-import codecs
-import copy
 import logging
-import math
-import os
 import random
 import sys
+import time
 import yaml
 import numpy as np
-import pickle as pkl
-import subprocess as commands
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 # TODO: I'm an advocate of only importing what you need
-from bart_models import *
+from agents import ECAgent
 from dataloader import ImageIdentificationDataset
 from forward import *
 from models import *
 from util import *
 
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
-from torch.autograd import Variable
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import DataLoader
 
 # General comments here (Xuhui):
 # -Don't like the way how they define epoch, we should probably follow HF's
@@ -40,6 +33,38 @@ def set_seed(args):
     torch.manual_seed(args.seed)
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
+
+
+def evaluate(args, model, dataloader, device, logger):
+    eval_outputs_dirs = args.output_dir
+    results = {}
+    valid_loss_dict_ = get_log_loss_dict_()
+    output_ids = True
+    # Satisfying the linter for now by making sure this exists
+    output_ids_batch = None
+    epoch_iterator = tqdm(dataloader, desc="Iteration")
+    for step, batch in enumerate(epoch_iterator):
+        # Xuhui: Added this to inform the training started.
+        model.eval()
+
+        # Xuhui: Added this to move data to the GPU
+        batch['speaker_image'] = batch['speaker_image'].to(device)
+        batch['listener_images'] = batch['listener_images'].to(device)
+
+        _, output_ids_batch = forward_joint(
+            batch, model, valid_loss_dict_, args, loss_fn,
+            args.num_distractors_train, tt
+        )
+
+        if output_ids == True:
+            output_ids = output_ids_batch
+            output_ids = False
+        output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+
+    avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
+    s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
+    logger.info(s_new)
+    return avg_loss_dict_
 
 
 def main():
@@ -170,7 +195,7 @@ def main():
     train_data = train_data[:50000]
 
     # Initialize agent        
-    model = EC_agent(args)
+    model = ECAgent(args)
 
     # Move the model to gpu if the configuration calls for it
     # TODO: this should also probably check cuda.is_available()
@@ -227,9 +252,13 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    training_set = ImageIdentificationDataset(train_data, args.num_distractors_train)
+    training_set = ImageIdentificationDataset(
+        train_data, args.num_distractors_train
+    )
     training_dataloader = DataLoader(training_set, **training_params)
-    valid_set = ImageIdentificationDataset(valid_data, args.num_distractors_valid)
+    valid_set = ImageIdentificationDataset(
+        valid_data, args.num_distractors_valid
+    )
     valid_dataloader = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -241,7 +270,7 @@ def main():
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
         for step, batch in enumerate(epoch_iterator):
-            
+
             # Xuhui: Added this to inform the training started.
             model.train()
 
@@ -250,7 +279,8 @@ def main():
             batch['listener_images'] = batch['listener_images'].to(device)
 
             loss = forward_joint(
-                batch, model, train_loss_dict_, args, loss_fn, args.num_distractors_train, tt
+                batch, model, train_loss_dict_, args, loss_fn,
+                args.num_distractors_train, tt
             )
             optimizer.zero_grad()
             loss.backward()
@@ -265,22 +295,8 @@ def main():
         # TODO: I think that the if epoch %... conditional should come first
         with torch.no_grad():
             if epoch % args.valid_every == 0:
-                valid_loss_dict_ = get_log_loss_dict_()
-                output_ids = True
-                # Satisfying the linter for now by making sure this exists
-                output_ids_batch = None
-                for idx in range(args.print_every):
-                    _, output_ids_batch = forward_joint(
-                        valid_data, model, valid_loss_dict_, args, loss_fn,
-                        args.num_distractors_valid, tt
-                    )
-                if output_ids == True:
-                    output_ids = output_ids_batch
-                output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
-                avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
-                s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
-                logger.info(s_new)
-                if float(s_new.split()[-6][:-2]) > 85.0:
+                results = evaluate(args, models, valid_dataloader)
+                if float(results['accuracy']) > 85.0:
                     path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
                     torch.save(
                         output_ids, output_id_path + 'bart_output_ids.pt'
@@ -294,9 +310,9 @@ def main():
                     if args.TransferH:
                         args.hard = True
 
+
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)
-
 
 if __name__ == '__main__':
     main()

@@ -28,7 +28,7 @@ random.seed(42)
 # style.
 # -General model part is good, it is flexible and we could replace any model we
 # want
-# -We want to rewrite the data-loader part in the data_loader.py 
+# -We want to rewrite the data-loader part in the data_loader.py
 # -We do not have a predict function yet
 
 if __name__ == '__main__':
@@ -46,7 +46,12 @@ if __name__ == '__main__':
         data_path = coco_path()
         task_path = args.dataset
         tokenizer = AutoTokenizer.from_pretrained('facebook/mbart-large-cc25')
-        lang_code2id = dict(zip(tokenizer.additional_special_tokens, tokenizer.additional_special_tokens_ids))
+        lang_code2id = dict(
+            zip(
+                tokenizer.additional_special_tokens,
+                tokenizer.additional_special_tokens_ids
+            )
+        )
 
         try:
             if not args.lang_1_vocab_constrain_file or not args.lang_1_vocab_constrain_file:
@@ -55,13 +60,19 @@ if __name__ == '__main__':
             else:
                 args.has_vocab_constraint = True
         except AttributeError:
-            raise Exception("lang_1_vocab_constrain_file and lang_1_vocab_constrain_file "
-                            "has to be specifiec (e.g. setting to None)")
+            raise Exception(
+                "lang_1_vocab_constrain_file and lang_1_vocab_constrain_file "
+                "has to be specifiec (e.g. setting to None)"
+            )
         lang_id1 = lang_code2id[args.lang_1]
         lang_id2 = lang_code2id[args.lang_2]
 
-        lang_mask1 = vocab_mask_from_file(tokenizer, args.lang_1_vocab_constrain_file)
-        lang_mask2 = vocab_mask_from_file(tokenizer, args.lang_2_vocab_constrain_file)
+        lang_mask1 = vocab_mask_from_file(
+            tokenizer, args.lang_1_vocab_constrain_file
+        )
+        lang_mask2 = vocab_mask_from_file(
+            tokenizer, args.lang_2_vocab_constrain_file
+        )
 
     else:
         print("image dataset should be set as coco")
@@ -74,25 +85,25 @@ if __name__ == '__main__':
 
     print("Dataset Loaded")
     fixed, learned = [], ["lsn"]
-    if args.fix_spk:      #False
+    if args.fix_spk:  #False
         fixed.append("spk")
     else:
         learned.append("spk")
 
-    if args.fix_bhd:      #False
+    if args.fix_bhd:  #False
         fixed.append("bhd")
     else:
         learned.append("bhd")
 
     fixed, learned = "_".join(sorted(fixed)), "_".join(sorted(learned))
 
-    assert args.which_loss in "joint lsn".split() #which_loss = 'joint'
-    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/" #fixed_.learned_bhd_lsn_spk.joint_loss/
+    assert args.which_loss in "joint lsn".split()  #which_loss = 'joint'
+    model_str = f"fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/"  #fixed_.learned_bhd_lsn_spk.joint_loss/
     if args.bart:
         model_str = "bart." + model_str
-    if args.pretrain_spk: #False
+    if args.pretrain_spk:  #False
         model_str = "pretrain_spk." + model_str
-    if args.no_share_bhd: #False
+    if args.no_share_bhd:  #False
         model_str = "no_share_bhd." + model_str
 
     mill = int(round(time.time() * 1000)) % 1000
@@ -110,8 +121,14 @@ if __name__ == '__main__':
     print(args)
     print(model_str)
     print(hyperparam_str)
-    dir_dic = {"feat_path": feat_path, "data_path":data_path, "task_path":task_path, "path":path, "path_dir":path_dir}
-    data = torch.cat([train_img1, train_img2, valid_img, test_img],dim=0)
+    dir_dic = {
+        "feat_path": feat_path,
+        "data_path": data_path,
+        "task_path": task_path,
+        "path": path,
+        "path_dir": path_dir
+    }
+    data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
     train_data, valid_data = remove_duplicate(data)
     train_data = train_data[:50000]
     print('train_img :', type(train_data), train_data.shape)
@@ -138,17 +155,26 @@ if __name__ == '__main__':
             in_params.append(param)
             in_names.append(name)
 
-    in_size, out_size = [x.size() for x in in_params], [x.size() for x in out_params]
-    in_sum, out_sum = sum([np.prod(x) for x in in_size]), sum([np.prod(x) for x in out_size])
+    in_size, out_size = [x.size()
+                         for x in in_params], [x.size() for x in out_params]
+    in_sum, out_sum = sum([np.prod(x) for x in in_size]), sum(
+        [np.prod(x) for x in out_size]
+    )
 
     print("IN    : {} params".format(in_sum))
     print("OUT   : {} params".format(out_sum))
     print("TOTAL : {} params".format(in_sum + out_sum))
 
-    loss_fn = {'xent':nn.CrossEntropyLoss(), 'mse':nn.MSELoss(), 'mrl':nn.MarginRankingLoss(), 'mlml':nn.MultiLabelMarginLoss(), 'mml':nn.MultiMarginLoss()}
+    loss_fn = {
+        'xent': nn.CrossEntropyLoss(),
+        'mse': nn.MSELoss(),
+        'mrl': nn.MarginRankingLoss(),
+        'mlml': nn.MultiLabelMarginLoss(),
+        'mml': nn.MultiMarginLoss()
+    }
     tt = torch
     if not args.cpu:
-        loss_fn = {k:v.cuda() for (k,v) in loss_fn.items()}
+        loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
         tt = torch.cuda
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -156,23 +182,28 @@ if __name__ == '__main__':
     best_epoch = -1
     train_loss_dict_ = get_log_loss_dict_()
     output_id_path = '../UMT_datasentence_level/'
-    lang_info = [(lang_id1, lang_id2), ]
+    lang_info = [
+        (lang_id1, lang_id2),
+    ]
     if args.has_vocab_constraint:
         lang_info += [(lang_mask1, lang_mask2)]
     # model = nn.DataParallel(model, device_ids=[0, 1])
     for epoch in range(args.num_games):
         # import pdb; pdb.set_trace()
-        loss, _ = forward_joint(train_data, model, train_loss_dict_, args, loss_fn, args.num_dist, lang_info, tt)
+        loss, _ = forward_joint(
+            train_data, model, train_loss_dict_, args, loss_fn, args.num_dist,
+            lang_info, tt
+        )
 
         # import pdb; pdb.set_trace()
         model.zero_grad()
         loss.backward()
         total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
         optimizer.step()
-        import pdb; pdb.set_trace()
+        import pdb
+        pdb.set_trace()
         del loss
         torch.cuda.empty_cache()
-        
 
         if epoch % args.print_every == 0:
             avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
@@ -185,7 +216,10 @@ if __name__ == '__main__':
                 valid_loss_dict_ = get_log_loss_dict_()
                 output_ids = True
                 for idx in range(args.print_every):
-                    _, output_ids_batch = forward_joint(valid_data, model, valid_loss_dict_, args, loss_fn, args.num_dist_, lang_info, tt)
+                    _, output_ids_batch = forward_joint(
+                        valid_data, model, valid_loss_dict_, args, loss_fn,
+                        args.num_dist_, lang_info, tt
+                    )
                 if output_ids == True:
                     output_ids = output_ids_batch
                 output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
@@ -195,13 +229,18 @@ if __name__ == '__main__':
                 print(s_new)
                 if float(s_new.split()[-6][:-2]) > 85.0:
                     path_model = path_dir + f"model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt"
-                    torch.save(output_ids, output_id_path+'bart_output_ids.pt')
+                    torch.save(
+                        output_ids, output_id_path + 'bart_output_ids.pt'
+                    )
                     torch.save(model.state_dict(), path_model)
-                    print("Epoch :", epoch, "Prediction Accuracy =", float(s_new.split()[-6][:-2]), "Saved to Path :", path_dir)
+                    print(
+                        "Epoch :", epoch, "Prediction Accuracy =",
+                        float(s_new.split()[-6][:-2]), "Saved to Path :",
+                        path_dir
+                    )
                     if args.TransferH:
-                        args.hard=True
-
+                        args.hard = True
 
         model.train()
     end_time = time.time()
-    print("Total Runtime :", end_time-start_time)
+    print("Total Runtime :", end_time - start_time)

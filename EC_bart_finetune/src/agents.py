@@ -1,10 +1,4 @@
-import math
-import operator
-import os
-import sys
-import time
-import numpy as np
-import pickle as pkl
+from gumbel_utils import gumbel_softmax
 from modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
 from models import Beholder

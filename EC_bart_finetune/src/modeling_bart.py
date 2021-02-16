@@ -1560,7 +1560,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 f"Setting `pad_token_id` to `eos_token_id`:{eos_token_id} for open-end generation."
             )
             pad_token_id = eos_token_id
-        
+
         # Need this to stop the linter from yelling at us
         # If not self.config.is_encoder_decoder, `input_ids` is unbound, and is required for greedy
         # generation mode

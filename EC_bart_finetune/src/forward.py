@@ -1,14 +1,7 @@
-import random
-import time
-import numpy as np
-import pickle as pkl
-from .util import idx_to_emb, logit_to_acc
+from util import idx_to_emb, logit_to_acc
 
 import torch
-import torch.autograd as autograd
-import torch.nn as nn
 from torch.autograd import Variable
-import torch.nn.functional as F
 
 
 # Xuhui: Whether we need this extra function here now?
@@ -18,7 +11,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
     # don't really have one of each since the batch is just the images?
     targets = batch['target']
     en_batch = (
-        batch['speaker_image'], batch['listener_images'], 
+        batch['speaker_image'], batch['listener_images'],
         batch['speaker_caps_in'], batch['speaker_cap_lens']
     )
     l2_batch = en_batch
@@ -27,7 +20,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
     )
 
     final_loss = 0
-    
+
     # TODO: We either need to figure out what `lenlen` was being used for, or
     # just delete these blocks because right now this is nonsensical and the
     # blocks never execute

@@ -1,6 +1,5 @@
 import random
 import torch
-import numpy as np
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
 
@@ -16,7 +15,6 @@ class ImageIdentificationDataset(Dataset):
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
-    
     def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
         super(ImageIdentificationDataset, self).__init__()
         self.images = images
@@ -46,8 +44,8 @@ class ImageIdentificationDataset(Dataset):
         )
 
         return {
-            'speaker_image': speaker_image, 
-            'listener_images': listener_images, 
+            'speaker_image': speaker_image,
+            'listener_images': listener_images,
             'speaker_caps_in': 0,
             'speaker_cap_lens': 0,
             'target': which
