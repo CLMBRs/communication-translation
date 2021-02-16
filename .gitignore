@@ -8,5 +8,6 @@ __pycache__
 *.log
 *.swp
 
+Output/
 UMT_data/
 UMT_datasentence_level/
