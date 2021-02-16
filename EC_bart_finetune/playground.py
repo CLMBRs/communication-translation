@@ -10,9 +10,11 @@ from tqdm import tqdm
 # TODO: I'm an advocate of only importing what you need
 from agents import ECAgent
 from dataloader import ImageIdentificationDataset
-from forward import *
-from models import *
-from util import *
+from forward import forward_joint
+from util import (
+    get_log_loss_dict_, get_avg_from_loss_dict_, print_loss_, recur_mkdir,
+    remove_duplicate
+)
 
 import torch
 import torch.nn as nn
@@ -35,25 +37,21 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader, device, logger):
-    eval_outputs_dirs = args.output_dir
-    results = {}
+def evaluate(args, model, dataloader, loss_function, epoch):
     valid_loss_dict_ = get_log_loss_dict_()
     output_ids = True
-    # Satisfying the linter for now by making sure this exists
-    output_ids_batch = None
     epoch_iterator = tqdm(dataloader, desc="Iteration")
-    for step, batch in enumerate(epoch_iterator):
+    for batch in epoch_iterator:
         # Xuhui: Added this to inform the training started.
         model.eval()
 
         # Xuhui: Added this to move data to the GPU
-        batch['speaker_image'] = batch['speaker_image'].to(device)
-        batch['listener_images'] = batch['listener_images'].to(device)
+        batch['speaker_image'] = batch['speaker_image'].to(args.device)
+        batch['listener_images'] = batch['listener_images'].to(args.device)
 
         _, output_ids_batch = forward_joint(
-            batch, model, valid_loss_dict_, args, loss_fn,
-            args.num_distractors_train, tt
+            batch, model, valid_loss_dict_, args, loss_function,
+            args.num_distractors_train
         )
 
         if output_ids == True:
@@ -63,8 +61,10 @@ def evaluate(args, model, dataloader, device, logger):
 
     avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
     s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
-    logger.info(s_new)
-    return avg_loss_dict_
+
+    # AMD: I don't know what output_ids or s_new are, but it looks like you need
+    # to return them in the evaluation loop
+    return avg_loss_dict_, output_ids, s_new
 
 
 def main():
@@ -106,8 +106,8 @@ def main():
 
     # TODO: allow use of other image datasets
     if args.dataset == 'coco':
-        feat_path = coco_path()
-        data_path = coco_path()
+        feat_path = args.coco_path
+        data_path = args.coco_path
         task_path = args.dataset
         args.l2 = 'jp'
     else:
@@ -155,8 +155,7 @@ def main():
     # it's for defining a random seed, we really need to replace it with a
     # single parameterized seed
     mill = int(round(time.time() * 1000)) % 1000
-    big = f'{saved_results_path()}sentence_level/{task_path}'
-    path = f'{saved_results_path()}sentence_level/{task_path}/joint_model/'
+    path = f'{args.results_save_path}sentence_level/{task_path}/joint_model/'
     hyperparam_str = (
         f'{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}'
         f'.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}'
@@ -194,7 +193,7 @@ def main():
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
 
-    # Initialize agent        
+    # Initialize agent
     model = ECAgent(args)
 
     # Move the model to gpu if the configuration calls for it
@@ -236,10 +235,8 @@ def main():
         'mml': nn.MultiMarginLoss()
     }
     # Xuhui: This chunck of code seems redundant to me.
-    tt = torch
     if not args.cpu:
         loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
-        tt = torch.cuda
 
     # Initialize the dataloader
     training_params = {
@@ -263,13 +260,12 @@ def main():
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
-    best_epoch = -1
     train_loss_dict_ = get_log_loss_dict_()
     # TODO: this path should be parameterized
     output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
-        for step, batch in enumerate(epoch_iterator):
+        for batch in epoch_iterator:
 
             # Xuhui: Added this to inform the training started.
             model.train()
@@ -280,11 +276,11 @@ def main():
 
             loss = forward_joint(
                 batch, model, train_loss_dict_, args, loss_fn,
-                args.num_distractors_train, tt
+                args.num_distractors_train
             )
             optimizer.zero_grad()
             loss.backward()
-            total_norm = nn.utils.clip_grad_norm(in_params, args.grad_clip)
+            nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
 
         if epoch % args.print_every == 0:
@@ -292,10 +288,11 @@ def main():
             logger.info(print_loss_(epoch, args.alpha, avg_loss_dict_, 'train'))
             train_loss_dict_ = get_log_loss_dict_()
 
-        # TODO: I think that the if epoch %... conditional should come first
-        with torch.no_grad():
-            if epoch % args.valid_every == 0:
-                results = evaluate(args, models, valid_dataloader)
+        if epoch % args.valid_every == 0:
+            with torch.no_grad():
+                results, output_ids, s_new = evaluate(
+                    args, model, valid_dataloader, loss_fn, epoch
+                )
                 if float(results['accuracy']) > 85.0:
                     path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
                     torch.save(
@@ -310,9 +307,9 @@ def main():
                     if args.TransferH:
                         args.hard = True
 
-
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)
+
 
 if __name__ == '__main__':
     main()

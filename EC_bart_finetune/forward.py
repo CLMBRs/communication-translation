@@ -5,7 +5,7 @@ from torch.autograd import Variable
 
 
 # Xuhui: Whether we need this extra function here now?
-def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
+def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
 
     # TODO: Why are en_batch and l2_batch set to be the same thing? I suppose we
     # don't really have one of each since the batch is just the images?
@@ -51,12 +51,13 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
 
         en_diff_dist = torch.masked_select(
             en_diff_dist,
-            idx_to_emb(targets.cpu().data.numpy(), args.num_dist, tt)
+            idx_to_emb(targets.cpu().data.numpy(),
+                       args.num_dist).to(args.device)
         )
         en_lsn_loss = loss_fn['mse'](
             en_diff_dist,
             Variable(
-                tt.FloatTensor(en_diff_dist.size()).fill_(0),
+                torch.FloatTensor(en_diff_dist.size()).fill_(0).to(args.device),
                 requires_grad=False
             )
         )
@@ -69,12 +70,13 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist, tt):
 
         l2_diff_dist = torch.masked_select(
             l2_diff_dist,
-            idx_to_emb(l2_batch[7].cpu().data.numpy(), args.num_dist, tt)
+            idx_to_emb(l2_batch[7].cpu().data.numpy(),
+                       args.num_dist).to(args.device)
         )
         l2_lsn_loss = loss_fn['mse'](
             l2_diff_dist,
             Variable(
-                tt.FloatTensor(l2_diff_dist.size()).fill_(0),
+                torch.FloatTensor(l2_diff_dist.size()).fill_(0).to(args.device),
                 requires_grad=False
             )
         )

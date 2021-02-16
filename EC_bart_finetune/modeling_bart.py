@@ -1715,20 +1715,22 @@ class BartForConditionalGeneration(PretrainedBartModel):
             torch.tensor(pad_token_id, device=input_ids.device)
         )
         pad_token_logits = torch.tensor(
-            torch.arange(0,self.embed_tokens_size)==pad_token_id,
+            torch.arange(0, self.embed_tokens_size) == pad_token_id,
             dtype=torch.float,
-            device=input_ids.device)
+            device=input_ids.device
+        )
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             input_ids, max_length
         )
         input_logits = torch.tensor(
-            torch.arange(0,self.embed_tokens_size, device=input_ids.device).unsqueeze(0)==input_ids,
+            torch.arange(0, self.embed_tokens_size,
+                         device=input_ids.device).unsqueeze(0) == input_ids,
             dtype=torch.float,
-            device=input_ids.device)
+            device=input_ids.device
+        )
         input_logits = input_logits.unsqueeze(-2)
-
 
         while cur_len < max_length:
             # prepare model inputs

@@ -106,16 +106,8 @@ def scr_path():
     return ""  #enter your root
 
 
-def saved_results_path():
-    return "/gscratch/ark/xuhuizh/UMT_data"  #enter your root
-
-
 def multi30k_reorg_path():
     return ""  #enter your root
-
-
-def coco_path():
-    return "/gscratch/ark/xuhuizh/UMT_data/coco_new"  #enter your root
 
 
 def sort_per_len(caps):
@@ -251,7 +243,7 @@ def loss_acc_dict():
                "loss": 0},\
         "lsn": {\
                "loss": 0,\
-               "acc": 0 }      \
+               "acc": 0 }       \
         }
 
 
@@ -261,7 +253,7 @@ def loss_acc_meter():
                "loss": AverageMeter()},\
         "lsn": {\
                "loss": AverageMeter(),\
-               "acc": AverageMeter() }      \
+               "acc": AverageMeter() }       \
         }
 
 
@@ -347,8 +339,8 @@ def check_mkdir(dir):
         os.mkdir(dir)
 
 
-def idx_to_emb(idx, maxmax, tt):
-    ans = tt.ByteTensor(len(idx), maxmax).fill_(0)
+def idx_to_emb(idx, maxmax):
+    ans = torch.ByteTensor(len(idx), maxmax).fill_(0)
     for aaa, iii in enumerate(idx):
         ans[aaa][iii] = 1
     return Variable(ans, requires_grad=False)

@@ -23,7 +23,7 @@ class EC_agent(torch.nn.Module):
         self.native, self.foreign = 'en', args.l2
 
         # Initialize speaker and listener
-        if args.model=='bart':
+        if args.model == 'bart':
             tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
             model = BartForConditionalGeneration.from_pretrained(
                 'facebook/bart-large'
@@ -32,8 +32,8 @@ class EC_agent(torch.nn.Module):
             self.speaker = BartSpeaker(model, self.native, args)
             self.listener = BartListener(model, self.foreign, args)
 
-        elif args.model=='rnn':
-            self.speaker = Speaker(self.native, args)
+        elif args.model == 'rnn':
+            self.speaker = RnnSpeaker(self.native, args)
             self.listener = RnnListener(self.foreign, args)
 
         self.tt = torch if args.cpu else torch.cuda

@@ -50,6 +50,8 @@ class BartAgent(torch.nn.Module):
             spk_h_img, a_spk_caps_in, a_spk_cap_lens
         )  # NOTE argmax / gumbel
 
+        # Commenting this block out because it makes no sense
+        '''
         lenlen = False
         if lenlen:
             print(spk_cap_len_[:10])
@@ -61,9 +63,9 @@ class BartAgent(torch.nn.Module):
                                    ).cuda() * spk_logits.size(1) + end_idx.int()
 
             end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
-        else:
-            end_idx_ = 0
-            end_loss_ = 0
+        '''
+        end_idx_ = 0
+        end_loss_ = 0
 
         lsn_imgs = b_lsn_imgs.view(-1, self.D_img)
         if self.no_share_bhd:
