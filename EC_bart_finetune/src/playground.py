@@ -42,25 +42,36 @@ def set_seed(args):
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
 
-def evaluate(args, model, tokenizer, prefix=""):
+def evaluate(args, model, dataloader):
     eval_outputs_dirs = args.output_dir
     results = {}
     valid_loss_dict_ = get_log_loss_dict_()
     output_ids = True
     # Satisfying the linter for now by making sure this exists
     output_ids_batch = None
-    for idx in range(args.print_every):
+    epoch_iterator = tqdm(training_dataloader, desc="Iteration")
+    for step, batch in enumerate(epoch_iterator):
+        # Xuhui: Added this to inform the training started.
+        model.eval()
+
+        # Xuhui: Added this to move data to the GPU
+        batch['speaker_image'] = batch['speaker_image'].to(device)
+        batch['listener_images'] = batch['listener_images'].to(device)
+
         _, output_ids_batch = forward_joint(
-            valid_data, model, valid_loss_dict_, args, loss_fn,
-            args.num_distractors_valid, tt
+            batch, model, valid_loss_dict_, args, loss_fn, args.num_distractors_train, tt
         )
-    if output_ids == True:
-        output_ids = output_ids_batch
-    output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+
+        if output_ids == True:
+            output_ids = output_ids_batch
+            output_ids = False
+        output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+
     avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
     s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
     logger.info(s_new)
-    return s_new
+    return avg_loss_dict_
+
 
 def main():
     """
@@ -289,8 +300,8 @@ def main():
         # TODO: I think that the if epoch %... conditional should come first
         with torch.no_grad():
             if epoch % args.valid_every == 0:
-                results = evaluate(models, valid_dataloader)
-                if float(results['acc']) > 85.0:
+                results = evaluate(args, models, valid_dataloader)
+                if float(results['accuracy']) > 85.0:
                     path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
                     torch.save(
                         output_ids, output_id_path + 'bart_output_ids.pt'
