@@ -1,6 +1,6 @@
 from modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
-from models import Beholder
+from agents import Beholder
 from util import *
 
 import torch
