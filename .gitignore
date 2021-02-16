@@ -10,5 +10,7 @@ __pycache__
 *.tar
 *.tar.gz
 
+Data/
+Output/
 UMT_data/
 UMT_datasentence_level/
