@@ -19,6 +19,9 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
         en_batch, args.sample_how
     )
 
+    # Include the ground-truth img
+    num_dist += 1
+
     final_loss = 0
 
     # TODO: We either need to figure out what `lenlen` was being used for, or
@@ -39,8 +42,8 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
         l2_diff_dist = torch.mean(torch.pow(output_l2[0] - output_l2[1], 2),
                                   2).view(-1, num_dist)
         l2_logits = 1 / (l2_diff_dist + 1e-10)
-        l2_lsn_loss = loss_fn['xent'](l2_logits, l2_batch[-1])
-        l2_lsn_acc = logit_to_acc(l2_logits, l2_batch[7]) * 100
+        l2_lsn_loss = loss_fn['xent'](l2_logits, batch['target'])
+        l2_lsn_acc = logit_to_acc(l2_logits, batch['target']) * 100
         final_loss += l2_lsn_loss
     else:
         en_diff_dist = torch.mean(

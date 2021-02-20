@@ -165,10 +165,10 @@ def main():
 
     # Make the path to the model
     path_dir = path + model_str + hyperparam_str
-    # Xuhui: I actually do not like the way how they make the directory, any
-    # better thoughts?
-    if not args.no_write:
-        recur_mkdir(path_dir)
+    # Xuhui: Comment out the following code since it's causing error, and we 
+    # Should think of a new way about how to store training info/models etc.
+    #if not args.no_write:
+    #    recur_mkdir(path_dir)
 
     # Log the general model information
 
@@ -273,8 +273,9 @@ def main():
             # Xuhui: Added this to move data to the GPU
             batch['speaker_image'] = batch['speaker_image'].to(device)
             batch['listener_images'] = batch['listener_images'].to(device)
+            batch['target'] = batch['target'].to(device)
 
-            loss = forward_joint(
+            loss, _ = forward_joint(
                 batch, model, train_loss_dict_, args, loss_fn,
                 args.num_distractors_train
             )
