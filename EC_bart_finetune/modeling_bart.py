@@ -1746,12 +1746,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             scores = logits_processor(input_ids, next_token_logits)
 
             # argmax
-            #next_tokens = torch.argmax(scores, dim=-1)
-            c_logit_, next_tokens = gumbel_softmax(
-                scores, 1.0, False, self.tt, cur_len
-            )
+            next_tokens = torch.argmax(scores, dim=-1)
+            next_logits = F.gumbel_softmax(scores, tau=1, hard=False)
             next_tokens = next_tokens.squeeze()
-            next_logits = c_logit_
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
