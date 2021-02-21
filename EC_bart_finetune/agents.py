@@ -156,21 +156,13 @@ class BartListener(torch.nn.Module):
 class BartSpeaker(torch.nn.Module):
     def __init__(self, bart, lang, args):
         super(BartSpeaker, self).__init__()
-        # self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers,
-        # batch_first=True)
         self.spk = bart
         self.project = nn.Linear(args.D_hid, args.seq_len * args.D_emb)
-
         self.D_emb = args.D_emb
-        self.D_hid = args.D_hid
-        self.num_layers = args.num_layers
-        self.drop = nn.Dropout(p=args.dropout)
 
-        self.vocab_size = args.vocab_size
-        self.temp = args.temp
-        self.hard = args.hard
+        self.spk.temp = args.temp
+        self.spk.hard = args.hard
         self.spk.tt = torch if args.cpu else torch.cuda
-        self.tt_ = torch
         self.seq_len = args.seq_len
 
     def forward(self, h_img, caps_in, caps_in_lens):

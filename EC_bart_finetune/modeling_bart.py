@@ -23,7 +23,6 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
-from gumbel_utils import gumbel_softmax
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -1747,7 +1746,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # argmax
             next_tokens = torch.argmax(scores, dim=-1)
-            next_logits = F.gumbel_softmax(scores, tau=1, hard=False)
+            next_logits = F.gumbel_softmax(scores, tau=self.temp,
+                                           hard=self.hard)
             next_tokens = next_tokens.squeeze()
 
             # add code that transfomers next_tokens to tokens_to_add
