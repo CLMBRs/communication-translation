@@ -7,7 +7,6 @@ import yaml
 import numpy as np
 from tqdm import tqdm
 
-# TODO: I'm an advocate of only importing what you need
 from agents import ECAgent
 from dataloader import ImageIdentificationDataset
 from forward import forward_joint
@@ -19,14 +18,6 @@ from util import (
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-
-# General comments here (Xuhui):
-# -Don't like the way how they define epoch, we should probably follow HF's
-# style.
-# -General model part is good, it is flexible and we could replace any model we
-# want
-# -We want to rewrite the data-loader part in the data_loader.py
-# -We do not have a predict function yet
 
 
 def set_seed(args):
@@ -42,12 +33,13 @@ def evaluate(args, model, dataloader, loss_function, epoch):
     output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
     for batch in epoch_iterator:
-        # Xuhui: Added this to inform the training started.
+        # Start evaluation mode
         model.eval()
 
-        # Xuhui: Added this to move data to the GPU
+        # Move data to the GPU
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
+        batch['target'] = batch['target'].to(device)
 
         _, output_ids_batch = forward_joint(
             batch, model, valid_loss_dict_, args, loss_function,
@@ -69,7 +61,7 @@ def evaluate(args, model, dataloader, loss_function, epoch):
 
 def main():
     """
-    TODO: add a real docstring
+    Pretrain multilingual model on the referential game and save it.
     """
 
     # Configure the logger (boilerplate)
@@ -91,7 +83,6 @@ def main():
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file))
 
-    # TODO: The seed should be a setable parameter
     # set random seed
     set_seed(args)
 
