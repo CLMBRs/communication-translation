@@ -1746,8 +1746,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # argmax
             next_tokens = torch.argmax(scores, dim=-1)
-            next_logits = F.gumbel_softmax(scores, tau=self.temp,
-                                           hard=self.hard)
+            next_logits = F.gumbel_softmax(
+                scores, tau=self.temp, hard=self.hard
+            )
             next_tokens = next_tokens.squeeze()
 
             # add code that transfomers next_tokens to tokens_to_add

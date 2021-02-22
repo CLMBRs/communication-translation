@@ -156,7 +156,7 @@ def main():
 
     # Make the path to the model
     path_dir = path + model_str + hyperparam_str
-    # Xuhui: Comment out the following code since it's causing error, and we 
+    # Xuhui: Comment out the following code since it's causing error, and we
     # Should think of a new way about how to store training info/models etc.
     #if not args.no_write:
     #    recur_mkdir(path_dir)
