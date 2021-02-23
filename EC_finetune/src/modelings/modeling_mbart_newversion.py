@@ -23,8 +23,8 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from EC_bart_finetune.src.gumbel_utils import *
-from EC_bart_finetune.src.modeling_bart import *
+from EC_finetune.src.util import *
+# from EC_finetune.src.modelings.modeling_bart import *
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (

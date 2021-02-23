@@ -7,14 +7,14 @@ seed: 42
 # Setting the n_gpu we use
 n_gpu: 1
 # Setting the model to use: 
-model: bart
+model: mbart
 results_save_path: Output
 TransferH: false
 alpha: 1.0
 bart: true
 batch_size: 16
 beam_width: 12
-cpu: False
+cpu: True
 dataset: coco
 coco_path: Data/coco_new
 decode_how: beam
