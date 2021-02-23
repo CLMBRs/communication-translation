@@ -86,7 +86,6 @@ def main():
     # set random seed
     set_seed(args)
 
-    # Xuhui: Do we really need this?
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
@@ -118,64 +117,11 @@ def main():
     logger.info('Dataset Loaded')
 
     # Write the model description
-    # TODO: what on earth are these string arguments? This needs to be a lot
-    # more clear
-    fixed, learned = [], ['lsn']
-    if args.fix_spk:  #False
-        fixed.append('spk')
-    else:
-        learned.append('spk')
-
-    if args.fix_bhd:  #False
-        fixed.append('bhd')
-    else:
-        learned.append('bhd')
-    fixed, learned = '_'.join(sorted(fixed)), '_'.join(sorted(learned))
-
-    assert args.which_loss in ['joint', 'lsn']
-    model_str = f'fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/'
-    if args.bart:
-        model_str = 'bart.' + model_str
-    if args.pretrain_spk:
-        model_str = 'pretrain_spk.' + model_str
-    if args.no_share_bhd:
-        model_str = 'no_share_bhd.' + model_str
-
-    # Write the hyperparameter description
-    # TODO: Why does this need to be put in the hyperparameter discription? If
-    # it's for defining a random seed, we really need to replace it with a
-    # single parameterized seed
-    mill = int(round(time.time() * 1000)) % 1000
-    path = f'{args.results_save_path}sentence_level/{task_path}/joint_model/'
-    hyperparam_str = (
-        f'{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}'
-        f'.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}'
-        f'.num_dist_{args.num_distractors_train}.vocab_size_{args.vocab_size}'
-        f'_{args.vocab_size}.hard_{args.hard}/'
-    )
-
-    # Make the path to the model
-    path_dir = path + model_str + hyperparam_str
-    # Xuhui: Comment out the following code since it's causing error, and we
-    # Should think of a new way about how to store training info/models etc.
-    #if not args.no_write:
-    #    recur_mkdir(path_dir)
-
-    # Log the general model information
 
     logger.info('Configuration:')
     print(args)
     logger.info('Model Name:')
     print(model_str)
-    logger.info('Hyperparameters:')
-    print(hyperparam_str)
-    dir_dic = {
-        'feat_path': feat_path,
-        'data_path': data_path,
-        'task_path': task_path,
-        'path': path,
-        'path_dir': path_dir
-    }
 
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
@@ -188,10 +134,7 @@ def main():
     model = ECAgent(args)
 
     # Move the model to gpu if the configuration calls for it
-    # TODO: this should also probably check cuda.is_available()
-    if args.n_gpu > 0:
-        torch.cuda.set_device(args.gpuid)
-        model = model.cuda()
+    model.to(args.device)
 
     # Loop through the named parameters to find the number of input and output
     # parameters
@@ -285,16 +228,50 @@ def main():
                 results, output_ids, s_new = evaluate(
                     args, model, valid_dataloader, loss_fn, epoch
                 )
-                if float(results['accuracy']) > 85.0:
-                    path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
-                    torch.save(
-                        output_ids, output_id_path + 'bart_output_ids.pt'
+
+                # Output evaluation statistics
+                logger.info(s_new)
+
+                # Add one hyperparameter target_acc to the yml file.
+                if float(results['accuracy']) > args.target_acc:
+                    # Create output directory if needed
+                    if not os.path.exists(args.output_dir):
+                        os.makedirs(args.output_dir)
+
+                    logger.info(
+                        "Saving model checkpoint to %s", args.output_dir
                     )
-                    torch.save(model.state_dict(), path_model)
+
+                    if args.model == 'bart':
+                        # Save a trained model, configuration and tokenizer using `save_pretrained()`.
+                        # They can then be reloaded using `from_pretrained()`
+                        model_to_save = (
+                            model.module if hasattr(model, "module") else model
+                        )  # Take care of distributed/parallel training
+                        model_to_save.save_pretrained(args.output_dir)
+                        tokenizer.save_pretrained(args.output_dir)
+
+                        # Good practice: save your training arguments together with the trained model
+                        torch.save(
+                            args,
+                            os.path.join(args.output_dir, "training_args.bin")
+                        )
+
+                        # Load a trained model and vocabulary that you have fine-tuned
+                        model = model_class.from_pretrained(args.output_dir)
+                        tokenizer = tokenizer_class.from_pretrained(
+                            args.output_dir
+                        )
+                        model.to(args.device)
+
+                    elif args.model == 'rnn':
+                        torch.save(
+                            model.state_dict(), args.output_dir + 'model_rnn.pt'
+                        )
                     print(
                         'Epoch :', epoch, 'Prediction Accuracy =',
-                        float(s_new.split()[-6][:-2]), 'Saved to Path :',
-                        path_dir
+                        float(results['accuracy']), 'Saved to Path :',
+                        args.output_dir
                     )
                     if args.TransferH:
                         args.hard = True

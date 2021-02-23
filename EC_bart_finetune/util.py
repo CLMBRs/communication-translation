@@ -243,7 +243,7 @@ def loss_acc_dict():
                "loss": 0},\
         "lsn": {\
                "loss": 0,\
-               "acc": 0 }        \
+               "acc": 0 }         \
         }
 
 
@@ -253,7 +253,7 @@ def loss_acc_meter():
                "loss": AverageMeter()},\
         "lsn": {\
                "loss": AverageMeter(),\
-               "acc": AverageMeter() }        \
+               "acc": AverageMeter() }         \
         }
 
 
