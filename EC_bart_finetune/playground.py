@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import random
 import sys
 import time
@@ -7,7 +8,7 @@ import yaml
 import numpy as np
 from tqdm import tqdm
 
-from agents import ECAgent
+from agents import CommunicationAgent
 from dataloader import ImageIdentificationDataset
 from forward import forward_joint
 from util import (
@@ -39,7 +40,7 @@ def evaluate(args, model, dataloader, loss_function, epoch):
         # Move data to the GPU
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
-        batch['target'] = batch['target'].to(device)
+        batch['target'] = batch['target'].to(args.device)
 
         _, output_ids_batch = forward_joint(
             batch, model, valid_loss_dict_, args, loss_function,
@@ -120,8 +121,6 @@ def main():
 
     logger.info('Configuration:')
     print(args)
-    logger.info('Model Name:')
-    print(model_str)
 
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
@@ -131,7 +130,7 @@ def main():
     train_data = train_data[:50000]
 
     # Initialize agent
-    model = ECAgent(args)
+    model = CommunicationAgent(args)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
@@ -139,7 +138,6 @@ def main():
     # Loop through the named parameters to find the number of input and output
     # parameters
     # Xuhui: This module is showing the model parameter, maybe we do not need
-
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
@@ -257,12 +255,14 @@ def main():
                             os.path.join(args.output_dir, "training_args.bin")
                         )
 
+                        '''
                         # Load a trained model and vocabulary that you have fine-tuned
                         model = model_class.from_pretrained(args.output_dir)
                         tokenizer = tokenizer_class.from_pretrained(
                             args.output_dir
                         )
                         model.to(args.device)
+                        '''
 
                     elif args.model == 'rnn':
                         torch.save(

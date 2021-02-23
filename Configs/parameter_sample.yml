@@ -32,7 +32,7 @@ no_share_bhd: false
 no_terminal: false
 no_write: false
 norm_pow: 0.0
-num_directions: 1
+bidirectional: false
 
 # Total number of pictures for listeners, the first one is for training. 
 num_distractors_train: 255

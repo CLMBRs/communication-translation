@@ -1,25 +1,32 @@
-from gumbel_utils import gumbel_softmax
-from modeling_bart import BartForConditionalGeneration
-from transformers import BartTokenizer
-from util import *
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 from torch.autograd import Variable
+from transformers import BartTokenizer
+
+from gumbel_utils import gumbel_softmax
+from modeling_bart import BartForConditionalGeneration
+from util import *
 
 
-class ECAgent(torch.nn.Module):
+class CommunicationAgent(torch.nn.Module):
     def __init__(self, args):
-        super(ECAgent, self).__init__()
+        super(CommunicationAgent, self).__init__()
+
+        self.beholder = Beholder(
+            image_dim=args.D_img,
+            hidden_dim=args.D_hid,
+            dropout=args.dropout,
+            unit_norm=args.unit_norm,
+            two_ffwd=args.two_ffwd
+        )
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
-            self.beholder1 = Beholder(args)
-            self.beholder2 = Beholder(args)
+            self.beholder1 = self.beholder
+            self.beholder2 = self.beholder1.clone()
         else:
             print("Sharing visual system for each agent.")
-            self.beholder = Beholder(args)
-        self.native, self.foreign = 'en', args.l2
 
         # Initialize speaker and listener
         if args.model == 'bart':
@@ -27,23 +34,36 @@ class ECAgent(torch.nn.Module):
             model = BartForConditionalGeneration.from_pretrained(
                 'facebook/bart-large'
             )
-
             self.speaker = BartSpeaker(model, self.native, args)
-            self.listener = BartListener(model, self.foreign, args)
-
+            self.listener = BartListener(
+                hidden_dim=args.D_hid,
+                embedding_dim=args.D_emb,
+                dropout=args.dropout,
+                bart=model,
+                unit_norm=args.unit_norm
+            )
         elif args.model == 'rnn':
             self.speaker = RnnSpeaker(self.native, args)
-            self.listener = RnnListener(self.foreign, args)
+            self.listener = RnnListener(
+                hidden_dim=args.D_hid,
+                embedding_dim=args.D_emb,
+                dropout=args.dropout,
+                num_layers=args.num_layers,
+                vocab_size=args.vocab_size,
+                unit_norm=args.unit_norm,
+                bidirectional=args.bidirectional
+            )
+        else:
+            raise ValueError(f"Model type {args.model} is not valid")
 
-        self.tt = torch if args.cpu else torch.cuda
         self.native, self.foreign = 'en', args.l2
-        self.unit_norm = args.unit_norm
 
+        self.image_dim = args.D_img
+        self.hidden_dim = args.D_hid
+        self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
         self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
-        self.D_img = args.D_img
-        self.D_hid = args.D_hid
 
     def forward(self, data1, spk_sample_how):
         # spk_imgs : (batch_size, 2048)
@@ -52,7 +72,7 @@ class ECAgent(torch.nn.Module):
         num_dist = b_lsn_imgs.size()[1]
 
         if self.no_share_bhd:
-            spk_h_img = self.beholder1(a_spk_img)  # shared
+            spk_h_img = self.beholder1(a_spk_img)  # not shared
         else:
             spk_h_img = self.beholder(a_spk_img)  # shared
 
@@ -60,6 +80,8 @@ class ECAgent(torch.nn.Module):
             spk_h_img, a_spk_caps_in, a_spk_cap_lens
         )  # NOTE argmax / gumbel
 
+        # Commenting this out until we know why it's here
+        '''
         lenlen = False
         if lenlen:
             print(spk_cap_len_[:10])
@@ -72,15 +94,16 @@ class ECAgent(torch.nn.Module):
 
             end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
         else:
-            end_idx_ = 0
-            end_loss_ = 0
+        '''
+        end_idx_ = 0
+        end_loss_ = 0
 
-        lsn_imgs = b_lsn_imgs.view(-1, self.D_img)
+        lsn_imgs = b_lsn_imgs.view(-1, self.image_dim)
         if self.no_share_bhd:
             lsn_h_imgs = self.beholder2(lsn_imgs)
         else:
             lsn_h_imgs = self.beholder(lsn_imgs)
-        lsn_h_imgs = lsn_h_imgs.view(-1, num_dist, self.D_hid)
+        lsn_h_imgs = lsn_h_imgs.view(-1, num_dist, self.hidden_dim)
         lis_hid = self.listener(spk_msg, spk_cap_len_, spk_logits)
         lis_hid = lis_hid.unsqueeze(1).repeat(
             1, num_dist, 1
@@ -96,18 +119,44 @@ class ECAgent(torch.nn.Module):
 
 
 class Beholder(torch.nn.Module):
-    def __init__(self, args):
-        super(Beholder, self).__init__()
-        self.image_to_hidden = torch.nn.Linear(args.D_img, args.D_hid)
-        self.unit_norm = args.unit_norm
-        self.dropout = nn.Dropout(p=args.dropout)
-        self.two_ffwd = args.two_ffwd
-        if self.two_ffwd:
-            self.hidden_to_hidden = torch.nn.Linear(args.D_hid, args.D_hid)
+    """
+    A Beholder module for embedding image data. Consists of one or two
+    feedforward layers with optional dropout and unit norm
 
-    def forward(self, image):
-        h_image = image
-        h_image = self.image_to_hidden(h_image)
+    Args:
+        image_dim: The dimension of the input image embedding
+        hidden_dim: The dimension of the hidden representation for the image
+        dropout: The dropout rate after the first feedforward layer
+        two_ffwd: Whether to use two feedforward layers. Default: ``False``
+        unit_norm: Whether to divide the output by the unit norm. Default:
+            ``False``    
+    """
+    def __init__(
+        self,
+        image_dim: int,
+        hidden_dim: int,
+        dropout: float,
+        unit_norm: bool = False,
+        two_ffwd: bool = False
+    ):
+        super(Beholder, self).__init__()
+        self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)
+        self.unit_norm = unit_norm
+        self.dropout = nn.Dropout(p=dropout)
+        self.two_ffwd = two_ffwd
+        if self.two_ffwd:
+            self.hidden_to_hidden = torch.nn.Linear(hidden_dim, hidden_dim)
+
+    def forward(self, image: Tensor) -> Tensor:
+        """
+        Return the forward output of the Beholder nn module
+
+        Args:
+            image: a Tensor embedding of image data
+        Returns:
+            h_image: The hidden representation of the image(s)
+        """
+        h_image = self.image_to_hidden(image)
         h_image = self.dropout(h_image)
 
         if self.two_ffwd:
@@ -119,97 +168,95 @@ class Beholder(torch.nn.Module):
         return h_image
 
 
-class BartListener(torch.nn.Module):
-    def __init__(self, bart, lang, args):
-        super(BartListener, self).__init__()
-        self.hid_to_hid = nn.Linear(1024, args.D_hid)
-        self.drop = nn.Dropout(p=args.dropout)
+class Listener(torch.nn.Module):
+    def __init__(self, hidden_dim, embedding_dim, dropout, unit_norm=False):
+        super(Listener, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
+        self.unit_norm = unit_norm
+        self.dropout = nn.Dropout(p=dropout)
+        self.listener = None
+        self.embedding = None
 
-        self.D_hid = args.D_hid
-        self.D_emb = args.D_emb
-        self.num_layers = args.num_layers
-        self.num_directions = args.num_directions
-        self.vocab_size = args.vocab_size
-        self.unit_norm = args.unit_norm
 
-        self.tt = torch if args.cpu else torch.cuda
-        self.lis = bart.gumbel_encoder
-        self.emb = bart.model.shared
+class BartListener(Listener):
+    """
+    A "listener" module based on a pretrained BART model
+    """
+    def __init__(
+        self,
+        hidden_dim: int,
+        embedding_dim: int,
+        dropout: float,
+        bart,
+        unit_norm: bool = False
+    ) -> Listener:
+        super(BartListener, self).__init__(
+            hidden_dim, embedding_dim, dropout, unit_norm=unit_norm
+        )
+        self.hidden_to_hidden = nn.Linear(1024, hidden_dim)
+        self.listener = bart.gumbel_encoder
+        self.embedding = bart.model.shared
 
-    def forward(self, spk_msg, spk_msg_lens, spk_logit=0):
+    def forward(self, spk_msg, spk_logit=0):
         # spk_msg : (batch_size, seq_len)
         # spk_msg_lens : (batch_size)
-        batch_size = spk_msg.size()[0]
-        spk_msg_emb = torch.matmul(spk_logit, self.emb.weight)
-        spk_msg_emb = self.drop(spk_msg_emb)
+        spk_msg_emb = torch.matmul(spk_logit, self.embedding.weight)
+        spk_msg_emb = self.dropout(spk_msg_emb)
 
-        output = self.lis(spk_msg, spk_msg_emb)
+        output = self.listener(spk_msg, spk_msg_emb)
         # Mean pooling for now to match the img output
         output = torch.mean(output.last_hidden_state, dim=1)
 
         # Transform the dim to match the img dim
-        out = self.hid_to_hid(output)
+        out = self.hidden_to_hidden(output)
 
         return out
 
 
-class BartSpeaker(torch.nn.Module):
-    def __init__(self, bart, lang, args):
-        super(BartSpeaker, self).__init__()
-        self.spk = bart
-        self.project = nn.Linear(args.D_hid, args.seq_len * args.D_emb)
-        self.D_emb = args.D_emb
-
-        self.spk.temp = args.temp
-        self.spk.hard = args.hard
-        self.spk.tt = torch if args.cpu else torch.cuda
-        self.seq_len = args.seq_len
-
-    def forward(self, h_img, caps_in, caps_in_lens):
-        # caps_in.size()[0]
-        batch_size = h_img.size()[0]
-
-        h_img = self.project(h_img)
-        h_img = h_img.view(-1, self.seq_len, self.D_emb)
-        input_ids, input_logits, cap_len = self.spk.gumbel_generate(
-            input_images=h_img, num_beams=1, max_length=self.seq_len
+class RnnListener(Listener):
+    def __init__(
+        self,
+        hidden_dim: int,
+        embedding_dim: int,
+        dropout: float,
+        num_layers: int,
+        vocab_size: int,
+        unit_norm: bool = False,
+        bidirectional: bool = False
+    ) -> Listener:
+        super(RnnListener, self).__init__(
+            hidden_dim, embedding_dim, dropout, unit_norm=unit_norm
         )
-        return input_logits, input_ids, cap_len
-
-
-class RnnListener(torch.nn.Module):
-    def __init__(self, lang, args):
-        super(RnnListener, self).__init__()
-        self.rnn = nn.GRU(args.D_emb, args.D_hid, args.num_layers, batch_first=True) if args.num_directions == 1 else \
-                   nn.GRU(args.D_emb, args.D_hid, args.num_layers, batch_first=True, bidirectional=True)
-        self.emb = nn.Embedding(args.vocab_size, args.D_emb, padding_idx=0)
-        self.hid_to_hid = nn.Linear(
-            args.num_directions * args.D_hid, args.D_hid
+        self.listener = nn.GRU(
+            embedding_dim,
+            hidden_dim,
+            num_layers,
+            batch_first=True,
+            bidirectional=bidirectional
         )
-        self.drop = nn.Dropout(p=args.dropout)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
 
-        self.D_hid = args.D_hid
-        self.D_emb = args.D_emb
-        self.num_layers = args.num_layers
-        self.num_directions = args.num_directions
-        self.vocab_size = args.vocab_size
-        self.unit_norm = args.unit_norm
+        num_directions = 2 if bidirectional else 1
+        self.hid_to_hid = nn.Linear(num_directions * hidden_dim, hidden_dim)
 
-        self.tt = torch if args.cpu else torch.cuda
+        self.num_layers = num_layers
+        self.num_directions = num_directions
+        self.vocab_size = vocab_size
 
     def forward(self, spk_msg, spk_msg_lens, spk_logit=0):
         # spk_msg : (batch_size, seq_len)
         # spk_msg_lens : (batch_size)
         batch_size = spk_msg.size()[0]
-        seq_len = spk_msg.size()[1]
 
         h_0 = Variable(
-            self.tt.FloatTensor(
-                self.num_layers * self.num_directions, batch_size, self.D_hid
-            ).zero_()
+            torch.zeros(
+                self.num_layers * self.num_directions, batch_size,
+                self.hidden_dim
+            )
         )
 
-        spk_msg_emb = torch.matmul(spk_logit, self.emb.weight)
+        spk_msg_emb = torch.matmul(spk_logit, self.embedding.weight)
         spk_msg_emb = self.drop(spk_msg_emb)
 
         pack = torch.nn.utils.rnn.pack_padded_sequence(
@@ -219,11 +266,11 @@ class RnnListener(torch.nn.Module):
             enforce_sorted=False
         )
 
-        _, h_n = self.rnn(pack, h_0)
+        _, h_n = self.listener(pack, h_0)
 
         h_n = h_n[-self.num_directions:, :, :]
         out = h_n.transpose(0, 1).contiguous().view(
-            batch_size, self.num_directions * self.D_hid
+            batch_size, self.num_directions * self.hidden_dim
         )
         out = self.hid_to_hid(out)
 
@@ -232,6 +279,26 @@ class RnnListener(torch.nn.Module):
             out = out / norm.expand_as(out)
 
         return out
+
+
+class BartSpeaker(torch.nn.Module):
+    def __init__(self, bart, embedding_dim, seq_len, temperature, hard):
+        super(BartSpeaker, self).__init__()
+        self.spk = bart
+        self.projection = nn.Linear(embedding_dim, seq_len * embedding_dim)
+        self.embedding_dim = embedding_dim
+
+        self.spk.temp = temperature
+        self.spk.hard = hard
+        self.seq_len = seq_len
+
+    def forward(self, h_image, caps_in, caps_in_lens):
+        h_image = self.projection(h_image)
+        h_image = h_image.view(-1, self.seq_len, self.embedding_dim)
+        input_ids, input_logits, cap_len = self.spk.gumbel_generate(
+            input_images=h_image, num_beams=1, max_length=self.seq_len
+        )
+        return input_logits, input_ids, cap_len
 
 
 class RnnSpeaker(torch.nn.Module):
