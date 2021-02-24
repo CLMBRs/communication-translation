@@ -57,6 +57,8 @@ from transformers.generation_logits_process import (
 )
 from transformers.file_utils import ModelOutput
 
+from EC_finetune.src.utils.util import *
+
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "BartConfig"
@@ -1624,6 +1626,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
         bos_token_id: int = None,
         **model_kwargs
     ) -> torch.LongTensor:
+        if "lang_ids" in model_kwargs:
+            return model_kwargs["lang_ids"]
 
         if "decoder_input_ids" in model_kwargs:
             return model_kwargs["decoder_input_ids"]
@@ -1740,15 +1744,24 @@ class BartForConditionalGeneration(PretrainedBartModel):
             # forward pass to get next token
             outputs = self(**model_inputs, return_dict=True)
             next_token_logits = outputs.logits[:, -1, :]
+            if "lang_masks" in model_kwargs:
+                # here, the place we don't want have value of -inf
+                next_token_logits += model_kwargs["lang_masks"]
 
             # pre-process distribution
             scores = logits_processor(generated_token_ids, next_token_logits)
 
             # argmax
-            next_tokens = torch.argmax(scores, dim=-1)
-            next_logits = F.gumbel_softmax(scores, tau=self.temp,
-                                           hard=self.hard)
+            next_token_probes, next_tokens = gumbel_softmax(
+                scores, 1.0, False,
+                torch.cuda if torch.cuda.is_available() else torch, cur_len
+            )
+            # argmax
+            # next_tokens = torch.argmax(scores, dim=-1)
             next_tokens = next_tokens.squeeze()
+            next_logits = torch.matmul(
+                next_token_probes, self.embed_tokens.weight
+            )
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
@@ -1792,6 +1805,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                "generated_logits": generated_logits,
                "generated_sentence_len": generated_sentence_len}
         return ret
+
 
 class SinusoidalPositionalEmbedding(nn.Embedding):
     """This module produces sinusoidal positional embeddings of any length."""

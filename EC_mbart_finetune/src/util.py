@@ -112,7 +112,7 @@ def scr_path():
 
 
 def saved_results_path():
-    return "../UMT_data"  #enter your root
+    return "../Data"  #enter your root
 
 
 def multi30k_reorg_path():
@@ -120,7 +120,7 @@ def multi30k_reorg_path():
 
 
 def coco_path():
-    return "../UMT_data/coco_new"  #enter your root
+    return "../Data/coco_new"  #enter your root
 
 
 def sort_per_len(caps):
@@ -392,10 +392,7 @@ def remove_duplicate(data):
 
 
 def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
-    token_freq = list(
-        json.load(open("../UMT_data/cc/ja_smaller_count_dict.json",
-                       "r")).items()
-    )
+    token_freq = list(json.load(open(file, "r")).items())
     sorted_tokens = sorted(token_freq, key=lambda x: x[1], reverse=True)
     # we kept 99% most-occurring words
     # Think this is too loose, but don't understand what exactly did mBART do
@@ -404,7 +401,11 @@ def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
         for k, v in sorted_tokens[:-int(0.01 * len(sorted_tokens))]
     }
     bad_token_ids = []
-    for k, v in tokenizer.vocab.items():
+    try:
+        vocab = tokenizer.vocab
+    except:
+        vocab = tokenizer.fairseq_tokens_to_ids
+    for k, v in vocab.items():
         if v in good_token_ids:
             continue
         bad_token_ids.append(v)

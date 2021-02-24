@@ -32,7 +32,6 @@ class ECAgent(torch.nn.Module):
             self.speaker = RnnSpeaker(self.native, args)
             self.listener = RnnListener(self.foreign, args)
         elif args.model == 'mbart':
-            tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
             model = MBartForConditionalGeneration.from_pretrained(
                 'facebook/mbart-large-cc25'
             )
@@ -53,8 +52,7 @@ class ECAgent(torch.nn.Module):
     def forward(self, batched_input, spk_sample_how):
         # spk_imgs : (batch_size, 2048)
 
-        # speaker_image, listener_images, speaker_caps_in, speaker_cap_lens = batched_input
-        speaker_image = batched_input["speaker_images"]
+        speaker_images = batched_input["speaker_images"]
         listener_images = batched_input["listener_images"]
         speaker_caps_in = batched_input["speaker_caps_in"]
         speaker_cap_lens = batched_input["speaker_cap_lens"]
@@ -62,21 +60,18 @@ class ECAgent(torch.nn.Module):
         num_dist = listener_images.size()[1]
 
         if self.no_share_bhd:
-            speaker_images_hidden = self.beholder1(speaker_image)  # shared
+            speaker_images_hidden = self.beholder1(speaker_images)  # shared
         else:
-            speaker_images_hidden = self.beholder(speaker_image)  # shared
+            speaker_images_hidden = self.beholder(speaker_images)  # shared
         batched_input["speaker_images_hidden"] = speaker_images_hidden
 
         speaker_output = self.speaker(
             **batched_input
             # speaker_images_hidden, speaker_caps_in, speaker_cap_lens
         )  # NOTE argmax / gumbel
-        speaker_message = speaker_output["generated_token_ids"]
-        speaker_message_logits = speaker_output["generated_logits"]
-        speaker_message_len = speaker_output["generated_sentence_len"]
-        message_dict = {"speaker_message": speaker_message,
-                        "speaker_message_logits": speaker_message_logits,
-                        "speaker_message_len": speaker_message_len}
+        speaker_message = speaker_output["speaker_message"]
+        speaker_message_logits = speaker_output["speaker_message_logits"]
+        speaker_message_len = speaker_output["speaker_message_len"]
 
         lenlen = False
         if lenlen:
@@ -85,8 +80,8 @@ class ECAgent(torch.nn.Module):
                 torch.ones(speaker_message_len.size()).cuda(),
                 (speaker_message_len - 2).float()
             )
-            end_idx_ = torch.arange(0, end_idx.size(0)
-                                   ).cuda() * speaker_message_logits.size(1) + end_idx.int()
+            end_idx_ = torch.arange(0, end_idx.size(0)).cuda() \
+                       * speaker_message_logits.size(1) + end_idx.int()
 
             end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
         else:
@@ -100,18 +95,35 @@ class ECAgent(torch.nn.Module):
             listener_images_hidden = self.beholder(listener_images)
         listener_images_hidden = listener_images_hidden.view(-1, num_dist, self.D_hid)
 
-        listener_hiddens = self.listener(**message_dict)
-        listener_hiddens = listener_hiddens.unsqueeze(1).repeat(
-            1, num_dist, 1
-        )  # (batch_size, num_dist, D_hid)
+        listener_hiddens = self.listener(**speaker_output)
+        listener_hiddens = listener_hiddens.unsqueeze(1).repeat(1, num_dist, 1)  # (batch_size, num_dist, D_hid)
 
         # TODO: This is really bad style, need to fix when we figure out how
-        return speaker_message_logits, (listener_hiddens,
-                                        listener_images_hidden), speaker_message, (end_idx_, end_loss_), (
-                                torch.min(speaker_message_len.float()),
-                                torch.mean(speaker_message_len.float()),
-                                torch.max(speaker_message_len.float())
-                            )
+        agent_output = {
+            "speaker_message": speaker_message,
+            "speaker_message_logits": speaker_message_logits,
+            "speaker_message_length_info": {
+                "min": torch.min(speaker_message_len.float()),
+                "max": torch.max(speaker_message_len.float()),
+                "mean": torch.mean(speaker_message_len.float()),
+            },
+            "listener_output": {
+                "listener_hiddens": listener_hiddens,
+                "listener_images_hidden": listener_images_hidden
+            },
+            # not sure what the following two entry denote for
+            "end_info": {
+                "end_idx_": end_idx_,
+                "end_loss_": end_loss_
+            }
+        }
+        return agent_output
+        # return speaker_message_logits, (listener_hiddens,
+        #                                 listener_images_hidden), speaker_message, (end_idx_, end_loss_), (
+        #                         torch.min(speaker_message_len.float()),
+        #
+        #                         torch.max(speaker_message_len.float())
+        #                     )
 
 
 class Beholder(torch.nn.Module):
@@ -124,15 +136,15 @@ class Beholder(torch.nn.Module):
         if self.two_ffwd:
             self.hidden_to_hidden = torch.nn.Linear(args.D_hid, args.D_hid)
 
-    def forward(self, image):
-        h_image = image
-        h_image = self.image_to_hidden(h_image)
-        h_image = self.dropout(h_image)
+    def forward(self, images):
+        images_hidden = images
+        images_hidden = self.image_to_hidden(images_hidden)
+        images_hidden = self.dropout(images_hidden)
 
         if self.two_ffwd:
-            h_image = self.hidden_to_hidden(F.relu(h_image))
+            images_hidden = self.hidden_to_hidden(F.relu(images_hidden))
 
         if self.unit_norm:
-            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
-            h_image = h_image / norm.expand_as(h_image)
-        return h_image
+            norm = torch.norm(images_hidden, p=2, dim=1, keepdim=True).detach() + 1e-9
+            images_hidden = images_hidden / norm.expand_as(images_hidden)
+        return images_hidden

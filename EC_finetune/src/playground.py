@@ -9,12 +9,12 @@ from tqdm import tqdm
 
 # TODO: I'm an advocate of only importing what you need
 from EC_finetune.src.agents import ECAgent
-from EC_finetune.src.dataloader import ImageIdentificationDataset
+from EC_finetune.src.dataloader import ImageIdentificationDataset, VisuaLingConstraintDataset
 from EC_finetune.src.forward import forward_joint
-from EC_finetune.src.util import (
-    get_log_loss_dict_, get_avg_from_loss_dict_, print_loss_, recur_mkdir,
-    remove_duplicate
+from EC_finetune.src.utils.util import (
+    get_log_loss_dict_, get_avg_from_loss_dict_, print_loss_, remove_duplicate
 )
+from transformers import BartTokenizer, MBartTokenizer
 
 import torch
 import torch.nn as nn
@@ -249,13 +249,28 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    training_set = ImageIdentificationDataset(
-        train_data, args.num_distractors_train
-    )
+    if not args.source_lang_vocab_constrain_file or not args.target_lang_vocab_constrain_file:
+        args.has_vocab_constraint = False
+        print("No vocab constraint for generation during training")
+    else:
+        args.has_vocab_constraint = True
+
+    if args.model == 'mbart':
+        tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
+        training_set = VisuaLingConstraintDataset(
+            train_data, args.num_distractors_train, args, tokenizer
+        )
+        valid_set = VisuaLingConstraintDataset(
+            valid_data, args.num_distractors_valid, args, tokenizer
+        )
+    else:
+        training_set = ImageIdentificationDataset(
+            train_data, args.num_distractors_train
+        )
+        valid_set = ImageIdentificationDataset(
+            valid_data, args.num_distractors_valid
+        )
     training_dataloader = DataLoader(training_set, **training_params)
-    valid_set = ImageIdentificationDataset(
-        valid_data, args.num_distractors_valid
-    )
     valid_dataloader = DataLoader(valid_set, **test_params)
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
@@ -271,7 +286,7 @@ def main():
             model.train()
 
             # Xuhui: Added this to move data to the GPU
-            batch['speaker_image'] = batch['speaker_image'].to(device)
+            batch['speaker_images'] = batch['speaker_images'].to(device)
             batch['listener_images'] = batch['listener_images'].to(device)
             batch['target'] = batch['target'].to(device)
 

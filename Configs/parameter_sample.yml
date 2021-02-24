@@ -54,3 +54,9 @@ valid_batch_size: 128
 valid_every: 250
 vocab_size: 4035
 which_loss: joint
+
+# specify info about language and vocab constraint
+source_lang: en_XX
+source_lang_vocab_constrain_file: ./Data/cc/en_europarl_count_dict.json
+target_lang: ja_XX
+target_lang_vocab_constrain_file: ./Data/cc/ja_smaller_count_dict.json

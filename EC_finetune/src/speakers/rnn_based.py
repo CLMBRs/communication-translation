@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from EC_finetune.src.util import *
+from EC_finetune.src.utils.util import *
 
 
 class RnnSpeaker(torch.nn.Module):
@@ -37,8 +37,8 @@ class RnnSpeaker(torch.nn.Module):
             torch.ones([batch_size, 1], dtype=torch.int64).cuda() * 2
         )
         out_, hid_ = self.rnn(initial_input, speaker_images_hidden)
-        logits_ = []
-        labels_ = []
+        speaker_message_logits = []
+        speaker_message = []
         for idx in range(self.seq_len):
             logit_ = self.hid_to_voc(out_.view(-1, self.D_hid))
             c_logit_, comm_label_ = gumbel_softmax(
@@ -47,22 +47,26 @@ class RnnSpeaker(torch.nn.Module):
 
             input_ = torch.matmul(c_logit_.unsqueeze(1), self.emb.weight)
             out_, hid_ = self.rnn(input_, hid_)
-            logits_.append(c_logit_.unsqueeze(1))
-            labels_.append(comm_label_)
-        logits_ = torch.cat(logits_, dim=1)
-        labels_ = torch.cat(labels_, dim=-1)
-        tmp = torch.zeros(logits_.size(-1))
+            speaker_message_logits.append(c_logit_.unsqueeze(1))
+            speaker_message.append(comm_label_)
+        speaker_message_logits = torch.cat(speaker_message_logits, dim=1)
+        speaker_message = torch.cat(speaker_message, dim=-1)
+        tmp = torch.zeros(speaker_message_logits.size(-1))
         tmp[3] = 1
-        logits_[:, -1, :] = tmp
-        labels_[:, -1] = 3
-        pad_g = ((labels_ == 3).cumsum(1) == 0)
-        labels_ = pad_g * labels_
-        pad_ = torch.zeros(logits_.size()).cuda()
+        speaker_message_logits[:, -1, :] = tmp
+        speaker_message[:, -1] = 3
+        pad_g = ((speaker_message == 3).cumsum(1) == 0)
+        speaker_message = pad_g * speaker_message
+        pad_ = torch.zeros(speaker_message_logits.size()).cuda()
         pad_[:, :, 0] = 1
-        logits_ = torch.where(
-            pad_g.unsqueeze(-1).repeat(1, 1, logits_.size(-1)), logits_, pad_
+        speaker_message_logits = torch.where(
+            pad_g.unsqueeze(-1).repeat(1, 1, speaker_message_logits.size(-1)), speaker_message_logits, pad_
         )
 
-        cap_len = pad_g.cumsum(1).max(1).values + 1
+        speaker_message_len = pad_g.cumsum(1).max(1).values + 1
 
-        return logits_, labels_, cap_len
+        return {
+            "speaker_message": speaker_message,
+            "speaker_message_logits": speaker_message_logits,
+            "speaker_message_len": speaker_message_len
+        }

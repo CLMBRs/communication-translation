@@ -1,12 +1,14 @@
 import codecs
 import os
 import sys
+import json
 import numpy as np
 from collections import OrderedDict
 
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
+from transformers import PreTrainedTokenizer
 
 
 class AverageMeter(object):
@@ -401,3 +403,23 @@ def gumbel_softmax(logits, temp, hard, tt=torch, idx_=10):
         y = Variable(y_hard - y.data, requires_grad=False) + y
 
     return y, y_max_idx
+
+
+def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
+    token_freq = list(json.load(open(file, "r")).items())
+    sorted_tokens = sorted(token_freq, key=lambda x: x[1], reverse=True)
+    # we kept 99% most-occurring words
+    # Think this is too loose, but don't understand what exactly did mBART do
+    good_token_ids = {
+        int(k): v
+        for k, v in sorted_tokens[:-int(0.01 * len(sorted_tokens))]
+    }
+    bad_token_ids = []
+    for _, v in tokenizer.fairseq_tokens_to_ids.items():
+        if v in good_token_ids:
+            continue
+        bad_token_ids.append(v)
+
+    mask = torch.zeros(len(tokenizer))
+    mask[bad_token_ids] = -float("inf")
+    return mask

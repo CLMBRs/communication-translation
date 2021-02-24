@@ -8,7 +8,7 @@ alpha: 1.0
 bart: true
 batch_size: 2
 beam_width: 12
-cpu: false
+cpu: true
 dataset: coco
 decode_how: beam
 dropout: 0.1
@@ -47,6 +47,6 @@ vocab_size: 4035
 which_loss: joint
 # specify info about language and vocab constraint
 lang_1: en_XX
-lang_1_vocab_constrain_file: ../UMT_data/cc/en_europarl_count_dict.json
+lang_1_vocab_constrain_file: ../Data/cc/en_europarl_count_dict.json
 lang_2: ja_XX
-lang_2_vocab_constrain_file: ../UMT_data/cc/ja_smaller_count_dict.json
+lang_2_vocab_constrain_file: ../Data/cc/ja_smaller_count_dict.json

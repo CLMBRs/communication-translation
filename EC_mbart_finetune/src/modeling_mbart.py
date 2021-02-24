@@ -23,8 +23,8 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from EC_bart_finetune.src.gumbel_utils import *
-from EC_bart_finetune.src.modeling_bart import *
+from EC_mbart_finetune.src.gumbel_utils import *
+from EC_mbart_finetune.src.modeling_mbart import *
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -1803,8 +1803,6 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             eos_token_id=eos_token_id,
             prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
             num_beams=num_beams,
-            num_beam_groups=None,
-            diversity_penalty=self.config.diversity_penalty
         )
 
         if is_greedy_gen_mode:

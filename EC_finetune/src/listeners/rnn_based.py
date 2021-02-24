@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from EC_finetune.src.util import *
+from EC_finetune.src.utils.util import *
 
 
 class RnnListener(torch.nn.Module):

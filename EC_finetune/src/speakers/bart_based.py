@@ -20,10 +20,14 @@ class BartSpeaker(torch.nn.Module):
 
         speaker_images_hidden = self.project(speaker_images_hidden)
         speaker_images_hidden = speaker_images_hidden.view(-1, self.seq_len, self.D_emb)
-        input_ids, input_logits, cap_len = self.spk.gumbel_generate(
+        output = self.spk.gumbel_generate(
             input_images=speaker_images_hidden, num_beams=1, max_length=self.seq_len
         )
-        return input_logits, input_ids, cap_len
+        return {
+            "speaker_message": output["generated_token_ids"],
+            "speaker_message_logits": output["generated_logits"],
+            "speaker_message_len": output["generated_sentence_len"]
+        }
 
 
 class MBartSpeaker(torch.nn.Module):
@@ -53,10 +57,14 @@ class MBartSpeaker(torch.nn.Module):
 
         speaker_images_hidden = self.project(speaker_images_hidden)
         speaker_images_hidden = speaker_images_hidden.view(-1, self.seq_len, self.D_emb)
-        input_ids, input_embeds, cap_len = \
-            self.spk.gumbel_generate(input_images=speaker_images_hidden,
-                                     num_beams=1,
-                                     max_length=self.seq_len,
-                                     masks=lang_masks,
-                                     decoder_input_ids=lang_ids.view(batch_size, -1))
-        return input_ids, input_embeds, cap_len
+        output = self.spk.gumbel_generate(input_images=speaker_images_hidden,
+                                          num_beams=1,
+                                          max_length=self.seq_len,
+                                          lang_masks=lang_masks,
+                                          lang_ids=lang_ids.view(batch_size, -1))
+
+        return {
+            "speaker_message": output["generated_token_ids"],
+            "speaker_message_logits": output["generated_logits"],
+            "speaker_message_len": output["generated_sentence_len"]
+        }
