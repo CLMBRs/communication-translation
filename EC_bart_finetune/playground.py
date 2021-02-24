@@ -195,8 +195,10 @@ def main():
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
     train_loss_dict_ = get_log_loss_dict_()
-    # TODO: this path should be parameterized
-    output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
+    output_id_path = args.output_dir
+
+    global_step=0
+
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
         for batch in epoch_iterator:
@@ -218,63 +220,59 @@ def main():
             nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
 
-        if epoch % args.print_every == 0:
-            avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
-            logger.info(print_loss_(epoch, args.alpha, avg_loss_dict_, 'train'))
-            train_loss_dict_ = get_log_loss_dict_()
+            if global_step % args.print_every == 0:
+                avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
+                logger.info(print_loss_(epoch, args.alpha, avg_loss_dict_, 'train'))
+                train_loss_dict_ = get_log_loss_dict_()
 
-        if epoch % args.valid_every == 0:
-            with torch.no_grad():
-                results, output_ids, s_new = evaluate(
-                    args, model, valid_dataloader, loss_fn, epoch
-                )
-
-                # Output evaluation statistics
-                logger.info(s_new)
-
-                # Add one hyperparameter target_acc to the yml file.
-                if float(results['accuracy']) > args.target_acc:
-                    # Create output directory if needed
-                    if not os.path.exists(args.output_dir):
-                        os.makedirs(args.output_dir)
-
-                    logger.info(
-                        "Saving model checkpoint to %s", args.output_dir
+            if global_step % args.valid_every == 0:
+                with torch.no_grad():
+                    results, output_ids, s_new = evaluate(
+                        args, model, valid_dataloader, loss_fn, epoch
                     )
 
-                    if args.model == 'bart':
-                        # Save a trained model, configuration and tokenizer using `save_pretrained()`.
-                        # They can then be reloaded using `from_pretrained()`
-                        model_to_save = (
-                            model.module if hasattr(model, "module") else model
-                        )  # Take care of distributed/parallel training
-                        model_to_save.save_pretrained(args.output_dir)
-                        tokenizer.save_pretrained(args.output_dir)
+                    # Output evaluation statistics
+                    logger.info(s_new)
 
+                    # Add one hyperparameter target_acc to the yml file.
+                    if float(results['accuracy']) > args.target_acc:
+                        # Create output directory if needed
+                        if not os.path.exists(args.output_dir):
+                            os.makedirs(args.output_dir)
+
+                        logger.info(
+                            "Saving model to %s", args.output_dir
+                        )
+
+                        # Save the general part of the model
+                        torch.save(
+                                model.state_dict(), args.output_dir + 'model.pt'
+                            )
                         # Good practice: save your training arguments together with the trained model
                         torch.save(
-                            args,
-                            os.path.join(args.output_dir, "training_args.bin")
-                        )
+                                args,
+                                os.path.join(args.output_dir, "training_args.bin")
+                            )
 
-                        # Load a trained model and vocabulary that you have fine-tuned
-                        model = model_class.from_pretrained(args.output_dir)
-                        tokenizer = tokenizer_class.from_pretrained(
+                        # For pretrained models, provide extra saving strategy
+                        if args.save_pretrain_seperately:
+                            # Save a trained model, configuration and tokenizer using `save_pretrained()`.
+                            # They can then be reloaded using `from_pretrained()`
+                            model_to_save = (
+                                model.module if hasattr(model, "module") else
+                                model.model
+                            )  # Take care of distributed/parallel training
+                            model_to_save.save_pretrained(args.output_dir)
+                            tokenizer.save_pretrained(args.output_dir)
+
+                        print(
+                            'Epoch :', epoch, 'Prediction Accuracy =',
+                            float(results['accuracy']), 'Saved to Path :',
                             args.output_dir
                         )
-                        model.to(args.device)
-
-                    elif args.model == 'rnn':
-                        torch.save(
-                            model.state_dict(), args.output_dir + 'model_rnn.pt'
-                        )
-                    print(
-                        'Epoch :', epoch, 'Prediction Accuracy =',
-                        float(results['accuracy']), 'Saved to Path :',
-                        args.output_dir
-                    )
-                    if args.TransferH:
-                        args.hard = True
+                        if args.TransferH:
+                            args.hard = True
+            global_step+=1
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)

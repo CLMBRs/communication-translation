@@ -23,8 +23,10 @@ class ECAgent(torch.nn.Module):
 
         # Initialize speaker and listener
         if args.model == 'bart':
+            # Actually we do not use tokenizer in this game
             tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
-            model = BartForConditionalGeneration.from_pretrained(
+            # This probably should initialize from the saved loader when eval
+            self.model = BartForConditionalGeneration.from_pretrained(
                 'facebook/bart-large'
             )
 
