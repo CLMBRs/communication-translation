@@ -1,14 +1,13 @@
 # Hyper-parameters for the referential games 
-D_emb: 1024
-D_hid: 512
-D_img: 2048
+embedding_dim: 1024
+hidden_dim: 512
+image_dim: 2048
 ECemb: 5000
 seed: 42
 # Setting the n_gpu we use
 n_gpu: 1
 # Setting the model to use: 
 model: bart
-results_save_path: Output
 TransferH: false
 alpha: 1.0
 bart: true
@@ -17,6 +16,8 @@ beam_width: 12
 cpu: False
 dataset: coco
 coco_path: Data/coco_new
+#coco_path: /gscratch/ark/xuhuizh/UMT_data/coco_new # Keep this for the conv
+#of my local dev.
 decode_how: beam
 dropout: 0.1
 eval_mode: false
@@ -54,3 +55,8 @@ valid_batch_size: 128
 valid_every: 250
 vocab_size: 4035
 which_loss: joint
+
+# Model saving parameters
+save_pretrain_seperately: true
+output_dir: Output
+results_save_path: Output
