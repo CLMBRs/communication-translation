@@ -84,12 +84,10 @@ class CommunicationAgent(Module):
         num_image_choices = listener_images.size(1)
 
         # Embed the Speaker's image using the Beholder
-        # not shared
-        if self.no_share_bhd:
-            speaker_image_embeddings = self.beholder1(speaker_images)
-        # shared
-        else:
-            speaker_image_embeddings = self.beholder(speaker_images)
+        speaker_image_embeddings = (
+            self.beholder1(speaker_images) if self.no_share_bhd
+            else self.beholder(speaker_images)
+        )
 
         # Generate the Speaker's message/caption about the image. (The speaker
         # classes are currently not accepting input captions)
@@ -122,10 +120,10 @@ class CommunicationAgent(Module):
 
         # Embed the Listener's candidate images using the Beholder
         listener_images = listener_images.view(-1, self.image_dim)
-        if self.no_share_bhd:
-            listener_image_embeddings = self.beholder2(listener_images)
-        else:
-            listener_image_embeddings = self.beholder(listener_images)
+        listener_image_embeddings = (
+            self.beholder2(speaker_images) if self.no_share_bhd
+            else self.beholder(speaker_images)
+        )
         listener_image_embeddings = listener_image_embeddings.view(
             -1, num_image_choices, self.hidden_dim
         )
@@ -143,7 +141,7 @@ class CommunicationAgent(Module):
         image_candidate_errors = F.mse_loss(
             listener_hidden, listener_images, reduction='none'
         ).mean(dim=2).view(-1, num_image_choices)
-        
+
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
 
