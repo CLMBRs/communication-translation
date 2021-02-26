@@ -63,6 +63,8 @@ class CommunicationAgent(Module):
             listener_model, dropout=args.dropout, unit_norm=args.unit_norm
         )
 
+        self.crossentropy = torch.nn.CrossEntropyLoss()
+
         self.native, self.foreign = 'en', args.l2
 
         self.image_dim = args.image_dim
@@ -72,9 +74,12 @@ class CommunicationAgent(Module):
         self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
 
-    def forward(self, data):
-        # spk_imgs : (batch_size, 2048)
-        speaker_images, listener_images, speaker_captions_in, speaker_caption_lengths = data
+    def forward(self, batch):
+        target_image = batch['target']
+        speaker_images = batch['speaker_image']
+        listener_images = batch['listener_images']
+        speaker_captions_in = batch['speaker_caps_in']
+        speaker_caption_lengths = batch['speaker_cap_lens']
 
         num_image_choices = listener_images.size(1)
 
@@ -133,14 +138,30 @@ class CommunicationAgent(Module):
             1, num_image_choices, 1
         )
 
+        # Get the Mean Squared Error between the final listener representation
+        # and all of the candidate images
+        image_candidate_errors = F.mse_loss(
+            listener_hidden, listener_images, reduction='none'
+        ).mean(dim=2).view(-1, num_image_choices)
+        
+        # Transform this to the inverted MSE (for use as scores)
+        image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
+
+        # Get final cross-entropy loss
+        communication_loss = self.crossentropy(
+            image_candidate_logits, target_image
+        )
+        # Get predicted accuracy
+        _, predicted_idx = torch.max(image_candidate_logits, dim=1)
+        eq = torch.eq(predicted_idx, target_image)
+        accuracy = float(eq.sum().data) / float(eq.nelement())
+
         return_dict = {
-            'message_logits': message_logits,
-            'listener_representation': listener_hidden,
-            'listener_image': listener_image_embeddings,
+            'loss': communication_loss,
+            'accuracy': accuracy,
+            'message': message_ids,
             'end_idx': end_idx_,
             'end_loss': end_loss_,
-            'min_length': torch.min(message_lengths.float()),
-            'max_length': torch.max(message_lengths.float()),
             'mean_length': torch.mean(message_lengths.float())
         }
 

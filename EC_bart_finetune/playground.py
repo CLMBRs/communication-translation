@@ -4,21 +4,19 @@ import os
 import random
 import sys
 import time
-import yaml
+from collections import defaultdict
+from statistics import mean
+
 import numpy as np
+import torch
+import torch.nn as nn
+import yaml
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from agents import CommunicationAgent
 from dataloader import ImageIdentificationDataset
-from forward import forward_joint
-from util import (
-    get_log_loss_dict_, get_avg_from_loss_dict_, print_loss_, recur_mkdir,
-    remove_duplicate
-)
-
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
+from util import print_loss_, remove_duplicate
 
 
 def set_seed(args):
@@ -29,8 +27,8 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader, loss_function, epoch):
-    valid_loss_dict_ = get_log_loss_dict_()
+def evaluate(args, model, dataloader, epoch):
+    stats = defaultdict(list)
     output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
     for batch in epoch_iterator:
@@ -42,22 +40,28 @@ def evaluate(args, model, dataloader, loss_function, epoch):
         batch['listener_images'] = batch['listener_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
 
-        _, output_ids_batch = forward_joint(
-            batch, model, valid_loss_dict_, args, loss_function,
-            args.num_distractors_train
-        )
+        eval_return_dict = model(batch)
 
         if output_ids == True:
-            output_ids = output_ids_batch
+            output_ids = eval_return_dict['message']
             output_ids = False
-        output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+        else:
+            output_ids = torch.cat(
+                [output_ids, eval_return_dict['message']], dim=0
+            )
 
-    avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
-    s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
+        eval_return_dict['loss'] = eval_return_dict['loss'].item()
+        for key, value in eval_return_dict.items():
+            if key in ['loss', 'accuracy', 'mean_length']:
+                stats[key].append(value)
 
-    # AMD: I don't know what output_ids or s_new are, but it looks like you need
-    # to return them in the evaluation loop
-    return avg_loss_dict_, output_ids, s_new
+    average_stats = {}
+    for key, value in stats.items():
+        average_stats[key] = mean(value)
+
+    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
+
+    return average_stats, output_ids, s_new
 
 
 def main():
@@ -192,10 +196,9 @@ def main():
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
-    train_loss_dict_ = get_log_loss_dict_()
-    output_id_path = args.output_dir
+    global_step = 0
 
-    global_step=0
+    checkpoint_stats = defaultdict(list)
 
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
@@ -209,24 +212,34 @@ def main():
             batch['listener_images'] = batch['listener_images'].to(device)
             batch['target'] = batch['target'].to(device)
 
-            loss, _ = forward_joint(
-                batch, model, train_loss_dict_, args, loss_fn,
-                args.num_distractors_train
-            )
-            optimizer.zero_grad()
+            train_return_dict = model(batch)
+            loss = train_return_dict['loss']
             loss.backward()
             nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
+            optimizer.zero_grad()
+            global_step += 1
+
+            train_return_dict['loss'] = loss.item()
+            for key, value in train_return_dict.items():
+                if key in ['loss', 'accuracy', 'mean_length']:
+                    checkpoint_stats[key].append(value)
 
             if global_step % args.print_every == 0:
-                avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
-                logger.info(print_loss_(epoch, args.alpha, avg_loss_dict_, 'train'))
-                train_loss_dict_ = get_log_loss_dict_()
+                checkpoint_average_stats = {}
+                for key, value in checkpoint_stats.items():
+                    checkpoint_average_stats[key] = mean(value)
+                logger.info(
+                    print_loss_(
+                        epoch, args.alpha, checkpoint_average_stats, 'train'
+                    )
+                )
+                checkpoint_stats = defaultdict(list)
 
             if global_step % args.valid_every == 0:
                 with torch.no_grad():
                     results, output_ids, s_new = evaluate(
-                        args, model, valid_dataloader, loss_fn, epoch
+                        args, model, valid_dataloader, epoch
                     )
 
                     # Output evaluation statistics
@@ -238,27 +251,27 @@ def main():
                         if not os.path.exists(args.output_dir):
                             os.makedirs(args.output_dir)
 
-                        logger.info(
-                            "Saving model to %s", args.output_dir
-                        )
+                        logger.info("Saving model to %s", args.output_dir)
 
                         # Save the general part of the model
                         torch.save(
-                                model.state_dict(), args.output_dir + 'model.pt'
-                            )
-                        # Good practice: save your training arguments together with the trained model
+                            model.state_dict(), args.output_dir + 'model.pt'
+                        )
+                        # Good practice: save your training arguments together
+                        # with the trained model
                         torch.save(
-                                args,
-                                os.path.join(args.output_dir, "training_args.bin")
-                            )
+                            args,
+                            os.path.join(args.output_dir, "training_args.bin")
+                        )
 
                         # For pretrained models, provide extra saving strategy
                         if args.save_pretrain_seperately:
-                            # Save a trained model, configuration and tokenizer using `save_pretrained()`.
-                            # They can then be reloaded using `from_pretrained()`
+                            # Save a trained model, configuration and tokenizer
+                            # using `save_pretrained()`. They can then be
+                            # reloaded using `from_pretrained()`
                             model_to_save = (
-                                model.module if hasattr(model, "module") else
-                                model.model
+                                model.module
+                                if hasattr(model, "module") else model.model
                             )  # Take care of distributed/parallel training
                             model_to_save.save_pretrained(args.output_dir)
 
@@ -269,7 +282,6 @@ def main():
                         )
                         if args.TransferH:
                             args.hard = True
-            global_step+=1
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)
