@@ -214,10 +214,10 @@ def main():
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
+            optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
-            optimizer.zero_grad()
             global_step += 1
 
             train_return_dict['loss'] = loss.item()
