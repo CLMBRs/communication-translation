@@ -1,7 +1,7 @@
 # Hyper-parameters for the referential games 
-D_emb: 1024
-D_hid: 512
-D_img: 2048
+embedding_dim: 1024
+hidden_dim: 512
+image_dim: 2048
 ECemb: 5000
 seed: 42
 # Setting the n_gpu we use
@@ -33,7 +33,7 @@ no_share_bhd: false
 no_terminal: false
 no_write: false
 norm_pow: 0.0
-num_directions: 1
+bidirectional: false
 
 # Total number of pictures for listeners, the first one is for training. 
 num_distractors_train: 255
