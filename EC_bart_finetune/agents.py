@@ -428,6 +428,12 @@ class RnnEncoder(Module):
         self.embedding = nn.Embedding(
             vocab_size, embedding_dim, padding_idx=padding_idx
         )
+        self.h_0 = nn.parameter.Parameter(
+            torch.zeros(
+                self.num_layers * self.num_directions, 1,
+                self.output_dim
+            )
+        )
         self.rnn = nn.GRU(
             embedding_dim,
             output_dim,
@@ -458,13 +464,6 @@ class RnnEncoder(Module):
         """
         batch_size = message_embedding.size(0)
 
-        h_0 = Variable(
-            torch.zeros(
-                self.num_layers * self.num_directions, batch_size,
-                self.output_dim
-            )
-        )
-
         pack = torch.nn.utils.rnn.pack_padded_sequence(
             message_embedding,
             message_lengths.cpu(),
@@ -472,7 +471,7 @@ class RnnEncoder(Module):
             enforce_sorted=False
         )
 
-        _, representation = self.rnn(pack, h_0)
+        _, representation = self.rnn(pack, self.h_0.repeat(1, batch_size, 1))
 
         representation = representation[-self.num_directions:, :, :]
         output = representation.transpose(0, 1).contiguous().view(
