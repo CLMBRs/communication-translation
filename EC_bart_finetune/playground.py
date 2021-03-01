@@ -27,7 +27,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader, epoch):
+def evaluate(args, model, dataloader, epoch=0):
     stats = defaultdict(list)
     output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
@@ -66,6 +66,7 @@ def evaluate(args, model, dataloader, epoch):
 def train(args, model, dataloader):
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
     global_step = 0
+    best_acc = 0.0
     checkpoint_stats = defaultdict(list)
 
     for epoch in range(args.num_games):
@@ -114,7 +115,9 @@ def train(args, model, dataloader):
                     logger.info(s_new)
 
                     # Add one hyperparameter target_acc to the yml file.
-                    if float(results['accuracy']) > args.target_acc:
+                    cur_acc = float(results['accuracy'])
+                    if cur_acc > args.target_acc and cur_acc > best_acc:
+                        best_acc = cur_acc
                         # Create output directory if needed
                         if not os.path.exists(args.output_dir):
                             os.makedirs(args.output_dir)
@@ -123,7 +126,8 @@ def train(args, model, dataloader):
 
                         # Save the general part of the model
                         torch.save(
-                            model.state_dict(), args.output_dir + 'model.pt'
+                            model.state_dict(), args.output_dir +
+                            '/model.pt'
                         )
                         # Good practice: save your training arguments together
                         # with the trained model
@@ -288,8 +292,13 @@ def main():
     if args.do_train:
         global_step = train(args, model, training_dataloader)
     if args.do_eval:
+        checkpoint = args.output_dir+'/model.pt'
+        logger.info("Evaluate the following checkpoint: %s", checkpoint)
+        model.load_state_dict(torch.load(checkpoint))
+        model.to(args.device)
+        model.eval()
         results, output_ids, s_new = evaluate(
-                                args, model, valid_dataloader, epoch
+                                args, model, valid_dataloader
                             )
 
     end_time = time.time()
