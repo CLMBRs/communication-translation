@@ -85,8 +85,8 @@ class CommunicationAgent(Module):
 
         # Embed the Speaker's image using the Beholder
         speaker_image_embeddings = (
-            self.beholder1(speaker_images) if self.no_share_bhd
-            else self.beholder(speaker_images)
+            self.beholder1(speaker_images)
+            if self.no_share_bhd else self.beholder(speaker_images)
         )
 
         # Generate the Speaker's message/caption about the image. (The speaker
@@ -121,8 +121,8 @@ class CommunicationAgent(Module):
         # Embed the Listener's candidate images using the Beholder
         listener_images = listener_images.view(-1, self.image_dim)
         listener_image_embeddings = (
-            self.beholder2(speaker_images) if self.no_share_bhd
-            else self.beholder(speaker_images)
+            self.beholder2(speaker_images)
+            if self.no_share_bhd else self.beholder(speaker_images)
         )
         listener_image_embeddings = listener_image_embeddings.view(
             -1, num_image_choices, self.hidden_dim
@@ -430,8 +430,7 @@ class RnnEncoder(Module):
         )
         self.h_0 = nn.parameter.Parameter(
             torch.zeros(
-                self.num_layers * self.num_directions, 1,
-                self.output_dim
+                self.num_layers * self.num_directions, 1, self.output_dim
             )
         )
         self.rnn = nn.GRU(

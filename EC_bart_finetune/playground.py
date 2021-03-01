@@ -63,6 +63,7 @@ def evaluate(args, model, dataloader, epoch=0):
 
     return average_stats, output_ids, s_new
 
+
 def train(args, model, dataloader):
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
     global_step = 0
@@ -126,8 +127,7 @@ def train(args, model, dataloader):
 
                         # Save the general part of the model
                         torch.save(
-                            model.state_dict(), args.output_dir +
-                            '/model.pt'
+                            model.state_dict(), args.output_dir + '/model.pt'
                         )
                         # Good practice: save your training arguments together
                         # with the trained model
@@ -155,8 +155,6 @@ def train(args, model, dataloader):
                         if args.TransferH:
                             args.hard = True
         return global_step
-
-
 
 
 def main():
@@ -292,17 +290,16 @@ def main():
     if args.do_train:
         global_step = train(args, model, training_dataloader)
     if args.do_eval:
-        checkpoint = args.output_dir+'/model.pt'
+        checkpoint = args.output_dir + '/model.pt'
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
         model.load_state_dict(torch.load(checkpoint))
         model.to(args.device)
         model.eval()
-        results, output_ids, s_new = evaluate(
-                                args, model, valid_dataloader
-                            )
+        results, output_ids, s_new = evaluate(args, model, valid_dataloader)
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)
+
 
 if __name__ == '__main__':
     main()
