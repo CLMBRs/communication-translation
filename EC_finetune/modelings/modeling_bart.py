@@ -18,7 +18,10 @@ import math
 import random
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
+import numpy as np
+
 import torch
+import torch.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 
@@ -44,8 +47,6 @@ from transformers.generation_logits_process import (
     LogitsProcessorList,
 )
 from transformers.file_utils import ModelOutput
-
-from EC_finetune.util import *
 
 logger = logging.get_logger(__name__)
 
@@ -1614,8 +1615,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
         bos_token_id: int = None,
         **model_kwargs
     ) -> torch.LongTensor:
-        if "lang_ids" in model_kwargs:
-            return model_kwargs["lang_ids"]
+        if "lang_id" in model_kwargs:
+            return model_kwargs["lang_id"]
 
         if "decoder_input_ids" in model_kwargs:
             return model_kwargs["decoder_input_ids"]
@@ -1734,9 +1735,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             # forward pass to get next token
             outputs = self(**model_inputs, return_dict=True)
             next_token_logits = outputs.logits[:, -1, :]
-            if "lang_masks" in model_kwargs:
+            if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
-                next_token_logits += model_kwargs["lang_masks"]
+                next_token_logits += model_kwargs["lang_mask"]
 
             # pre-process distribution
             scores = logits_processor(generated_token_ids, next_token_logits)

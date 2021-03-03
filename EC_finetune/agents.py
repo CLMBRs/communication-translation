@@ -7,8 +7,8 @@ from torch import Tensor
 from torch.autograd import Variable
 from torch.nn import Module
 
-from EC_finetune.speakers import *
-from EC_finetune.listeners import *
+from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
+from EC_finetune.listeners import Listener, BartEncoder, MBartEncoder, RnnEncoder
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 

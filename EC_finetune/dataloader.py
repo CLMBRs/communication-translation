@@ -55,7 +55,9 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
     """
     PyTorch Dataset subclass for image-identification games in which a "speaker"
     agent takes in an image and communicates it, and a "listener" identifies the
-    correct image from among a selection of distractors
+    correct image from among a selection of distractors. This Class differs from
+    the ImageIdentificationDataset by allowing user to condition the generation
+    on target language (id) and vocabulary constraint.
 
     Args:
         images: A NumPy array of image data
@@ -102,10 +104,10 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
         # choose a language to generate sentence for
         random_lang_idx = np.random.choice([0, 1])
         chosen_lang_id = self.lang_ids[random_lang_idx]
-        ret['lang_ids'] = chosen_lang_id
+        ret['lang_id'] = chosen_lang_id
         if self.has_vocab_constraint:
             chosen_lang_mask = self.lang_masks[random_lang_idx]
-            ret["lang_masks"] = chosen_lang_mask
+            ret["lang_mask"] = chosen_lang_mask
         return ret
 
 

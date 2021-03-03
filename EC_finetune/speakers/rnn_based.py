@@ -1,7 +1,7 @@
+import torch
+import torch.functional as F
 import torch.nn as nn
 from torch.nn import Module
-
-from EC_finetune.util import *
 
 
 class RnnSpeaker(Module):
