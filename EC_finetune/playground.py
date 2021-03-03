@@ -14,6 +14,7 @@ import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
+from tqdm import tqdm
 
 from EC_finetune.agents import CommunicationAgent
 from EC_finetune.dataloader import ImageIdentificationDataset, VisuaLingConstraintDataset
@@ -28,7 +29,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader, epoch):
+def evaluate(args, model, dataloader, epoch=0):
     stats = defaultdict(list)
     output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
@@ -63,6 +64,104 @@ def evaluate(args, model, dataloader, epoch):
     s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
 
     return average_stats, output_ids, s_new
+    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
+
+    return average_stats, output_ids, s_new
+
+
+def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
+    optimizer = torch.optim.Adam(in_params, lr=args.lr)
+    global_step = 0
+    best_acc = 0.0
+    checkpoint_stats = defaultdict(list)
+
+    for epoch in range(args.num_games):
+        epoch_iterator = tqdm(dataloader, desc="Iteration")
+        for batch in epoch_iterator:
+
+            # Xuhui: Added this to inform the training started.
+            model.train()
+
+            # Xuhui: Added this to move data to the GPU
+            batch['speaker_image'] = batch['speaker_image'].to(device)
+            batch['listener_images'] = batch['listener_images'].to(device)
+            batch['target'] = batch['target'].to(device)
+
+            train_return_dict = model(batch)
+            loss = train_return_dict['loss']
+            optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(in_params, args.grad_clip)
+            optimizer.step()
+            global_step += 1
+            if global_step >= args.max_global_step:
+                return global_step
+
+            train_return_dict['loss'] = loss.item()
+            for key, value in train_return_dict.items():
+                if key in ['loss', 'accuracy', 'mean_length']:
+                    checkpoint_stats[key].append(value)
+
+            if global_step % args.print_every == 0:
+                checkpoint_average_stats = {}
+                for key, value in checkpoint_stats.items():
+                    checkpoint_average_stats[key] = mean(value)
+                logger.info(
+                    print_loss_(
+                        epoch, args.alpha, checkpoint_average_stats, 'train'
+                    )
+                )
+                checkpoint_stats = defaultdict(list)
+
+            if global_step % args.valid_every == 0:
+                with torch.no_grad():
+                    results, output_ids, s_new = evaluate(
+                        args, model, valid_dataloader, global_step
+                    )
+
+                    # Output evaluation statistics
+                    logger.info(s_new)
+
+                    # Add one hyperparameter target_acc to the yml file.
+                    cur_acc = float(results['accuracy'])
+                    if cur_acc > args.target_acc and cur_acc > best_acc:
+                        best_acc = cur_acc
+                        # Create output directory if needed
+                        if not os.path.exists(args.output_dir):
+                            os.makedirs(args.output_dir)
+
+                        logger.info("Saving model to %s", args.output_dir)
+
+                        # Save the general part of the model
+                        torch.save(
+                            model.state_dict(), args.output_dir + '/model.pt'
+                        )
+                        # Good practice: save your training arguments together
+                        # with the trained model
+                        torch.save(
+                            args,
+                            os.path.join(args.output_dir, "training_args.bin")
+                        )
+
+                        # For pretrained models, provide extra saving strategy
+                        if args.save_pretrain_seperately:
+                            # Save a trained model, configuration and tokenizer
+                            # using `save_pretrained()`. They can then be
+                            # reloaded using `from_pretrained()`
+                            model_to_save = (
+                                model.module
+                                if hasattr(model, "module") else model.model
+                            )  # Take care of distributed/parallel training
+                            model_to_save.save_pretrained(args.output_dir)
+
+                        print(
+                            'Epoch :', epoch, 'Prediction Accuracy =',
+                            float(results['accuracy']), 'Saved to Path :',
+                            args.output_dir
+                        )
+                        if args.TransferH:
+                            args.hard = True
+        return global_step
 
 
 def main():
@@ -186,12 +285,6 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    if not args.source_lang_vocab_constrain_file or not args.target_lang_vocab_constrain_file:
-        args.has_vocab_constraint = False
-        print("No vocab constraint for generation during training")
-    else:
-        args.has_vocab_constraint = True
-
     if args.model == 'mbart':
         tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
         training_set = VisuaLingConstraintDataset(
@@ -210,94 +303,15 @@ def main():
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)
 
-    optimizer = torch.optim.Adam(in_params, lr=args.lr)
-
-    global_step = 0
-
-    checkpoint_stats = defaultdict(list)
-
-    for epoch in range(args.num_games):
-        epoch_iterator = tqdm(training_dataloader, desc="Iteration")
-        for batch in epoch_iterator:
-
-            # Xuhui: Added this to inform the training started.
-            model.train()
-
-            # Xuhui: Added this to move data to the GPU
-            batch['speaker_image'] = batch['speaker_image'].to(device)
-            batch['listener_images'] = batch['listener_images'].to(device)
-            batch['target'] = batch['target'].to(device)
-
-            train_return_dict = model(batch)
-            loss = train_return_dict['loss']
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(in_params, args.grad_clip)
-            optimizer.step()
-            global_step += 1
-
-            train_return_dict['loss'] = loss.item()
-            for key, value in train_return_dict.items():
-                if key in ['loss', 'accuracy', 'mean_length']:
-                    checkpoint_stats[key].append(value)
-
-            if global_step % args.print_every == 0:
-                checkpoint_average_stats = {}
-                for key, value in checkpoint_stats.items():
-                    checkpoint_average_stats[key] = mean(value)
-                logger.info(
-                    print_loss_(
-                        epoch, args.alpha, checkpoint_average_stats, 'train'
-                    )
-                )
-                checkpoint_stats = defaultdict(list)
-
-            if global_step % args.valid_every == 0:
-                with torch.no_grad():
-                    results, output_ids, s_new = evaluate(
-                        args, model, valid_dataloader, epoch
-                    )
-
-                    # Output evaluation statistics
-                    logger.info(s_new)
-
-                    # Add one hyperparameter target_acc to the yml file.
-                    if float(results['accuracy']) > args.target_acc:
-                        # Create output directory if needed
-                        if not os.path.exists(args.output_dir):
-                            os.makedirs(args.output_dir)
-
-                        logger.info("Saving model to %s", args.output_dir)
-
-                        # Save the general part of the model
-                        torch.save(
-                            model.state_dict(), args.output_dir + 'model.pt'
-                        )
-                        # Good practice: save your training arguments together
-                        # with the trained model
-                        torch.save(
-                            args,
-                            os.path.join(args.output_dir, "training_args.bin")
-                        )
-
-                        # For pretrained models, provide extra saving strategy
-                        if args.save_pretrain_seperately:
-                            # Save a trained model, configuration and tokenizer
-                            # using `save_pretrained()`. They can then be
-                            # reloaded using `from_pretrained()`
-                            model_to_save = (
-                                model.module
-                                if hasattr(model, "module") else model.model
-                            )  # Take care of distributed/parallel training
-                            model_to_save.save_pretrained(args.output_dir)
-
-                        print(
-                            'Epoch :', epoch, 'Prediction Accuracy =',
-                            float(results['accuracy']), 'Saved to Path :',
-                            args.output_dir
-                        )
-                        if args.TransferH:
-                            args.hard = True
+    if args.do_train:
+        global_step = train(args, model, training_dataloader, valid_dataloader, in_params, device, logger)
+    if args.do_eval:
+        checkpoint = args.output_dir + '/model.pt'
+        logger.info("Evaluate the following checkpoint: %s", checkpoint)
+        model.load_state_dict(torch.load(checkpoint))
+        model.to(args.device)
+        model.eval()
+        results, output_ids, s_new = evaluate(args, model, valid_dataloader)
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)

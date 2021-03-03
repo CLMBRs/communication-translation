@@ -6,11 +6,15 @@ ECemb: 5000
 seed: 42
 # Setting the n_gpu we use
 n_gpu: 1
-# Setting the model to use: 
+# Setting the model to use:
 model: mbart
 results_save_path: Output
 TransferH: false
 alpha: 1.0
+
+# Model:
+model: bart
+bart: true
 batch_size: 16
 beam_width: 12
 cpu: True
@@ -19,12 +23,29 @@ coco_path: Data/coco_new
 decode_how: beam
 dropout: 0.1
 eval_mode: false
+embedding_dim: 1024
+hidden_dim: 512
+image_dim: 2048
+bidirectional: false # RNN-specific
+num_layers: 1 #RNN-specific
+vocab_size: 4035 #RNN-specific
 fix_bhd: false
 fix_spk: false
-gpuid: 0
+no_share_bhd: false
+
+# Train and eval:
+# train eval basic setting
+do_train: true # control whether we train
+do_eval: true # whether to do eval after training
+seed: 42
+n_gpu: 1
+cpu: False
+# training parameters
+dropout: 0.1
 grad_clip: 1.0
-hard: false
-len_loss: false
+hard: true # Gumbel softmax sampling; we always prefer to set this true
+seq_len: 15 # sequence length limit
+temp: 1.0 # temperature for gumbel softmax
 loss_type: xent
 lr: 1.0e-05
 no_share_bhd: false
@@ -34,6 +55,9 @@ norm_pow: 0.0
 bidirectional: false
 
 # Total number of pictures for listeners, the first one is for training. 
+# gaming logistics
+num_games: 30 # Upper bound of the num of epochs
+max_global_step: 30000
 num_distractors_train: 255
 num_distractors_valid: 127
 num_games: 30000
@@ -51,8 +75,27 @@ two_ffwd: false
 unit_norm: false
 valid_batch_size: 128
 valid_every: 250
-vocab_size: 4035
-which_loss: joint
+print_every: 50
+TransferH: false #switch to hard gumbel after the model reaches target accuracy.
+
+# Loading and saving data:
+dataset: coco
+coco_path: Data/coco_new
+#coco_path: /gscratch/ark/xuhuizh/UMT_data/coco_new # Keep this for the conv
+#of my local dev.
+save_pretrain_seperately: true
+output_dir: Output
+results_save_path: Output
+
+# Other (we may choose to delete these later):
+alpha: 1.0
+beam_width: 12
+decode_how: beam
+no_terminal: false # This parameter isn't used anywhere
+no_write: false
+norm_pow: 0.0 # for MT part, not relevant here.
+sample_how: gumbel # we always use gumbel in our case
+
 
 # specify info about language and vocab constraint
 source_lang: en_XX
