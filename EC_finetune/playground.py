@@ -304,7 +304,10 @@ def main():
     valid_dataloader = DataLoader(valid_set, **test_params)
 
     if args.do_train:
-        global_step = train(args, model, training_dataloader, valid_dataloader, in_params, device, logger)
+        global_step = train(
+            args, model, training_dataloader, valid_dataloader, in_params,
+            device, logger
+        )
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
