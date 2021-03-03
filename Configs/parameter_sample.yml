@@ -31,6 +31,7 @@ loss_type: xent
 lr: 1.0e-05
 # gaming logistics
 num_games: 30 # Upper bound of the num of epochs
+max_global_step: 30000
 num_distractors_train: 255
 num_distractors_valid: 127
 valid_batch_size: 128
@@ -47,7 +48,7 @@ save_pretrain_seperately: true
 output_dir: Output
 results_save_path: Output
 
-# Other unimportant parameters:
+# Other (we may choose to delete these later):
 alpha: 1.0
 beam_width: 12
 decode_how: beam

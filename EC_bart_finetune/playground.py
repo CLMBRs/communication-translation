@@ -89,6 +89,8 @@ def train(args, model, dataloader):
             nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
             global_step += 1
+            if global_step >= args.max_global_step:
+                return glabal_step
 
             train_return_dict['loss'] = loss.item()
             for key, value in train_return_dict.items():
