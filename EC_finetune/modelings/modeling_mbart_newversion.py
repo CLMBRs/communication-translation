@@ -16,15 +16,13 @@
 
 import math
 import random
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 
-import torch
-import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from EC_bart_finetune.src.gumbel_utils import *
-from EC_bart_finetune.src.modeling_bart import *
+from EC_finetune.util import *
+# from EC_finetune.src.modelings.modeling_bart import *
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -1510,7 +1508,7 @@ class MBartGumbelEncoder(MBartPreTrainedModel):
 
 
 @add_start_docstrings(
-    "The MBART Model with a language modeling head. Can be used for summarization.",
+    "The MBART Model with a language modelings head. Can be used for summarization.",
     MBART_START_DOCSTRING
 )
 class MBartForConditionalGeneration(MBartPreTrainedModel):
@@ -1593,7 +1591,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
         **model_kwargs
     ) -> torch.LongTensor:
         r"""
-        Generates sequences for models with a language modeling head. The method currently supports greedy decoding,
+        Generates sequences for models with a language modelings head. The method currently supports greedy decoding,
         multinomial sampling, beam-search decoding, and beam-search multinomial sampling.
 
         Apart from :obj:`input_ids` and :obj:`attention_mask`, all the arguments below will default to the value of the
@@ -1858,7 +1856,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
         **model_kwargs
     ):
         r"""
-        Generates sequences for models with a language modeling head using greedy decoding.
+        Generates sequences for models with a language modelings head using greedy decoding.
 
         Parameters:
 
@@ -1867,7 +1865,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
                 :obj:`torch.LongTensor` of shape :obj:`(1,)`.
             logits_processor (:obj:`LogitsProcessorList`, `optional`):
                 An instance of :class:`~transformers.LogitsProcessorList`. List of instances of class derived from
-                :class:`~transformers.LogitsProcessor` used to modify the prediction scores of the language modeling
+                :class:`~transformers.LogitsProcessor` used to modify the prediction scores of the language modelings
                 head applied at each generation step.
             max_length (:obj:`int`, `optional`, defaults to 20):
                 The maximum length of the sequence to be generated.
@@ -2025,7 +2023,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
-            Labels for computing the masked language modeling loss. Indices should either be in ``[0, ...,
+            Labels for computing the masked language modelings loss. Indices should either be in ``[0, ...,
             config.vocab_size]`` or -100 (see ``input_ids`` docstring). Tokens with indices set to ``-100`` are ignored
             (masked), the loss is only computed for the tokens with labels in ``[0, ..., config.vocab_size]``.
 

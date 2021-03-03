@@ -1,20 +1,19 @@
 # Hyper-parameters for the referential games 
-D_emb: 1024
-D_hid: 512
-D_img: 2048
+embedding_dim: 1024
+hidden_dim: 512
+image_dim: 2048
 ECemb: 5000
 seed: 42
 # Setting the n_gpu we use
 n_gpu: 1
 # Setting the model to use: 
-model: bart
+model: mbart
 results_save_path: Output
 TransferH: false
 alpha: 1.0
-bart: true
 batch_size: 16
 beam_width: 12
-cpu: False
+cpu: True
 dataset: coco
 coco_path: Data/coco_new
 decode_how: beam
@@ -32,7 +31,7 @@ no_share_bhd: false
 no_terminal: false
 no_write: false
 norm_pow: 0.0
-num_directions: 1
+bidirectional: false
 
 # Total number of pictures for listeners, the first one is for training. 
 num_distractors_train: 255
@@ -46,7 +45,7 @@ sample_how: gumbel
 save_every: 4000
 seq_len: 15
 stop_after: 30
-temp: 1.0
+temperature: 1.0
 translate_every: 2000
 two_ffwd: false
 unit_norm: false
@@ -54,3 +53,9 @@ valid_batch_size: 128
 valid_every: 250
 vocab_size: 4035
 which_loss: joint
+
+# specify info about language and vocab constraint
+source_lang: en_XX
+source_lang_vocab_constrain_file: ./Data/cc/en_europarl_count_dict.json
+target_lang: ja_XX
+target_lang_vocab_constrain_file: ./Data/cc/ja_smaller_count_dict.json

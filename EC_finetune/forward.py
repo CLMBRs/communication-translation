@@ -1,4 +1,4 @@
-from util import idx_to_emb, logit_to_acc
+from EC_finetune.util import idx_to_emb, logit_to_acc
 
 import torch
 from torch.autograd import Variable
@@ -10,14 +10,18 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
     # TODO: Why are en_batch and l2_batch set to be the same thing? I suppose we
     # don't really have one of each since the batch is just the images?
     targets = batch['target']
-    en_batch = (
-        batch['speaker_image'], batch['listener_images'],
-        batch['speaker_caps_in'], batch['speaker_cap_lens']
-    )
-    l2_batch = en_batch
-    output_en, output_l2, comm_actions, end_loss_, len_info = model(
-        en_batch, args.sample_how
-    )
+    # en_batch = (
+    #     batch['speaker_image'], batch['listener_images'],
+    #     batch['speaker_caps_in'], batch['speaker_cap_lens']
+    # )
+    # l2_batch = en_batch
+
+    agent_output = model(batch, args.sample_how)
+    speaker_message_logits = agent_output["speaker_message_logits"]
+    listener_output = agent_output["listener_output"]
+    speaker_message = agent_output['speaker_message']
+    end_info = agent_output["end_info"]
+    speaker_message_length_info = agent_output["speaker_message_length_info"]
 
     # Include the ground-truth img
     num_dist += 1
@@ -31,23 +35,25 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
     if lenlen:
         en_spk_loss = loss_fn['xent'](
             torch.index_select(
-                output_en.reshape(output_en.size(0) * output_en.size(1), -1), 0,
-                end_loss_[0]
-            ), end_loss_[1]
+                speaker_message_logits.reshape(speaker_message_logits.size(0) * speaker_message_logits.size(1), -1), 0,
+                end_info["end_idx_"]
+            ), end_info["end_loss_"]
         )
     else:
         en_spk_loss = torch.tensor(0).float().cuda()
-    loss_dict_["average_len"].update(len_info[1].data)
+    loss_dict_["average_len"].update(speaker_message_length_info[1].data)
     if args.loss_type == "xent":
-        l2_diff_dist = torch.mean(torch.pow(output_l2[0] - output_l2[1], 2),
+        l2_diff_dist = torch.mean(torch.pow(listener_output["listener_hiddens"] -
+                                            listener_output["listener_images_hidden"], 2),
                                   2).view(-1, num_dist)
         l2_logits = 1 / (l2_diff_dist + 1e-10)
         l2_lsn_loss = loss_fn['xent'](l2_logits, batch['target'])
         l2_lsn_acc = logit_to_acc(l2_logits, batch['target']) * 100
         final_loss += l2_lsn_loss
     else:
+        # this part of if-else is not functional
         en_diff_dist = torch.mean(
-            torch.pow(output_en[1][0] - output_en[1][1], 2), 2
+            torch.pow(speaker_message_logits[1][0] - speaker_message_logits[1][1], 2), 2
         ).view(-1, args.num_dist)
         en_logits = 1 / (en_diff_dist + 1e-10)
         en_lsn_acc = logit_to_acc(en_logits, targets) * 100
@@ -66,7 +72,7 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
         )
 
         l2_diff_dist = torch.mean(
-            torch.pow(output_l2[1][0] - output_l2[1][1], 2), 2
+            torch.pow(listener_output[1][0] - listener_output[1][1], 2), 2
         ).view(-1, args.num_dist)
         l2_logits = 1 / (l2_diff_dist + 1e-10)
         l2_lsn_acc = logit_to_acc(l2_logits, l2_batch[7]) * 100
@@ -88,4 +94,4 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
         final_loss += l2_lsn_loss
     loss_dict_["accuracy"].update(l2_lsn_acc)
     loss_dict_["loss"].update(l2_lsn_loss.data)
-    return final_loss, comm_actions
+    return final_loss, speaker_message

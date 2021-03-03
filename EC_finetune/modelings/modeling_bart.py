@@ -16,11 +16,9 @@
 """PyTorch BART model, ported from the fairseq repo."""
 import math
 import random
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 
@@ -37,8 +35,6 @@ from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     Seq2SeqLMOutput,
     Seq2SeqModelOutput,
-    Seq2SeqQuestionAnsweringModelOutput,
-    Seq2SeqSequenceClassifierOutput,
 )
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
@@ -46,16 +42,10 @@ from transformers.models.bart.configuration_bart import BartConfig
 
 from transformers.generation_logits_process import (
     LogitsProcessorList,
-    MinLengthLogitsProcessor,
-    NoBadWordsLogitsProcessor,
-    NoRepeatNGramLogitsProcessor,
-    PrefixConstrainedLogitsProcessor,
-    RepetitionPenaltyLogitsProcessor,
-    TemperatureLogitsWarper,
-    TopKLogitsWarper,
-    TopPLogitsWarper,
 )
 from transformers.file_utils import ModelOutput
+
+from EC_finetune.util import *
 
 logger = logging.get_logger(__name__)
 
@@ -1168,7 +1158,7 @@ class BartModel(PretrainedBartModel):
 
 
 @add_start_docstrings(
-    "The BART Model with a language modeling head. Can be used for summarization.",
+    "The BART Model with a language modelings head. Can be used for summarization.",
     BART_START_DOCSTRING
 )
 class BartForConditionalGeneration(PretrainedBartModel):
@@ -1231,7 +1221,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
-            Labels for computing the masked language modeling loss. Indices should either be in ``[0, ...,
+            Labels for computing the masked language modelings loss. Indices should either be in ``[0, ...,
             config.vocab_size]`` or -100 (see ``input_ids`` docstring). Tokens with indices set to ``-100`` are ignored
             (masked), the loss is only computed for the tokens with labels in ``[0, ..., config.vocab_size]``.
 
@@ -1387,7 +1377,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         **model_kwargs
     ) -> torch.LongTensor:
         r"""
-        Generates sequences for models with a language modeling head. The method currently supports greedy decoding,
+        Generates sequences for models with a language modelings head. The method currently supports greedy decoding,
         multinomial sampling, beam-search decoding, and beam-search multinomial sampling.
 
         Apart from :obj:`input_ids` and :obj:`attention_mask`, all the arguments below will default to the value of the
@@ -1624,6 +1614,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
         bos_token_id: int = None,
         **model_kwargs
     ) -> torch.LongTensor:
+        if "lang_ids" in model_kwargs:
+            return model_kwargs["lang_ids"]
 
         if "decoder_input_ids" in model_kwargs:
             return model_kwargs["decoder_input_ids"]
@@ -1642,7 +1634,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
     def gumbel_greedy_search(
         self,
-        input_ids: torch.LongTensor,
+        generated_token_ids: torch.LongTensor,
         logits_processor: Optional[LogitsProcessorList] = None,
         max_length: Optional[int] = None,
         pad_token_id: Optional[int] = None,
@@ -1650,7 +1642,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         **model_kwargs
     ):
         r"""
-        Generates sequences for models with a language modeling head using greedy decoding.
+        Generates sequences for models with a language modelings head using greedy decoding.
 
         Parameters:
 
@@ -1659,7 +1651,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 :obj:`torch.LongTensor` of shape :obj:`(1,)`.
             logits_processor (:obj:`LogitsProcessorList`, `optional`):
                 An instance of :class:`~transformers.LogitsProcessorList`. List of instances of class derived from
-                :class:`~transformers.LogitsProcessor` used to modify the prediction scores of the language modeling
+                :class:`~transformers.LogitsProcessor` used to modify the prediction scores of the language modelings
                 head applied at each generation step.
             max_length (:obj:`int`, `optional`, defaults to 20):
                 The maximum length of the sequence to be generated.
@@ -1703,7 +1695,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             >>> print("Generated:", tokenizer.batch_decode(outputs, skip_special_tokens=True))
         """
-
+        ret = {}
         # init values
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList(
         )
@@ -1711,60 +1703,71 @@ class BartForConditionalGeneration(PretrainedBartModel):
         pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.config.eos_token_id
         pad_token_embed = self.embed_tokens(
-            torch.tensor(pad_token_id, device=input_ids.device)
+            torch.tensor(pad_token_id, device=generated_token_ids.device)
         )
         pad_token_logits = torch.tensor(
             torch.arange(0, self.embed_tokens_size) == pad_token_id,
             dtype=torch.float,
-            device=input_ids.device
+            device=generated_token_ids.device
         )
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
-            input_ids, max_length
+            generated_token_ids, max_length
         )
-        input_logits = torch.tensor(
+
+        generated_logits = torch.tensor(
             torch.arange(0, self.embed_tokens_size,
-                         device=input_ids.device).unsqueeze(0) == input_ids,
+                         device=generated_token_ids.device).unsqueeze(0) == generated_token_ids,
             dtype=torch.float,
-            device=input_ids.device
+            device=generated_token_ids.device
         )
-        input_logits = input_logits.unsqueeze(-2)
+        generated_logits = generated_logits.unsqueeze(-2)
+        # generated_embeddings = generated_logits @ self.embed_tokens.weight
 
         while cur_len < max_length:
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(
-                input_ids, **model_kwargs
+                generated_token_ids, **model_kwargs
             )
 
             # forward pass to get next token
             outputs = self(**model_inputs, return_dict=True)
             next_token_logits = outputs.logits[:, -1, :]
+            if "lang_masks" in model_kwargs:
+                # here, the place we don't want have value of -inf
+                next_token_logits += model_kwargs["lang_masks"]
 
             # pre-process distribution
-            scores = logits_processor(input_ids, next_token_logits)
+            scores = logits_processor(generated_token_ids, next_token_logits)
 
             # argmax
             next_tokens = torch.argmax(scores, dim=-1)
-            next_logits = F.gumbel_softmax(scores, tau=self.temp,
-                                           hard=self.hard)
+            next_logits = F.gumbel_softmax(
+                scores, tau=self.temp, hard=self.hard
+            )
+            # next_token_embedding = next_logits @ self.embed_tokens.weight
             next_tokens = next_tokens.squeeze()
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
                 assert pad_token_id is not None, "If eos_token_id is defined, make sure that pad_token_id is defined."
-                next_tokens = next_tokens * unfinished_sequences + (
-                    pad_token_id
-                ) * (1 - unfinished_sequences)
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
                 next_logits = next_logits.T * unfinished_sequences + \
                 (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
+                # next_token_embedding = next_token_embedding.T * unfinished_sequences + \
+                #               (pad_token_embed.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                # next_token_embedding = next_token_embedding.T
 
             # add token and increase length by one
-            input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-            input_logits = torch.cat(
-                [input_logits, next_logits[:, None]], dim=-2
+            generated_token_ids = torch.cat([generated_token_ids, next_tokens[:, None]], dim=-1)
+            generated_logits = torch.cat(
+                [generated_logits, next_logits[:, None]], dim=-2
             )
+            # generated_embeddings = torch.cat(
+            #     [generated_embeddings, next_token_embedding[:, None]], dim=-2
+            # )
 
             # update sequence length
             if eos_token_id is not None:
@@ -1786,9 +1789,13 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # increase cur_len
             cur_len = cur_len + 1
-        cap_len = (~(input_ids == pad_token_id)).sum(dim=1)
+        generated_sentence_len = (~(generated_token_ids == pad_token_id)).sum(dim=1)
 
-        return (input_ids, input_logits, cap_len)
+        ret = {"generated_token_ids": generated_token_ids,
+               "generated_logits": generated_logits,
+               "generated_sentence_len": generated_sentence_len}
+               # "generated_embeddings": generated_embeddings}
+        return ret
 
 
 class SinusoidalPositionalEmbedding(nn.Embedding):

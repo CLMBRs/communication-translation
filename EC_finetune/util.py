@@ -1,11 +1,14 @@
 import codecs
 import os
 import sys
+import json
 import numpy as np
 from collections import OrderedDict
 
 import torch
+import torch.nn.functional as F
 from torch.autograd import Variable
+from transformers import PreTrainedTokenizer
 
 
 class AverageMeter(object):
@@ -377,3 +380,46 @@ def remove_duplicate(data):
             index_.append(i)
     data = torch.index_select(data, 0, torch.tensor(index_, dtype=torch.int64))
     return data[:-10000], data[-10000:]
+
+
+def sample_gumbel(shape, tt=torch, eps=1e-20):
+    U = Variable(tt.FloatTensor(shape).uniform_(0, 1))
+    return -torch.log(-torch.log(U + eps) + eps)
+
+
+def gumbel_softmax_sample(logits, temp, tt=torch, idx_=10):
+    y = (logits + sample_gumbel(logits.size(), tt)) / temp
+    if idx_ == 0:
+        y[:, 3] = -float('inf')
+    return F.softmax(y, dim=-1)
+
+
+def gumbel_softmax(logits, temp, hard, tt=torch, idx_=10):
+    # (batch_size, num_cat)
+    y = gumbel_softmax_sample(logits, temp, tt, idx_)
+    y_max, y_max_idx = torch.max(y, 1, keepdim=True)
+    if hard:
+        y_hard = tt.FloatTensor(y.size()).zero_().scatter_(1, y_max_idx.data, 1)
+        y = Variable(y_hard - y.data, requires_grad=False) + y
+
+    return y, y_max_idx
+
+
+def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
+    token_freq = list(json.load(open(file, "r")).items())
+    sorted_tokens = sorted(token_freq, key=lambda x: x[1], reverse=True)
+    # we kept 99% most-occurring words
+    # Think this is too loose, but don't understand what exactly did mBART do
+    good_token_ids = {
+        int(k): v
+        for k, v in sorted_tokens[:-int(0.01 * len(sorted_tokens))]
+    }
+    bad_token_ids = []
+    for _, v in tokenizer.fairseq_tokens_to_ids.items():
+        if v in good_token_ids:
+            continue
+        bad_token_ids.append(v)
+
+    mask = torch.zeros(len(tokenizer))
+    mask[bad_token_ids] = -float("inf")
+    return mask
