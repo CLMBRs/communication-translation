@@ -1,6 +1,6 @@
 # Mask filling only works for bart-large
 from transformers import BartTokenizer
-from EC_finetune.src.modelings import BartForConditionalGeneration
+from EC_finetune.modelings import BartForConditionalGeneration
 tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
 TXT = "My friends are <mask> but they eat too many carbs."
 model = BartForConditionalGeneration.from_pretrained('facebook/bart-large')

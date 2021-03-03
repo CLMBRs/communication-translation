@@ -1,7 +1,7 @@
 # Hyper-parameters for the referential games 
-D_emb: 1024
-D_hid: 512
-D_img: 2048
+embedding_dim: 1024
+hidden_dim: 512
+image_dim: 2048
 ECemb: 5000
 seed: 42
 # Setting the n_gpu we use
@@ -11,7 +11,6 @@ model: mbart
 results_save_path: Output
 TransferH: false
 alpha: 1.0
-bart: true
 batch_size: 16
 beam_width: 12
 cpu: True
@@ -32,7 +31,7 @@ no_share_bhd: false
 no_terminal: false
 no_write: false
 norm_pow: 0.0
-num_directions: 1
+bidirectional: false
 
 # Total number of pictures for listeners, the first one is for training. 
 num_distractors_train: 255
@@ -46,7 +45,7 @@ sample_how: gumbel
 save_every: 4000
 seq_len: 15
 stop_after: 30
-temp: 1.0
+temperature: 1.0
 translate_every: 2000
 two_ffwd: false
 unit_norm: false

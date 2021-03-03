@@ -1,32 +1,23 @@
 import argparse
 import logging
+import os
 import random
 import sys
 import time
-import yaml
+from collections import defaultdict
+from statistics import mean
+
 import numpy as np
-from tqdm import tqdm
-
-# TODO: I'm an advocate of only importing what you need
-from EC_finetune.src.agents import ECAgent
-from EC_finetune.src.dataloader import ImageIdentificationDataset, VisuaLingConstraintDataset
-from EC_finetune.src.forward import forward_joint
-from EC_finetune.src.utils.util import (
-    get_log_loss_dict_, get_avg_from_loss_dict_, print_loss_, remove_duplicate
-)
-from transformers import BartTokenizer, MBartTokenizer
-
 import torch
 import torch.nn as nn
+import yaml
 from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import MBartTokenizer
 
-# General comments here (Xuhui):
-# -Don't like the way how they define epoch, we should probably follow HF's
-# style.
-# -General model part is good, it is flexible and we could replace any model we
-# want
-# -We want to rewrite the data-loader part in the data_loader.py
-# -We do not have a predict function yet
+from EC_finetune.agents import CommunicationAgent
+from EC_finetune.dataloader import ImageIdentificationDataset, VisuaLingConstraintDataset
+from EC_finetune.util import print_loss_, remove_duplicate
 
 
 def set_seed(args):
@@ -37,39 +28,46 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def evaluate(args, model, dataloader, loss_function, epoch):
-    valid_loss_dict_ = get_log_loss_dict_()
+def evaluate(args, model, dataloader, epoch):
+    stats = defaultdict(list)
     output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
     for batch in epoch_iterator:
-        # Xuhui: Added this to inform the training started.
+        # Start evaluation mode
         model.eval()
 
-        # Xuhui: Added this to move data to the GPU
+        # Move data to the GPU
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
+        batch['target'] = batch['target'].to(args.device)
 
-        _, output_ids_batch = forward_joint(
-            batch, model, valid_loss_dict_, args, loss_function,
-            args.num_distractors_train
-        )
+        eval_return_dict = model(batch)
 
         if output_ids == True:
-            output_ids = output_ids_batch
+            output_ids = eval_return_dict['message']
             output_ids = False
-        output_ids = torch.cat([output_ids, output_ids_batch], dim=0)
+        else:
+            output_ids = torch.cat(
+                [output_ids, eval_return_dict['message']], dim=0
+            )
 
-    avg_loss_dict_ = get_avg_from_loss_dict_(valid_loss_dict_)
-    s_new = print_loss_(epoch, args.alpha, avg_loss_dict_, 'valid')
+        eval_return_dict['loss'] = eval_return_dict['loss'].item()
+        for key, value in eval_return_dict.items():
+            if key in ['loss', 'accuracy', 'mean_length']:
+                stats[key].append(value)
 
-    # AMD: I don't know what output_ids or s_new are, but it looks like you need
-    # to return them in the evaluation loop
-    return avg_loss_dict_, output_ids, s_new
+    average_stats = {}
+    for key, value in stats.items():
+        average_stats[key] = mean(value)
+
+    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
+
+    return average_stats, output_ids, s_new
 
 
 def main():
     """
-    TODO: add a real docstring
+    Pretrain multilingual model on the referential game and save it.
     """
 
     # Configure the logger (boilerplate)
@@ -91,11 +89,9 @@ def main():
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file))
 
-    # TODO: The seed should be a setable parameter
     # set random seed
     set_seed(args)
 
-    # Xuhui: Do we really need this?
     # Start the clock for the beginning of the main function
     start_time = time.time()
     logging.info('Entering main run script')
@@ -127,64 +123,9 @@ def main():
     logger.info('Dataset Loaded')
 
     # Write the model description
-    # TODO: what on earth are these string arguments? This needs to be a lot
-    # more clear
-    fixed, learned = [], ['lsn']
-    if args.fix_spk:  #False
-        fixed.append('spk')
-    else:
-        learned.append('spk')
-
-    if args.fix_bhd:  #False
-        fixed.append('bhd')
-    else:
-        learned.append('bhd')
-    fixed, learned = '_'.join(sorted(fixed)), '_'.join(sorted(learned))
-
-    assert args.which_loss in ['joint', 'lsn']
-    model_str = f'fixed_{fixed}.learned_{learned}.{args.which_loss}_loss/'
-    if args.bart:
-        model_str = 'bart.' + model_str
-    if args.pretrain_spk:
-        model_str = 'pretrain_spk.' + model_str
-    if args.no_share_bhd:
-        model_str = 'no_share_bhd.' + model_str
-
-    # Write the hyperparameter description
-    # TODO: Why does this need to be put in the hyperparameter discription? If
-    # it's for defining a random seed, we really need to replace it with a
-    # single parameterized seed
-    mill = int(round(time.time() * 1000)) % 1000
-    path = f'{args.results_save_path}sentence_level/{task_path}/joint_model/'
-    hyperparam_str = (
-        f'{mill}_dropout_{args.dropout}.alpha_{args.alpha}.lr_{args.lr}'
-        f'.temp_{args.temp}.D_hid_{args.D_hid}.D_emb_{args.D_emb}'
-        f'.num_dist_{args.num_distractors_train}.vocab_size_{args.vocab_size}'
-        f'_{args.vocab_size}.hard_{args.hard}/'
-    )
-
-    # Make the path to the model
-    path_dir = path + model_str + hyperparam_str
-    # Xuhui: Comment out the following code since it's causing error, and we 
-    # Should think of a new way about how to store training info/models etc.
-    #if not args.no_write:
-    #    recur_mkdir(path_dir)
-
-    # Log the general model information
 
     logger.info('Configuration:')
     print(args)
-    logger.info('Model Name:')
-    print(model_str)
-    logger.info('Hyperparameters:')
-    print(hyperparam_str)
-    dir_dic = {
-        'feat_path': feat_path,
-        'data_path': data_path,
-        'task_path': task_path,
-        'path': path,
-        'path_dir': path_dir
-    }
 
     # Organize the data into a single tensor, remove duplicates, and trim to
     # the number of examples wanted
@@ -194,18 +135,14 @@ def main():
     train_data = train_data[:50000]
 
     # Initialize agent
-    model = ECAgent(args)
+    model = CommunicationAgent(args)
 
     # Move the model to gpu if the configuration calls for it
-    # TODO: this should also probably check cuda.is_available()
-    if not args.cpu and args.n_gpu > 0 and torch.cuda.is_available():
-        torch.cuda.set_device(args.gpuid)
-        model = model.cuda()
+    model.to(args.device)
 
     # Loop through the named parameters to find the number of input and output
     # parameters
     # Xuhui: This module is showing the model parameter, maybe we do not need
-
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
@@ -275,9 +212,10 @@ def main():
 
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
 
-    train_loss_dict_ = get_log_loss_dict_()
-    # TODO: this path should be parameterized
-    output_id_path = '/gscratch/ark/xuhuizh/UMT_datasentence_level/'
+    global_step = 0
+
+    checkpoint_stats = defaultdict(list)
+
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(training_dataloader, desc="Iteration")
         for batch in epoch_iterator:
@@ -286,42 +224,80 @@ def main():
             model.train()
 
             # Xuhui: Added this to move data to the GPU
-            batch['speaker_images'] = batch['speaker_images'].to(device)
+            batch['speaker_image'] = batch['speaker_image'].to(device)
             batch['listener_images'] = batch['listener_images'].to(device)
             batch['target'] = batch['target'].to(device)
 
-            loss, _ = forward_joint(
-                batch, model, train_loss_dict_, args, loss_fn,
-                args.num_distractors_train
-            )
+            train_return_dict = model(batch)
+            loss = train_return_dict['loss']
             optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(in_params, args.grad_clip)
             optimizer.step()
+            global_step += 1
 
-        if epoch % args.print_every == 0:
-            avg_loss_dict_ = get_avg_from_loss_dict_(train_loss_dict_)
-            logger.info(print_loss_(epoch, args.alpha, avg_loss_dict_, 'train'))
-            train_loss_dict_ = get_log_loss_dict_()
+            train_return_dict['loss'] = loss.item()
+            for key, value in train_return_dict.items():
+                if key in ['loss', 'accuracy', 'mean_length']:
+                    checkpoint_stats[key].append(value)
 
-        if epoch % args.valid_every == 0:
-            with torch.no_grad():
-                results, output_ids, s_new = evaluate(
-                    args, model, valid_dataloader, loss_fn, epoch
+            if global_step % args.print_every == 0:
+                checkpoint_average_stats = {}
+                for key, value in checkpoint_stats.items():
+                    checkpoint_average_stats[key] = mean(value)
+                logger.info(
+                    print_loss_(
+                        epoch, args.alpha, checkpoint_average_stats, 'train'
+                    )
                 )
-                if float(results['accuracy']) > 85.0:
-                    path_model = path_dir + f'model_{float(s_new.split()[-6][:-2])}_{epoch}_{args.vocab_size}.pt'
-                    torch.save(
-                        output_ids, output_id_path + 'bart_output_ids.pt'
+                checkpoint_stats = defaultdict(list)
+
+            if global_step % args.valid_every == 0:
+                with torch.no_grad():
+                    results, output_ids, s_new = evaluate(
+                        args, model, valid_dataloader, epoch
                     )
-                    torch.save(model.state_dict(), path_model)
-                    print(
-                        'Epoch :', epoch, 'Prediction Accuracy =',
-                        float(s_new.split()[-6][:-2]), 'Saved to Path :',
-                        path_dir
-                    )
-                    if args.TransferH:
-                        args.hard = True
+
+                    # Output evaluation statistics
+                    logger.info(s_new)
+
+                    # Add one hyperparameter target_acc to the yml file.
+                    if float(results['accuracy']) > args.target_acc:
+                        # Create output directory if needed
+                        if not os.path.exists(args.output_dir):
+                            os.makedirs(args.output_dir)
+
+                        logger.info("Saving model to %s", args.output_dir)
+
+                        # Save the general part of the model
+                        torch.save(
+                            model.state_dict(), args.output_dir + 'model.pt'
+                        )
+                        # Good practice: save your training arguments together
+                        # with the trained model
+                        torch.save(
+                            args,
+                            os.path.join(args.output_dir, "training_args.bin")
+                        )
+
+                        # For pretrained models, provide extra saving strategy
+                        if args.save_pretrain_seperately:
+                            # Save a trained model, configuration and tokenizer
+                            # using `save_pretrained()`. They can then be
+                            # reloaded using `from_pretrained()`
+                            model_to_save = (
+                                model.module
+                                if hasattr(model, "module") else model.model
+                            )  # Take care of distributed/parallel training
+                            model_to_save.save_pretrained(args.output_dir)
+
+                        print(
+                            'Epoch :', epoch, 'Prediction Accuracy =',
+                            float(results['accuracy']), 'Saved to Path :',
+                            args.output_dir
+                        )
+                        if args.TransferH:
+                            args.hard = True
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)

@@ -16,11 +16,9 @@
 """PyTorch BART model, ported from the fairseq repo."""
 import math
 import random
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 
@@ -37,8 +35,6 @@ from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     Seq2SeqLMOutput,
     Seq2SeqModelOutput,
-    Seq2SeqQuestionAnsweringModelOutput,
-    Seq2SeqSequenceClassifierOutput,
 )
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
@@ -46,18 +42,10 @@ from transformers.models.bart.configuration_bart import BartConfig
 
 from transformers.generation_logits_process import (
     LogitsProcessorList,
-    MinLengthLogitsProcessor,
-    NoBadWordsLogitsProcessor,
-    NoRepeatNGramLogitsProcessor,
-    PrefixConstrainedLogitsProcessor,
-    RepetitionPenaltyLogitsProcessor,
-    TemperatureLogitsWarper,
-    TopKLogitsWarper,
-    TopPLogitsWarper,
 )
 from transformers.file_utils import ModelOutput
 
-from EC_finetune.src.utils.util import *
+from EC_finetune.util import *
 
 logger = logging.get_logger(__name__)
 
@@ -1727,6 +1715,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             generated_token_ids, max_length
         )
+
         generated_logits = torch.tensor(
             torch.arange(0, self.embed_tokens_size,
                          device=generated_token_ids.device).unsqueeze(0) == generated_token_ids,
@@ -1734,6 +1723,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             device=generated_token_ids.device
         )
         generated_logits = generated_logits.unsqueeze(-2)
+        # generated_embeddings = generated_logits @ self.embed_tokens.weight
 
         while cur_len < max_length:
             # prepare model inputs
@@ -1752,32 +1742,32 @@ class BartForConditionalGeneration(PretrainedBartModel):
             scores = logits_processor(generated_token_ids, next_token_logits)
 
             # argmax
-            next_token_probes, next_tokens = gumbel_softmax(
-                scores, 1.0, False,
-                torch.cuda if torch.cuda.is_available() else torch, cur_len
+            next_tokens = torch.argmax(scores, dim=-1)
+            next_logits = F.gumbel_softmax(
+                scores, tau=self.temp, hard=self.hard
             )
-            # argmax
-            # next_tokens = torch.argmax(scores, dim=-1)
+            # next_token_embedding = next_logits @ self.embed_tokens.weight
             next_tokens = next_tokens.squeeze()
-            next_logits = torch.matmul(
-                next_token_probes, self.embed_tokens.weight
-            )
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
                 assert pad_token_id is not None, "If eos_token_id is defined, make sure that pad_token_id is defined."
-                next_tokens = next_tokens * unfinished_sequences + (
-                    pad_token_id
-                ) * (1 - unfinished_sequences)
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
                 next_logits = next_logits.T * unfinished_sequences + \
                 (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
+                # next_token_embedding = next_token_embedding.T * unfinished_sequences + \
+                #               (pad_token_embed.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                # next_token_embedding = next_token_embedding.T
 
             # add token and increase length by one
             generated_token_ids = torch.cat([generated_token_ids, next_tokens[:, None]], dim=-1)
             generated_logits = torch.cat(
                 [generated_logits, next_logits[:, None]], dim=-2
             )
+            # generated_embeddings = torch.cat(
+            #     [generated_embeddings, next_token_embedding[:, None]], dim=-2
+            # )
 
             # update sequence length
             if eos_token_id is not None:
@@ -1804,6 +1794,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         ret = {"generated_token_ids": generated_token_ids,
                "generated_logits": generated_logits,
                "generated_sentence_len": generated_sentence_len}
+               # "generated_embeddings": generated_embeddings}
         return ret
 
 

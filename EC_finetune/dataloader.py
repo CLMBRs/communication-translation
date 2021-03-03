@@ -1,7 +1,7 @@
 import random
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
-from EC_finetune.src.utils.util import *
+from EC_finetune.util import *
 
 
 class ImageIdentificationDataset(Dataset):
@@ -9,15 +9,12 @@ class ImageIdentificationDataset(Dataset):
     PyTorch Dataset subclass for image-identification games in which a "speaker"
     agent takes in an image and communicates it, and a "listener" identifies the
     correct image from among a selection of distractors
-
     Args:
         images: A NumPy array of image data
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
-    def __init__(self,
-                 images: ndarray,
-                 num_distractors: int,):
+    def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
         super(ImageIdentificationDataset, self).__init__()
         self.images = images
         self.img_index = list(range(len(images)))
@@ -46,7 +43,7 @@ class ImageIdentificationDataset(Dataset):
         )
 
         return {
-            'speaker_images': speaker_image,
+            'speaker_image': speaker_image,
             'listener_images': listener_images,
             'speaker_caps_in': 0,
             'speaker_cap_lens': 0,

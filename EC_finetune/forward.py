@@ -1,4 +1,4 @@
-from EC_finetune.src.utils.util import idx_to_emb, logit_to_acc
+from EC_finetune.util import idx_to_emb, logit_to_acc
 
 import torch
 from torch.autograd import Variable
@@ -36,8 +36,8 @@ def forward_joint(batch, model, loss_dict_, args, loss_fn, num_dist):
         en_spk_loss = loss_fn['xent'](
             torch.index_select(
                 speaker_message_logits.reshape(speaker_message_logits.size(0) * speaker_message_logits.size(1), -1), 0,
-                end_info[0]
-            ), end_info[1]
+                end_info["end_idx_"]
+            ), end_info["end_loss_"]
         )
     else:
         en_spk_loss = torch.tensor(0).float().cuda()

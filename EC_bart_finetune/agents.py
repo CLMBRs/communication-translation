@@ -1,7 +1,7 @@
-from EC_mbart_finetune.src.gumbel_utils import gumbel_softmax
-from EC_mbart_finetune.src.modeling_bart import BartForConditionalGeneration
+from gumbel_utils import gumbel_softmax
+from modeling_bart import BartForConditionalGeneration
 from transformers import BartTokenizer
-from EC_mbart_finetune.src.util import *
+from util import *
 
 import torch
 import torch.nn as nn
