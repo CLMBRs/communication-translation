@@ -38,7 +38,9 @@ class BartEncoder(Module):
                 Doesn't actually do anything here, but necessary to make the
                 forward signature of the Listener encoders the same
         """
-        hidden = self.encoder(input_ids=message_ids, input_embeds=message_embedding)
+        hidden = self.encoder(
+            input_ids=message_ids, input_embeds=message_embedding
+        )
         pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
         output = self.hidden_to_output(pooled_hidden)
         return output
@@ -65,7 +67,9 @@ class MBartEncoder(Module):
                 Doesn't actually do anything here, but necessary to make the
                 forward signature of the Listener encoders the same
         """
-        hidden = self.encoder(input_ids=message_ids, input_embeds=message_embedding)
+        hidden = self.encoder(
+            input_ids=message_ids, input_embeds=message_embedding
+        )
         pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
         output = self.hidden_to_output(pooled_hidden)
         return output
@@ -94,12 +98,16 @@ class MBartListener(torch.nn.Module):
         # spk_msg_lens : (batch_size)
         batch_size = speaker_message.size()[0]
         # TODO: modify the modeling module
-        speaker_message_embedding = torch.matmul(speaker_message_logits, self.emb.weight)
+        speaker_message_embedding = torch.matmul(
+            speaker_message_logits, self.emb.weight
+        )
         speaker_message_embedding = self.drop(speaker_message_embedding)
 
         speaker_message_embedding = self.drop(speaker_message_embedding)
 
-        output = self.lis(input_ids=speaker_message, inputs_embeds=speaker_message_embedding)
+        output = self.lis(
+            input_ids=speaker_message, inputs_embeds=speaker_message_embedding
+        )
         # Mean pooling for now to match the img output
         output = torch.mean(output.last_hidden_state, dim=1)
 

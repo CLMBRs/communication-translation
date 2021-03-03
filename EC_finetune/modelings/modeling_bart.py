@@ -1718,8 +1718,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         )
 
         generated_logits = torch.tensor(
-            torch.arange(0, self.embed_tokens_size,
-                         device=generated_token_ids.device).unsqueeze(0) == generated_token_ids,
+            torch.arange(
+                0, self.embed_tokens_size, device=generated_token_ids.device
+            ).unsqueeze(0) == generated_token_ids,
             dtype=torch.float,
             device=generated_token_ids.device
         )
@@ -1753,7 +1754,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
                 assert pad_token_id is not None, "If eos_token_id is defined, make sure that pad_token_id is defined."
-                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
+                    1 - unfinished_sequences
+                )
                 next_logits = next_logits.T * unfinished_sequences + \
                 (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
@@ -1762,7 +1765,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 # next_token_embedding = next_token_embedding.T
 
             # add token and increase length by one
-            generated_token_ids = torch.cat([generated_token_ids, next_tokens[:, None]], dim=-1)
+            generated_token_ids = torch.cat(
+                [generated_token_ids, next_tokens[:, None]], dim=-1
+            )
             generated_logits = torch.cat(
                 [generated_logits, next_logits[:, None]], dim=-2
             )
@@ -1790,12 +1795,16 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # increase cur_len
             cur_len = cur_len + 1
-        generated_sentence_len = (~(generated_token_ids == pad_token_id)).sum(dim=1)
+        generated_sentence_len = (~(generated_token_ids == pad_token_id)).sum(
+            dim=1
+        )
 
-        ret = {"generated_token_ids": generated_token_ids,
-               "generated_logits": generated_logits,
-               "generated_sentence_len": generated_sentence_len}
-               # "generated_embeddings": generated_embeddings}
+        ret = {
+            "generated_token_ids": generated_token_ids,
+            "generated_logits": generated_logits,
+            "generated_sentence_len": generated_sentence_len
+        }
+        # "generated_embeddings": generated_embeddings}
         return ret
 
 

@@ -64,11 +64,7 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
-    def __init__(self,
-                 images: ndarray,
-                 num_distractors: int,
-                 args,
-                 tokenizer):
+    def __init__(self, images: ndarray, num_distractors: int, args, tokenizer):
         super(ImageIdentificationDataset, self).__init__()
         self.images = images
         self.img_index = list(range(len(images)))

@@ -31,8 +31,7 @@ class RnnEncoder(Module):
         )
         self.h_0 = nn.parameter.Parameter(
             torch.zeros(
-                self.num_layers * self.num_directions, 1,
-                self.output_dim
+                self.num_layers * self.num_directions, 1, self.output_dim
             )
         )
         self.rnn = nn.GRU(

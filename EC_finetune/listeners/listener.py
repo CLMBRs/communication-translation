@@ -30,7 +30,10 @@ class Listener(Module):
         self.unit_norm = unit_norm
 
     def forward(
-        self, message_ids: Tensor = None, message_logits: Tensor = None, **kwargs
+        self,
+        message_ids: Tensor = None,
+        message_logits: Tensor = None,
+        **kwargs
     ) -> Tensor:
         """
         Return the final listener representation of the input message
@@ -50,4 +53,3 @@ class Listener(Module):
             output = output / norm.expand_as(output)
 
         return output
-

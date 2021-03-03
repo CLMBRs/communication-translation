@@ -227,4 +227,3 @@ class Beholder(Module):
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)
         return h_image
-

@@ -3,9 +3,17 @@ from torch.nn import Module
 
 
 class BartSpeaker(Module):
-    def __init__(self, model, lang,
-                 hidden_dim=None, embedding_dim=None,
-                 seq_len=None, temperature=None, hard=None, **kwargs):
+    def __init__(
+        self,
+        bart,
+        lang,
+        hidden_dim=None,
+        embedding_dim=None,
+        seq_len=None,
+        temperature=None,
+        hard=None,
+        **kwargs
+    ):
         super().__init__()
         self.lang = lang
         self.speaker = model
@@ -26,7 +34,10 @@ class BartSpeaker(Module):
         if "lang_id" in kwargs:
             kwargs["lang_id"] = kwargs["lang_id"].view(batch_size, -1)
         output = self.speaker.gumbel_generate(
-            input_images=speaker_images_hidden, num_beams=1, max_length=self.seq_len, **kwargs
+            input_images=speaker_images_hidden,
+            num_beams=1,
+            max_length=self.seq_len,
+            **kwargs
         )
         return {
             "message_ids": output["generated_token_ids"],
