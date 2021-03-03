@@ -69,9 +69,6 @@ class CommunicationAgent(Module):
 
         self.image_dim = args.image_dim
         self.hidden_dim = args.hidden_dim
-        self.unit_norm = args.unit_norm
-        self.beam_width = args.beam_width
-        self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
 
     def forward(self, batch):
