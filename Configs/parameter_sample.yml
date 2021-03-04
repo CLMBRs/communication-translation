@@ -1,20 +1,6 @@
-# Hyper-parameters for the referential games 
-embedding_dim: 1024
-hidden_dim: 512
-image_dim: 2048
-ECemb: 5000
-seed: 42
-# Setting the n_gpu we use
-n_gpu: 1
-# Setting the model to use:
-model: mbart
-results_save_path: Output
-TransferH: false
-alpha: 1.0
-
 # Model:
-model: bart
-bart: true
+model_name: bart
+#bart: true
 batch_size: 16
 beam_width: 12
 cpu: True
