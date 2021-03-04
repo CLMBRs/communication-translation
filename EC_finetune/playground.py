@@ -285,7 +285,7 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    if args.model == 'mbart':
+    if args.model_name == 'mbart':
         tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
         training_set = VisuaLingConstraintDataset(
             train_data, args.num_distractors_train, args, tokenizer
