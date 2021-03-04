@@ -5,7 +5,7 @@ from torch.nn import Module
 class BartSpeaker(Module):
     def __init__(
         self,
-        bart,
+        model,
         lang,
         hidden_dim=None,
         embedding_dim=None,

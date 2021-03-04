@@ -21,7 +21,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 import numpy as np
 
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 

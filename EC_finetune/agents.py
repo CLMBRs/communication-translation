@@ -51,13 +51,17 @@ class CommunicationAgent(Module):
             self.model = BartForConditionalGeneration.from_pretrained(
                 'facebook/bart-large'
             )
-            self.speaker = BartSpeaker(self.model, self.native, **vars(args))
+            self.speaker = BartSpeaker(self.model, self.native, hidden_dim=args.hidden_dim,
+                                       embedding_dim=args.embedding_dim,
+                                       seq_len=args.seq_len, temperature=args.temperature, hard=args.hard)
             listener_model = BartEncoder(self.model, args.hidden_dim)
         elif args.model == "mbart":
             self.model = MBartForConditionalGeneration.from_pretrained(
                 'facebook/mbart-large-cc25'
             )
-            self.speaker = MBartSpeaker(self.model, self.native, **vars(args))
+            self.speaker = MBartSpeaker(self.model, self.native, hidden_dim=args.hidden_dim,
+                                        embedding_dim=args.embedding_dim,
+                                        seq_len=args.seq_len, temperature=args.temperature, hard=args.hard)
             listener_model = MBartEncoder(self.model, args.hidden_dim)
         elif args.model == 'rnn':
             self.speaker = RnnSpeaker(self.native, args)
