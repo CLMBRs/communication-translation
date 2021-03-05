@@ -47,19 +47,19 @@ class CommunicationAgent(Module):
             # Initialize Speaker and Listener, either from pretrained Bart or as a
         # from-scratch RNN
         # TODO: Have RNN stack be shared between Speaker and Listener
-        if args.model == 'bart':
+        if args.model_name == 'bart':
             self.model = BartForConditionalGeneration.from_pretrained(
                 'facebook/bart-large'
             )
             self.speaker = BartSpeaker(self.model, self.native, **vars(args))
             listener_model = BartEncoder(self.model, args.hidden_dim)
-        elif args.model == "mbart":
+        elif args.model_name == "mbart":
             self.model = MBartForConditionalGeneration.from_pretrained(
                 'facebook/mbart-large-cc25'
             )
             self.speaker = MBartSpeaker(self.model, self.native, **vars(args))
             listener_model = MBartEncoder(self.model, args.hidden_dim)
-        elif args.model == 'rnn':
+        elif args.model_name == 'rnn':
             self.speaker = RnnSpeaker(self.native, args)
             listener_model = RnnEncoder(
                 args.vocab_size, args.embedding_dim, args.hidden_dim,
@@ -67,7 +67,7 @@ class CommunicationAgent(Module):
             )
             self.model = None
         else:
-            raise ValueError(f"Model type {args.model} is not valid")
+            raise ValueError(f"Model type {args.model_name} is not valid")
 
         self.listener = Listener(
             listener_model, dropout=args.dropout, unit_norm=args.unit_norm
