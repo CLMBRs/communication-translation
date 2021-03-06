@@ -1048,8 +1048,8 @@ class BartModel(PretrainedBartModel):
 
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
-
-        self.encoder = BartEncoder(config, self.shared)
+        # Customized gumbel encoder for experiments.
+        self.encoder = BartGumbelEncoder(config, self.shared)
         self.decoder = BartDecoder(config, self.shared)
 
         self.init_weights()
@@ -1172,10 +1172,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
         super().__init__(config)
         base_model = BartModel(config)
         self.model = base_model
-        self.gumbel_encoder = BartGumbelEncoder(config, self.model.shared)
-        self.embed_tokens = self.model.shared
+        # self.gumbel_encoder = self.model.encoder
+        # self.embed_tokens = self.model.shared
         # Obtain the number of tokens from the embed matrix
-        self.embed_tokens_size = self.embed_tokens.weight.size()[0]
+        self.embed_tokens_size = self.model.shared.weight.size()[0]
         self.register_buffer(
             "final_logits_bias",
             torch.zeros((1, self.model.shared.num_embeddings))
@@ -1703,7 +1703,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         max_length = max_length if max_length is not None else self.config.max_length
         pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.config.eos_token_id
-        pad_token_embed = self.embed_tokens(
+        pad_token_embed = self.model.shared(
             torch.tensor(pad_token_id, device=generated_token_ids.device)
         )
         pad_token_logits = torch.tensor(

@@ -98,6 +98,8 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
                 return global_step
 
             train_return_dict['loss'] = loss.item()
+            train_return_dict['mean_length'] = train_return_dict['mean_length'].item()
+
             for key, value in train_return_dict.items():
                 if key in ['loss', 'accuracy', 'mean_length']:
                     checkpoint_stats[key].append(value)
@@ -263,6 +265,7 @@ def main():
     logger.info(f'OUT   : {out_sum} params')
     logger.info(f'TOTAL : {in_sum + out_sum} params')
 
+    # Xuhui: Is this still necessary?
     loss_fn = {
         'xent': nn.CrossEntropyLoss(),
         'mse': nn.MSELoss(),
