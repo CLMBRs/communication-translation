@@ -165,7 +165,7 @@ class CommunicationAgent(Module):
 
         return_dict = {
             'loss': communication_loss,
-            'accuracy': accuracy,
+            'accuracy': 100*accuracy,
             'message': message_ids,
             'end_idx': end_idx_,
             'end_loss': end_loss_,
