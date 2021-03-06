@@ -303,7 +303,7 @@ def print_loss_(epoch, alpha, avg_loss_dict, mode="train"):
     prt_msg += "| prediction accuracy"
     prt_msg += " {:.2f}%".format(avg_loss_dict["accuracy"])
     prt_msg += "| average message length"
-    prt_msg += " {:.4f}".format(avg_loss_dict["average_len"])
+    prt_msg += " {:.4f}".format(avg_loss_dict["mean_length"])
     prt_msg += " |"
     return prt_msg
 

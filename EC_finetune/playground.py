@@ -44,6 +44,8 @@ def evaluate(args, model, dataloader, epoch=0):
 
         eval_return_dict = model(batch)
 
+        # Xuhui: I do not understand this chunk of code
+        '''
         if output_ids == True:
             output_ids = eval_return_dict['message']
             output_ids = False
@@ -51,8 +53,10 @@ def evaluate(args, model, dataloader, epoch=0):
             output_ids = torch.cat(
                 [output_ids, eval_return_dict['message']], dim=0
             )
+        '''
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
+        eval_return_dict['mean_length'] = eval_return_dict['mean_length'].item()
         for key, value in eval_return_dict.items():
             if key in ['loss', 'accuracy', 'mean_length']:
                 stats[key].append(value)
@@ -61,9 +65,6 @@ def evaluate(args, model, dataloader, epoch=0):
     for key, value in stats.items():
         average_stats[key] = mean(value)
 
-    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
-
-    return average_stats, output_ids, s_new
     s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
 
     return average_stats, output_ids, s_new
