@@ -70,6 +70,36 @@ def evaluate(args, model, dataloader, epoch=0):
     return average_stats, output_ids, s_new
 
 
+def save(args, model, logger):
+    # Create output directory if needed
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+
+    logger.info("Saving model to %s", args.output_dir)
+
+    # Save the general part of the model
+    torch.save(
+        model.state_dict(), args.output_dir + '/model.pt'
+    )
+    # Good practice: save your training arguments together
+    # with the trained model
+    torch.save(
+        args,
+        os.path.join(args.output_dir, "training_args.bin")
+    )
+
+    # For pretrained models, provide extra saving strategy
+    if args.save_pretrain_seperately:
+        # Save a trained model, configuration and tokenizer
+        # using `save_pretrained()`. They can then be
+        # reloaded using `from_pretrained()`
+        model_to_save = (
+            model.model.module
+            if hasattr(model, "module") else model.model
+        )  # Take care of distributed/parallel training
+        model_to_save.save_pretrained(args.output_dir)
+
+
 def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
     global_step = 0
@@ -80,10 +110,10 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
         for batch in epoch_iterator:
 
-            # Xuhui: Added this to inform the training started.
+            # Inform the training started.
             model.train()
 
-            # Xuhui: Added this to move data to the GPU
+            # Move data to the GPU
             batch['speaker_image'] = batch['speaker_image'].to(device)
             batch['listener_images'] = batch['listener_images'].to(device)
             batch['target'] = batch['target'].to(device)
@@ -96,6 +126,10 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
             optimizer.step()
             global_step += 1
             if global_step >= args.max_global_step:
+                # Save model even if it does not reach the target acc in the
+                # end
+                if best_acc ==0:
+                    save(args, model, logger)
                 return global_step
 
             train_return_dict['loss'] = loss.item()
@@ -129,34 +163,7 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
                     cur_acc = float(results['accuracy'])
                     if cur_acc > args.target_acc and cur_acc > best_acc:
                         best_acc = cur_acc
-                        # Create output directory if needed
-                        if not os.path.exists(args.output_dir):
-                            os.makedirs(args.output_dir)
-
-                        logger.info("Saving model to %s", args.output_dir)
-
-                        # Save the general part of the model
-                        torch.save(
-                            model.state_dict(), args.output_dir + '/model.pt'
-                        )
-                        # Good practice: save your training arguments together
-                        # with the trained model
-                        torch.save(
-                            args,
-                            os.path.join(args.output_dir, "training_args.bin")
-                        )
-
-                        # For pretrained models, provide extra saving strategy
-                        if args.save_pretrain_seperately:
-                            # Save a trained model, configuration and tokenizer
-                            # using `save_pretrained()`. They can then be
-                            # reloaded using `from_pretrained()`
-                            model_to_save = (
-                                model.module
-                                if hasattr(model, "module") else model.model
-                            )  # Take care of distributed/parallel training
-                            model_to_save.save_pretrained(args.output_dir)
-
+                        save(args, model, logger)
                         print(
                             'Epoch :', epoch, 'Prediction Accuracy =',
                             float(results['accuracy']), 'Saved to Path :',
@@ -164,7 +171,7 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
                         )
                         if args.TransferH:
                             args.hard = True
-        return global_step
+    return global_step
 
 
 def main():

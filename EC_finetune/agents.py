@@ -44,7 +44,7 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
-            # Initialize Speaker and Listener, either from pretrained Bart or as a
+        # Initialize Speaker and Listener, either from pretrained Bart or as a
         # from-scratch RNN
         # TODO: Have RNN stack be shared between Speaker and Listener
         if args.model_name == 'bart':
