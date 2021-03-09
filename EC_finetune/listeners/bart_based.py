@@ -50,7 +50,7 @@ class MBartEncoder(Module):
     def __init__(self, model: MBartForConditionalGeneration, output_dim: int):
         super().__init__()
         self.embedding = model.model.shared
-        self.encoder = model.gumbel_encoder
+        self.encoder = model.model.encoder
         self.hidden_to_output = nn.Linear(1024, output_dim)
 
     def forward(
