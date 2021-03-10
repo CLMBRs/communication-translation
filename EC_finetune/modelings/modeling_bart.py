@@ -1703,8 +1703,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
         max_length = max_length if max_length is not None else self.config.max_length
         pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.config.eos_token_id
-        print(self.model.shared.weight.device)
-        print(generated_token_ids.device)
         pad_token_embed = self.model.shared(
             torch.tensor(pad_token_id, device=generated_token_ids.device)
         )

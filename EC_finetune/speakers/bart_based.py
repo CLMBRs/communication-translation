@@ -33,6 +33,8 @@ class BartSpeaker(Module):
         # h_image = h_image.view(-1, self.seq_len, self.embedding_dim)
         if "lang_id" in kwargs:
             kwargs["lang_id"] = kwargs["lang_id"].view(batch_size, -1)
+            kwargs["lang_id"] = \
+                kwargs["lang_id"].to(speaker_images_hidden.device)
         output = self.speaker.gumbel_generate(
             input_images=speaker_images_hidden,
             num_beams=1,
