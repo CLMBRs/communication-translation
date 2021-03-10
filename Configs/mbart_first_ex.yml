@@ -30,7 +30,7 @@ hard: true # Gumbel softmax sampling; we always prefer to set this true
 seq_len: 15 # sequence length limit
 temp: 1.0 # temperature for gumbel softmax
 loss_type: xent
-lr: 1.0e-6
+lr: 5.0e-7
 no_share_bhd: false
 no_terminal: false
 no_write: false
@@ -56,7 +56,7 @@ temperature: 1.0
 translate_every: 2000
 two_ffwd: false
 unit_norm: false
-batch_size: 16
+batch_size: 64
 valid_batch_size: 128
 valid_every: 500
 print_every: 50

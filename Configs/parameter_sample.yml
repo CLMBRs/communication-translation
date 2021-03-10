@@ -64,9 +64,7 @@ TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Loading and saving data:
 dataset: coco
-#coco_path: Data/coco_new
-coco_path: /gscratch/ark/xuhuizh/UMT_data/coco_new # Keep this for the conv
-#of my local dev.
+coco_path: Data/coco_new
 save_pretrain_seperately: true
 output_dir: Output
 results_save_path: Output
