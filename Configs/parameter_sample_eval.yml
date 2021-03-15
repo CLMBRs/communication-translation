@@ -20,6 +20,7 @@ no_share_bhd: false
 # train eval basic setting
 do_train: false # control whether we train
 do_eval: true # whether to do eval after training
+eval_in_order: true # enable eval in the original dataset for interpretation
 seed: 42
 n_gpu: 1
 cpu: False

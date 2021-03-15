@@ -240,6 +240,8 @@ def main():
     train_data, valid_data = remove_duplicate(data)
     # TODO: This limit should be parameterized, not hard
     train_data = train_data[:50000]
+    if args.eval_in_order:
+        valid_data = valid_img
 
     # Initialize agent
     model = CommunicationAgent(args)
