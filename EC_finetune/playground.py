@@ -31,8 +31,8 @@ def set_seed(args):
 
 def evaluate(args, model, dataloader, epoch=0):
     stats = defaultdict(list)
-    output_ids = True
     epoch_iterator = tqdm(dataloader, desc="Iteration")
+    output_ids = []
     for batch in epoch_iterator:
         # Start evaluation mode
         model.eval()
@@ -44,16 +44,7 @@ def evaluate(args, model, dataloader, epoch=0):
 
         eval_return_dict = model(batch)
 
-        # Xuhui: I do not understand this chunk of code
-        '''
-        if output_ids == True:
-            output_ids = eval_return_dict['message']
-            output_ids = False
-        else:
-            output_ids = torch.cat(
-                [output_ids, eval_return_dict['message']], dim=0
-            )
-        '''
+        output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         eval_return_dict['mean_length'] = eval_return_dict['mean_length'].item()
@@ -326,6 +317,7 @@ def main():
         model.to(args.device)
         model.eval()
         results, output_ids, s_new = evaluate(args, model, valid_dataloader)
+
 
     end_time = time.time()
     logger.info('Total Runtime :', end_time - start_time)
