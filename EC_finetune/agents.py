@@ -109,7 +109,7 @@ class CommunicationAgent(Module):
         '''
         message_logits, message_ids, message_lengths = self.speaker(
             speaker_image_embeddings, speaker_captions_in, speaker_caption_lengths
-        ) 
+        )
         '''
 
         # Commenting this out until we know why it's here

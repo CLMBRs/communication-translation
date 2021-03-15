@@ -91,7 +91,7 @@ def save(args, model, logger):
         model_to_save.save_pretrained(args.output_dir)
 
 
-def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
+def train(args, model, dataloader, valid_dataloader, in_params, logger):
     optimizer = torch.optim.Adam(in_params, lr=args.lr)
     global_step = 0
     best_acc = 0.0
@@ -105,9 +105,9 @@ def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
             model.train()
 
             # Move data to the GPU
-            batch['speaker_image'] = batch['speaker_image'].to(device)
-            batch['listener_images'] = batch['listener_images'].to(device)
-            batch['target'] = batch['target'].to(device)
+            batch['speaker_image'] = batch['speaker_image'].to(args.device)
+            batch['listener_images'] = batch['listener_images'].to(args.device)
+            batch['target'] = batch['target'].to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -308,7 +308,7 @@ def main():
     if args.do_train:
         global_step = train(
             args, model, training_dataloader, valid_dataloader, in_params,
-            device, logger
+            logger
         )
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'
