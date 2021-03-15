@@ -18,7 +18,7 @@ no_share_bhd: false
 
 # Train and eval:
 # train eval basic setting
-do_train: true # control whether we train
+do_train: false # control whether we train
 do_eval: true # whether to do eval after training
 seed: 42
 n_gpu: 1
@@ -64,7 +64,8 @@ TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Loading and saving data:
 dataset: coco
-coco_path: Data/coco_new
+#coco_path: Data/coco_new
+coco_path: /gscratch/ark/xuhuizh/UMT_data/coco_new
 save_pretrain_seperately: true
 output_dir: Output
 save_output_txt: true

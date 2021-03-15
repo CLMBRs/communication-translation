@@ -13,7 +13,7 @@ import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import MBartTokenizer
+from transformers import MBartTokenizer, BartTokenizer
 from tqdm import tqdm
 
 from EC_finetune.agents import CommunicationAgent
@@ -27,6 +27,15 @@ def set_seed(args):
     torch.manual_seed(args.seed)
     if args.n_gpu > 0:
         torch.cuda.manual_seed_all(args.seed)
+
+
+def ids_to_texts(output_ids, tokenizer):
+    text = []
+    # concatnate batch-wise ids
+    output_ids = np.concatenate(np.array(output_ids), axis=0)
+    for i in output_ids:
+        text.append(tokenizer.decode(i)+'\n')
+    return text
 
 
 def evaluate(args, model, dataloader, epoch=0):
@@ -294,6 +303,7 @@ def main():
             valid_data, args.num_distractors_valid, args, tokenizer
         )
     else:
+        tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
         training_set = ImageIdentificationDataset(
             train_data, args.num_distractors_train
         )
@@ -315,6 +325,12 @@ def main():
         model.to(args.device)
         model.eval()
         results, output_ids, s_new = evaluate(args, model, valid_dataloader)
+        if args.save_output_txt:
+            output_texts = ids_to_texts(output_ids, tokenizer)
+            with open(args.output_dir + '/eval_texts.txt', 'w') as f:
+                for i in output_texts:
+                    f.write(i)
+
         logger.info("Best model stats: ")
         logger.info(s_new)
 

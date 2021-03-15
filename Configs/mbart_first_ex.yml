@@ -68,6 +68,9 @@ coco_path: ./UMT_data/coco_new
 save_pretrain_seperately: true
 # good practice: set the output_dir name the same as the parameter file name
 output_dir: mbart_first_ex 
+save_output_txt: true
+
+# Other (we may choose to delete these later):
 
 # Other (we may choose to delete these later):
 alpha: 1.0
