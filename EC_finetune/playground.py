@@ -153,7 +153,7 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
             if global_step % args.valid_every == 0:
                 with torch.no_grad():
                     results, output_ids, s_new = evaluate(
-                        args, model, valid_dataloader, global_step
+                        args, model, valid_dataloader, epoch
                     )
 
                     # Output evaluation statistics
@@ -201,8 +201,6 @@ def main():
     # set random seed
     set_seed(args)
 
-    # Start the clock for the beginning of the main function
-    start_time = time.time()
     logging.info('Entering main run script')
 
     # Setup CUDA, GPU
@@ -326,9 +324,10 @@ def main():
         model.to(args.device)
         model.eval()
         results, output_ids, s_new = evaluate(args, model, valid_dataloader)
+        logger.info("Best model stats: ")
+        logger.info(s_new)
 
-    end_time = time.time()
-    logger.info('Total Runtime :', end_time - start_time)
+
 
 
 if __name__ == '__main__':
