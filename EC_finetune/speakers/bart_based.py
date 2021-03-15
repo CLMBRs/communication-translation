@@ -35,6 +35,9 @@ class BartSpeaker(Module):
             kwargs["lang_id"] = kwargs["lang_id"].view(batch_size, -1)
             kwargs["lang_id"] = \
                 kwargs["lang_id"].to(speaker_images_hidden.device)
+        if "lang_mask" in kwargs:
+            kwargs["lang_mask"] = \
+                kwargs["lang_mask"].to(speaker_images_hidden.device)
         output = self.speaker.gumbel_generate(
             input_images=speaker_images_hidden,
             num_beams=1,
