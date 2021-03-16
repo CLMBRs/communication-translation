@@ -1172,10 +1172,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
         super().__init__(config)
         base_model = BartModel(config)
         self.model = base_model
-        self.gumbel_encoder = BartGumbelEncoder(config, self.model.shared)
-        self.embed_tokens = self.model.shared
+        # self.gumbel_encoder = BartGumbelEncoder(config, self.model.shared)
+        # self.embed_tokens = self.model.shared
         # Obtain the number of tokens from the embed matrix
-        self.embed_tokens_size = self.embed_tokens.weight.size()[0]
+        self.embed_tokens_size = self.model.shared.weight.size()[0]
         self.register_buffer(
             "final_logits_bias",
             torch.zeros((1, self.model.shared.num_embeddings))
