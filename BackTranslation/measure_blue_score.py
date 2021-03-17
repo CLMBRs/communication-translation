@@ -15,6 +15,7 @@ metric = load_metric("bleu")
 def measure_bleu_score(args, model, tokenizer, data_source):
     translation_task = f"translation_{args.source_lang_id}_to_{args.target_lang_id}"
     translation = pipeline(translation_task, model=model, tokenizer=tokenizer)
+    # TODO (Leo): I think this function should take a Dataset that already have parallel corpus processed
 
     metric = load_metric("bleu")
     with open(data_source, "r") as parallel_corpus:
@@ -28,7 +29,7 @@ def measure_bleu_score(args, model, tokenizer, data_source):
                 continue
             source_sent, target_sent = line.split("\t")
             # batch the string input
-            # TODO (Leo): this max_len operation is very language-specific
+            # TODO (Leo): this max_len operation is very language-specific, might be useful to be taken care by a Dataset
             if len(batch_inputs) < args.backtranslate_batch_size:
                 max_len = max(max_len, len(tokenizer.encode(target_sent)))
                 batch_inputs.append(source_sent)
