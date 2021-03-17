@@ -1,5 +1,5 @@
 # Model:
-model_name: bart
+model_name: mbart
 #bart: true
 batch_size: 16
 beam_width: 12
