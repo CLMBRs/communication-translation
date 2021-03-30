@@ -1,4 +1,5 @@
 import os
+import torch
 import random
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
@@ -17,7 +18,7 @@ class MbartMonolingualDataset(Dataset):
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
-    def __init__(self, source_file: str, tokenizer: MBartTokenizer, lang_code: str) -> Dataset:
+    def __init__(self, source_file: str, tokenizer: MBartTokenizer, lang_code: str):
         super(MbartMonolingualDataset, self).__init__()
 
         self.dataset = []
@@ -33,14 +34,12 @@ class MbartMonolingualDataset(Dataset):
                 line = line.strip()
                 if line == "":
                     continue
-                encoded_sentence = self.tokenizer.encode(line)  # tokenized + indexed
-                self.dataset.append(encoded_sentence)
+                # encoded_sentence = torch.tensor(self.tokenizer.encode(line))  # tokenized + indexed
+                self.dataset.append(line)
+        random.shuffle(self.dataset)
 
     def __len__(self) -> int:
         return len(self.dataset)
 
-    def __getitem__(self, index: int) -> dict:
-
-        return {
-            'sentence': self.dataset[index],
-        }
+    def __getitem__(self, index: int):
+        return self.dataset[index]

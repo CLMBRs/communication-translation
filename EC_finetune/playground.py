@@ -64,9 +64,6 @@ def evaluate(args, model, dataloader, epoch=0):
     s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
 
     return average_stats, output_ids, s_new
-    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
-
-    return average_stats, output_ids, s_new
 
 
 def train(args, model, dataloader, valid_dataloader, in_params, device, logger):
