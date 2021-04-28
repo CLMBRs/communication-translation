@@ -127,9 +127,8 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
                 return global_step
 
             train_return_dict['loss'] = loss.item()
-            train_return_dict['mean_length'] = (
-                train_return_dict['mean_length'].item()
-            )
+            train_return_dict['mean_length'] = train_return_dict['mean_length'
+                                                                ].item()
 
             for key, value in train_return_dict.items():
                 if key in ['loss', 'accuracy', 'mean_length']:
@@ -167,13 +166,12 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
                         )
                         if args.TransferH:
                             args.hard = True
-
     return global_step
 
 
 def main():
     """
-    Pretrain multilingual model on the referential game and save it.
+    Train a model to generate image captions
     """
 
     # Configure the logger (boilerplate)
@@ -188,7 +186,7 @@ def main():
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
-    parser = argparse.ArgumentParser(description='Ref Game Engine')
+    parser = argparse.ArgumentParser(description='Image caption training')
     parser.add_argument('--config', type=str)
     args = parser.parse_args()
     args_dict = vars(args)
@@ -204,30 +202,18 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    # TODO: allow use of other image datasets
-    if args.dataset == 'coco':
-        feat_path = args.coco_path
-        data_path = args.coco_path
-        task_path = args.dataset
-        args.l2 = 'jp'
-    else:
-        # Here to insert alternative imgae data set
-        # Xuhui: we should be able to use any img
-        raise ValueError('image dataset should be set as coco')
-
     # Load the pre-computed ResNet Image representation
     # Xuhui: Consider moving the data loading process to the new MyDataset obj
     data_names = [
         'train_en_feats', f'train_{args.l2}_feats', 'valid_feats', 'test_feats'
     ]
     (train_img1, train_img2, valid_img, test_img) = [
-        torch.load(f'{feat_path}/half_feats/{x}') for x in data_names
+        torch.load(f'{args.data_path}/half_feats/{x}') for x in data_names
     ]
 
     logger.info('Dataset Loaded')
 
     # Write the model description
-
     logger.info('Configuration:')
     print(args)
 
@@ -235,8 +221,7 @@ def main():
     # the number of examples wanted
     data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
     train_data, valid_data = remove_duplicate(data)
-    # TODO: This limit should be parameterized, not hard
-    train_data = train_data[:50000]
+    train_data = train_data[:args.max_train_data]
     if args.eval_in_order:
         valid_data = valid_img
 
@@ -269,18 +254,6 @@ def main():
     logger.info(f'IN    : {in_sum} params')
     logger.info(f'OUT   : {out_sum} params')
     logger.info(f'TOTAL : {in_sum + out_sum} params')
-
-    # Xuhui: Is this still necessary?
-    loss_fn = {
-        'xent': nn.CrossEntropyLoss(),
-        'mse': nn.MSELoss(),
-        'mrl': nn.MarginRankingLoss(),
-        'mlml': nn.MultiLabelMarginLoss(),
-        'mml': nn.MultiMarginLoss()
-    }
-    # Xuhui: This chunck of code seems redundant to me.
-    if not args.cpu:
-        loss_fn = {k: v.cuda() for (k, v) in loss_fn.items()}
 
     # Initialize the dataloader
     training_params = {

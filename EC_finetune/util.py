@@ -241,23 +241,19 @@ def loss_and_acc(logits, labels, loss_fn):
 
 # TODO: I think the dictionary formatting can be a lot simpler than this
 def loss_acc_dict():
-    return {
-        "spk": {\
-               "loss": 0},\
-        "lsn": {\
-               "loss": 0,\
-               "acc": 0 }        \
-        }
+    return {"spk": {"loss": 0}, "lsn": {"loss": 0, "acc": 0}}
 
 
 def loss_acc_meter():
     return {
-        "spk": {\
-               "loss": AverageMeter()},\
-        "lsn": {\
-               "loss": AverageMeter(),\
-               "acc": AverageMeter() }        \
+        "spk": {
+            "loss": AverageMeter()
+        },
+        "lsn": {
+            "loss": AverageMeter(),
+            "acc": AverageMeter()
         }
+    }
 
 
 def get_loss_dict():

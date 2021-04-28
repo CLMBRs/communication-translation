@@ -4,11 +4,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.autograd import Variable
 from torch.nn import Module
 
 from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
-from EC_finetune.listeners import Listener, BartEncoder, MBartEncoder, RnnEncoder
+from EC_finetune.listeners import (
+    Listener, BartEncoder, MBartEncoder, RnnEncoder
+)
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 
@@ -112,20 +113,6 @@ class CommunicationAgent(Module):
         )
         '''
 
-        # Commenting this out until we know why it's here
-        '''
-        lenlen = False
-        if lenlen:
-            print(spk_cap_len_[:10])
-            end_idx = torch.max(
-                torch.ones(spk_cap_len_.size()).cuda(),
-                (spk_cap_len_ - 2).float()
-            )
-            end_idx_ = torch.arange(0, end_idx.size(0)
-                                   ).cuda() * spk_logits.size(1) + end_idx.int()
-            end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
-        else:
-        '''
         end_idx_ = 0
         end_loss_ = 0
 
@@ -165,7 +152,7 @@ class CommunicationAgent(Module):
 
         return_dict = {
             'loss': communication_loss,
-            'accuracy': 100*accuracy,
+            'accuracy': 100 * accuracy,
             'message': message_ids,
             'end_idx': end_idx_,
             'end_loss': end_loss_,
@@ -173,12 +160,6 @@ class CommunicationAgent(Module):
         }
 
         return return_dict
-        # return speaker_message_logits, (listener_hiddens,
-        #                                 listener_images_hidden), speaker_message, (end_idx_, end_loss_), (
-        #                         torch.min(speaker_message_len.float()),
-        #
-        #                         torch.max(speaker_message_len.float())
-        #                     )
 
 
 class Beholder(Module):
