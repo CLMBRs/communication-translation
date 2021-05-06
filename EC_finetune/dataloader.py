@@ -1,4 +1,5 @@
 import random
+from typing import List
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
 from EC_finetune.util import *
@@ -15,7 +16,7 @@ class ImageIdentificationDataset(Dataset):
             alongside the target image
     """
     def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
-        super(ImageIdentificationDataset, self).__init__()
+        super().__init__()
         self.images = images
         self.img_index = list(range(len(images)))
         self.num_distractors = num_distractors
@@ -65,7 +66,7 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
             alongside the target image
     """
     def __init__(self, images: ndarray, num_distractors: int, args, tokenizer):
-        super(ImageIdentificationDataset, self).__init__()
+        super().__init__()
         self.images = images
         self.img_index = list(range(len(images)))
         self.num_distractors = num_distractors
@@ -89,9 +90,6 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
             )
             self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
 
-    def __len__(self) -> int:
-        return len(self.images)
-
     def __getitem__(self, index: int) -> dict:
         # Randomly sample the distractor images out of the remainder of the
         # dataset
@@ -107,12 +105,55 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
         return ret
 
 
-def weave_out(caps_out):
-    # TODO: figure out why this function exists
-    ans = []
-    seq_len = max([len(x) for x in caps_out])
-    for idx in range(seq_len):
-        for sublst in caps_out:
-            if idx < len(sublst):
-                ans.append(sublst[idx])
-    return ans
+class ImageCaptionDataset(Dataset):
+    """
+    Args:
+        images: A NumPy array of image data
+    """
+    def __init__(
+        self, images: ndarray, captions: List[List[str]], tokenizer, args
+    ) -> Dataset:
+        super().__init__()
+        self.images = images
+        self.captions = captions
+        self.num_instances = sum([len(options) for options in self.captions])
+
+        self.caption_lookup = {}
+        caption_index = 0
+        for image_index, caption_set in enumerate(self.captions):
+            for secondary_index in range(len(caption_set)):
+                self.caption_lookup[caption_index] = (
+                    image_index, secondary_index
+                )
+                self.captions[image_index][secondary_index] = tokenizer(
+                    [self.captions[image_index][secondary_index]]
+                )
+                caption_index += 1
+
+        lang_code2id = dict(
+            zip(
+                tokenizer.additional_special_tokens,
+                tokenizer.additional_special_tokens_ids
+            )
+        )
+        self.lang_id = lang_code2id[args.source_lang]
+        self.has_vocab_constraint = args.has_vocab_constraint
+        if self.has_vocab_constraint:
+            self.lang_mask = vocab_mask_from_file(
+                tokenizer, args.source_lang_vocab_constrain_file
+            )
+
+    def __len__(self) -> int:
+        return self.num_instances
+
+    def __getitem__(self, index: int) -> dict:
+        image_index, secondary_index = self.caption_lookup[index]
+        ret = {
+            'image': self.images[image_index],
+            'caption': self.captions[image_index][secondary_index],
+            'lang_id': self.lang_id
+        }
+        if self.has_vocab_constraint:
+            ret["lang_mask"] = self.lang_mask
+
+        return ret

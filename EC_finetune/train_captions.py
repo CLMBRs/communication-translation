@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 import random
@@ -12,12 +13,10 @@ import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from transformers import MBartTokenizer, BartTokenizer
+from transformers import MBartTokenizer
 
 from EC_finetune.agents import CommunicationAgent
-from EC_finetune.dataloader import (
-    ImageIdentificationDataset, VisuaLingConstraintDataset
-)
+from EC_finetune.dataloader import ImageCaptionDataset
 from EC_finetune.util import print_loss_, remove_duplicate
 
 
@@ -94,8 +93,8 @@ def save(args, model, logger):
         model_to_save.save_pretrained(args.output_dir)
 
 
-def train(args, model, dataloader, valid_dataloader, in_params, logger):
-    optimizer = torch.optim.Adam(in_params, lr=args.lr)
+def train(args, model, dataloader, valid_dataloader, params, logger):
+    optimizer = torch.optim.Adam(params, lr=args.lr)
     global_step = 0
     best_acc = 0.0
     checkpoint_stats = defaultdict(list)
@@ -103,7 +102,6 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
         for batch in epoch_iterator:
-
             # Inform the training started.
             model.train()
 
@@ -116,7 +114,7 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
             loss = train_return_dict['loss']
             optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(in_params, args.grad_clip)
+            nn.utils.clip_grad_norm_(params, args.grad_clip)
             optimizer.step()
             global_step += 1
             if global_step >= args.max_global_step:
@@ -127,8 +125,9 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
                 return global_step
 
             train_return_dict['loss'] = loss.item()
-            train_return_dict['mean_length'] = train_return_dict['mean_length'
-                                                                ].item()
+            train_return_dict['mean_length'] = (
+                train_return_dict['mean_length'].item()
+            )
 
             for key, value in train_return_dict.items():
                 if key in ['loss', 'accuracy', 'mean_length']:
@@ -166,7 +165,6 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
                         )
                         if args.TransferH:
                             args.hard = True
-    return global_step
 
 
 def main():
@@ -202,14 +200,14 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    # Load the pre-computed ResNet Image representation
-    # Xuhui: Consider moving the data loading process to the new MyDataset obj
-    data_names = [
-        'train_en_feats', f'train_{args.l2}_feats', 'valid_feats', 'test_feats'
+    train_captions = [
+        json.loads(line) for line in open(args.train_captions, 'r').readlines()
     ]
-    (train_img1, train_img2, valid_img, test_img) = [
-        torch.load(f'{args.data_path}/half_feats/{x}') for x in data_names
+    valid_captions = [
+        json.loads(line) for line in open(args.valid_captions, 'r').readlines()
     ]
+    train_images = torch.load(args.train_images)
+    valid_images = torch.load(args.valid_images)
 
     logger.info('Dataset Loaded')
 
@@ -217,43 +215,11 @@ def main():
     logger.info('Configuration:')
     print(args)
 
-    # Organize the data into a single tensor, remove duplicates, and trim to
-    # the number of examples wanted
-    data = torch.cat([train_img1, train_img2, valid_img, test_img], dim=0)
-    train_data, valid_data = remove_duplicate(data)
-    train_data = train_data[:args.max_train_data]
-    if args.eval_in_order:
-        valid_data = valid_img
-
     # Initialize agent
     model = CommunicationAgent(args)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
-
-    # Loop through the named parameters to find the number of input and output
-    # parameters
-    # Xuhui: This module is showing the model parameter, maybe we do not need
-    in_params, out_params = [], []
-    in_names, out_names = [], []
-    for name, param in model.named_parameters():
-        speaker_named = ('speaker' in name and args.fix_spk)
-        beholder_named = ('beholder' in name and args.fix_bhd)
-        if speaker_named or beholder_named:
-            out_params.append(param)
-            out_names.append(name)
-        else:
-            in_params.append(param)
-            in_names.append(name)
-
-    # Sum up the number of input and output parameters and log them
-    in_size = [x.size() for x in in_params]
-    out_size = [x.size() for x in out_params]
-    in_sum = sum([np.prod(x) for x in in_size])
-    out_sum = sum([np.prod(x) for x in out_size])
-    logger.info(f'IN    : {in_sum} params')
-    logger.info(f'OUT   : {out_sum} params')
-    logger.info(f'TOTAL : {in_sum + out_sum} params')
 
     # Initialize the dataloader
     training_params = {
@@ -266,29 +232,20 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    if args.model_name == 'mbart':
-        tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
-        training_set = VisuaLingConstraintDataset(
-            train_data, args.num_distractors_train, args, tokenizer
-        )
-        valid_set = VisuaLingConstraintDataset(
-            valid_data, args.num_distractors_valid, args, tokenizer
-        )
-    else:
-        tokenizer = BartTokenizer.from_pretrained('facebook/bart-large')
-        training_set = ImageIdentificationDataset(
-            train_data, args.num_distractors_train
-        )
-        valid_set = ImageIdentificationDataset(
-            valid_data, args.num_distractors_valid
-        )
+    tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
+    training_set = ImageCaptionDataset(
+        train_images, train_captions, tokenizer, args
+    )
+    valid_set = ImageCaptionDataset(
+        valid_images, valid_captions, tokenizer, args
+    )
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)
 
     if args.do_train:
-        global_step = train(
-            args, model, training_dataloader, valid_dataloader, in_params,
-            logger
+        train(
+            args, model, training_dataloader, valid_dataloader,
+            model.parameters(), logger
         )
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'

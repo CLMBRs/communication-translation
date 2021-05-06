@@ -162,6 +162,40 @@ class CommunicationAgent(Module):
         return return_dict
 
 
+class Captioner(Module):
+    """
+    An agent to train image captioning
+    """
+    def __init__(self, args: Namespace):
+        super().__init__()
+        self.beholder = Beholder(
+            image_dim=args.image_dim,
+            hidden_dim=args.hidden_dim,
+            dropout=args.dropout,
+            unit_norm=args.unit_norm,
+            two_ffwd=args.two_ffwd
+        )
+        self.model = MBartForConditionalGeneration.from_pretrained(
+            'facebook/mbart-large-cc25'
+        )
+        self.speaker = BartSpeaker(self.model, args.source_lang, **vars(args))
+        self.crossentropy = torch.nn.CrossEntropyLoss()
+
+    def forward(self, batch):
+        image = batch['image']
+        caption = batch['caption']
+
+        image_embedding = self.beholder(image)
+        message_dict = self.speaker(image_embedding, **batch)
+        message_ids = message_dict["message_ids"]
+
+        loss = self.crossentropy(message_ids, caption['input_ids'])
+        return {
+            "loss": loss,
+            "message": message_ids
+        }
+
+
 class Beholder(Module):
     """
     A "Beholder" module for embedding image data. Consists of one or two
