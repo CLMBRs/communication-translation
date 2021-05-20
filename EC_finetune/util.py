@@ -382,17 +382,14 @@ def remove_duplicate(data):
     return data[:-10000], data[-10000:]
 
 
-def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file):
+def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file, threshold=0.01):
     token_freq = list(json.load(open(file, "r")).items())
-    sorted_tokens = sorted(token_freq, key=lambda x: x[1], reverse=True)
-    # we kept 99% most-occurring words
-    # Think this is too loose, but don't understand what exactly did mBART do
-    good_token_ids = {
-        int(k): v
-        for k, v in sorted_tokens[:-int(0.01 * len(sorted_tokens))]
-    }
+    total_freq = sum(freq for _, freq in token_freq)
+    # we kept tokens that appear more than 1%
+    good_token_ids = set(int(token_id) for token_id, freq in token_freq if freq/total_freq >= threshold)
+
     bad_token_ids = []
-    for _, v in tokenizer.fairseq_tokens_to_ids.items():
+    for k, v in tokenizer.get_vocab().items():
         if v in good_token_ids:
             continue
         bad_token_ids.append(v)

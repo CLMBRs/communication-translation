@@ -5,6 +5,7 @@ from numpy import ndarray
 from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 from transformers import MBartTokenizer
+from EC_finetune.util import vocab_mask_from_file
 from BackTranslation.constant import FAIRSEQ_LANGUAGE_CODES
 
 
@@ -18,7 +19,9 @@ class MbartMonolingualDataset(Dataset):
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
-    def __init__(self, source_file: str, tokenizer: MBartTokenizer, lang_code: str):
+    def __init__(self, source_file: str,
+                 tokenizer: MBartTokenizer,
+                 lang_code: str,):
         super(MbartMonolingualDataset, self).__init__()
 
         self.dataset = []
@@ -37,6 +40,7 @@ class MbartMonolingualDataset(Dataset):
                 # encoded_sentence = torch.tensor(self.tokenizer.encode(line))  # tokenized + indexed
                 self.dataset.append(line)
         random.shuffle(self.dataset)
+
 
     def __len__(self) -> int:
         return len(self.dataset)

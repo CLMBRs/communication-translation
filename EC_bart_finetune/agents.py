@@ -281,7 +281,7 @@ class BartSpeaker(Module):
         h_image = self.projection(h_image)
         h_image = h_image.view(-1, self.seq_len, self.embedding_dim)
         message_ids, message_logits, message_lengths = self.speaker.gumbel_generate(
-            input_images=h_image, num_beams=1, max_length=self.seq_len
+            input_embeds=h_image, num_beams=1, max_length=self.seq_len
         )
         return message_logits, message_ids, message_lengths
 

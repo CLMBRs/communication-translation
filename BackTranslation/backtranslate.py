@@ -10,8 +10,10 @@ import random
 import numpy as np
 
 from statistics import mean
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from EC_finetune.agents import CommunicationAgent
+from EC_finetune.util import vocab_mask_from_file
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from BackTranslation.dataloader import MbartMonolingualDataset
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import checkpoint_stats2string
@@ -29,40 +31,52 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def generate_synthetic_dataset(args, lang_code2pack):
-    assert len(lang_code2pack) == 2
-    lang_codes = list(lang_code2pack.keys())
+def generate_synthetic_dataset(args, source_meta2pack):
+    assert len(source_meta2pack) == 2
+    source_metas = list(source_meta2pack.keys())
     checkpoint_stats = defaultdict(list)
 
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the model
         # to learn the pattern that we do, e.g., English first and then Japanese second.
-        random.shuffle(lang_codes)
+        random.shuffle(source_metas)
 
         # TODO: 1. have support to constrain generation!!!
         # TODO: 3. have support to clip_grad_norm
         # TODO: 4. validate every X
 
-        for source_id, source_code in lang_codes:
-            source_dataloader, tokenizer, source2target_model, target_code, target2source_model, target2source_model_optimizer = lang_code2pack[(source_id, source_code)]
+        for source_meta in source_metas:
+            source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, \
+            target2source_model_optimizer = list(source_meta2pack[source_meta])
+            source_id, source_code, source_mask = list(source_meta)
+            target_id, target_code, target_mask = list(target_meta)
+
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
             source_string_batch = next(iter(lang1_dataloader))
             # tokenize the string batch
-            source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch, src_lang=source_code, return_tensors="pt")
+            source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
+                                                           src_lang=source_code,
+                                                           return_tensors="pt")
             # generate the synthetic target sentence
-            translated_tokens = source2target_model.generate(**source_batch,
-                                                             decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-                                                             max_length=source_batch["input_ids"].shape[1])
+            max_len = source_batch["input_ids"].shape[1]
+            translated_tokens = source2target_model.gumbel_generate(**source_batch,
+                                                                    decoder_start_token_id=tokenizer.lang_code_to_id[
+                                                                    target_code],
+                                                                    max_length=max_len,
+                                                                    lang_mask=target_mask)
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
             # Note the synthetic output is the input
-            parallel_batch = tokenizer.prepare_seq2seq_batch(translation, src_lang=target_code, tgt_lang=source_code,
-                                                             tgt_texts=source_string_batch, return_tensors="pt")
+            parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
+                                                             src_lang=target_code,
+                                                             tgt_lang=source_code,
+                                                             tgt_texts=source_string_batch,
+                                                             return_tensors="pt")
 
             output = target2source_model(**parallel_batch)
             target2source_model_optimizer.zero_grad()
@@ -82,9 +96,11 @@ def generate_synthetic_dataset(args, lang_code2pack):
             )
             checkpoint_stats = defaultdict(list)
 
-    for source_id, source_code in lang_codes:
-        source_dataloader, tokenizer, source2target_model, _, target2source_model, _ = \
-        lang_code2pack[(source_id, source_code)]
+    for source_meta in source_metas:
+        source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
+            list(source_meta2pack[source_meta])
+        source_id, source_code = list(source_meta)
+        target_id, target_code = list(target_meta)
 
         # Save the general part of the model
         if args.models_shared:
@@ -97,11 +113,40 @@ def generate_synthetic_dataset(args, lang_code2pack):
                 args,
                 os.path.join(args.output_dir, "training_args.bin")
             )
-        else
+        else:
+            torch.save(
+                source2target_model.state_dict(), os.path.join(args.output_dir, f"{source_id}2{target_id}", "model.pt")
+            )
+            # Good practice: save your training arguments together
+            # with the trained model
+            torch.save(
+                args,
+                os.path.join(args.output_dir, f"{source_id}2{target_id}", "training_args.bin")
+            )
+
+            torch.save(
+                target2source_model.state_dict(), os.path.join(args.output_dir, f"{target_id}2{source_id}", "model.pt")
+            )
+            # Good practice: save your training arguments together
+            # with the trained model
+            torch.save(
+                args,
+                os.path.join(args.output_dir, f"{target_id}2{source_id}", "training_args.bin")
+            )
+        # we just save once
+        break
 
 
+LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask"])
 
-
+BackTranslationPack = namedtuple("BackTranslationPack",
+                                 ["source_dataloader",
+                                  "source_tokenizer",
+                                  "source2target_model",
+                                  "target_meta",
+                                  "target2source_model",
+                                  "optimizer",
+                                  ])
 
 if __name__ == "__main__":
     # Configure the logger (boilerplate)
@@ -158,23 +203,47 @@ if __name__ == "__main__":
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
 
-    lang1_dataset = MbartMonolingualDataset(os.path.join(args.data_dir, args.lang1_data_file),
-                                            tokenizer, LANG_ID_2_LANGUAGE_CODES[args.lang1_id])
+    lang1_dataset = MbartMonolingualDataset(
+        source_file=os.path.join(args.data_dir, args.lang1_data_file),
+        tokenizer=tokenizer,
+        lang_code=LANG_ID_2_LANGUAGE_CODES[args.lang1_id],
+    )
     lang2_dataset = MbartMonolingualDataset(
-        os.path.join(args.data_dir, args.lang2_data_file),
-        tokenizer, LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
+        source_file=os.path.join(args.data_dir, args.lang2_data_file),
+        tokenizer=tokenizer,
+        lang_code=LANG_ID_2_LANGUAGE_CODES[args.lang2_id],
     )
     lang1_dataloader = DataLoader(lang1_dataset, batch_size=args.batch_size, shuffle=True)
-    lang2_dataloader = DataLoader(lang2_dataset, batch_size=args.batch_size, shuffle=True)  # collate_fn=lambda x: pad_sequence(x, batch_first=True, padding_value=tokenizer.vocab['<pad>']))
+    lang2_dataloader = DataLoader(lang2_dataset, batch_size=args.batch_size, shuffle=True)
+    # collate_fn=lambda x: pad_sequence(x, batch_first=True, padding_value=tokenizer.vocab['<pad>']))
 
     lang2_to_lang1_model_optimizer = torch.optim.Adam(lang2_to_lang1_model.model.parameters(), lr=args.lr)
     lang1_to_lang2_model_optimizer = torch.optim.Adam(lang1_to_lang2_model.model.parameters(), lr=args.lr)
 
-    lang_code2pack = {
+    lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
+    lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
+
+    lang1_meta = LangMeta(lang_id=args.lang1_id, lang_code=args.lang1_code, lang_mask=lang1_mask)
+    lang2_meta = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask)
+
+    lang1_to_lang2_pack = BackTranslationPack(source_dataloader=lang1_dataloader,
+                                              source_tokenizer=tokenizer,
+                                              source2target_model=lang1_to_lang2_model.model,
+                                              target_meta=lang2_meta,
+                                              target2source_model=lang2_to_lang1_model.model,
+                                              optimizer=lang2_to_lang1_model_optimizer)
+    lang2_to_lang1_pack = BackTranslationPack(source_dataloader=lang2_dataloader,
+                                              source_tokenizer=tokenizer,
+                                              source2target_model=lang2_to_lang1_model.model,
+                                              target_meta=lang1_meta,
+                                              target2source_model=lang1_to_lang2_model.model,
+                                              optimizer=lang1_to_lang2_model_optimizer)
+
+    lang_meta2pack = {
         # e.g. (JapanID, JapanCode): [JapanDataset, Japan2EnglishModel, English2JapanModel]
-        (args.lang1_id, args.lang1_code): [lang1_dataloader, tokenizer, lang1_to_lang2_model.model, args.lang2_code, lang2_to_lang1_model.model, lang2_to_lang1_model_optimizer],
-        (args.lang2_id, args.lang2_code): [lang2_dataloader, tokenizer, lang2_to_lang1_model.model, args.lang1_code, lang1_to_lang2_model.model, lang1_to_lang2_model_optimizer]
+        lang1_meta: lang1_to_lang2_pack,
+        lang2_meta: lang2_to_lang1_pack
     }
-    generate_synthetic_dataset(args, lang_code2pack)
+    generate_synthetic_dataset(args, lang_meta2pack)
 
     print()
