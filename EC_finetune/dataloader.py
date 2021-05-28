@@ -1,7 +1,9 @@
 import random
 from typing import List
+
 from numpy import ndarray
 from torch.utils.data.dataset import Dataset
+
 from EC_finetune.util import *
 
 
@@ -11,7 +13,7 @@ class ImageIdentificationDataset(Dataset):
     agent takes in an image and communicates it, and a "listener" identifies the
     correct image from among a selection of distractors
     Args:
-        images: A NumPy array of image data
+        images: A numpy array of image data
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
@@ -46,8 +48,6 @@ class ImageIdentificationDataset(Dataset):
         return {
             'speaker_image': speaker_image,
             'listener_images': listener_images,
-            'speaker_caps_in': 0,
-            'speaker_cap_lens': 0,
             'target': which
         }
 
@@ -61,7 +61,7 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
     on target language (id) and vocabulary constraint.
 
     Args:
-        images: A NumPy array of image data
+        images: A numpy array of image data
         num_distractors: Number of distractor images to show to the "listener"
             alongside the target image
     """
@@ -105,19 +105,34 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
         return ret
 
 
-class ImageCaptionDataset(Dataset):
+class CaptionTrainingDataset(ImageIdentificationDataset):
     """
+    PyTorch Dataset subclass for training a model to generate a natural-language
+    caption from an image embedding, and also pick the correct image from among
+    distractors based on a caption
     Args:
-        images: A NumPy array of image data
+        images: a numpy array of image data
+        captions: a double-list of strings, where the first dimension
+            correponds to the images, and the second dimension corresponds to
+            the different captions for each image
+        num_distractors: the number of distractor images to show alongside the
+            target image
+        tokenizer: the tokenizer for the model
+        args: a namespace of additional arguments
     """
     def __init__(
-        self, images: ndarray, captions: List[List[str]], tokenizer, args
+        self, images: ndarray, captions: List[List[str]], num_distractors: int,
+        tokenizer, args
     ) -> Dataset:
-        super().__init__()
-        self.images = images
+        # Initialize using the ImageIdentificationDataset constructor
+        super().__init__(images, num_distractors)
         self.captions = captions
+        
+        # The total number of training instances is the sum of caption options,
+        # since an image can have more than one caption. Create a lookup
+        # dictionary that returns a (image_index, caption_index) pair based on a
+        # primary index. Also tokenize the captions
         self.num_instances = sum([len(options) for options in self.captions])
-
         self.caption_lookup = {}
         caption_index = 0
         for image_index, caption_set in enumerate(self.captions):
@@ -130,6 +145,7 @@ class ImageCaptionDataset(Dataset):
                 )
                 caption_index += 1
 
+        # Prepartion for language-constrained generation
         lang_code2id = dict(
             zip(
                 tokenizer.additional_special_tokens,
@@ -147,10 +163,17 @@ class ImageCaptionDataset(Dataset):
         return self.num_instances
 
     def __getitem__(self, index: int) -> dict:
+        # Get the image and caption-option index from the lookup table
         image_index, secondary_index = self.caption_lookup[index]
+        
+        # Use the supertype's __getitem__ to get the image, distractors, and 
+        # correct image index
+        super_ret = super().__getitem__(image_index)
         ret = {
-            'image': self.images[image_index],
+            'image': super_ret['speaker_image'],
             'caption': self.captions[image_index][secondary_index],
+            'image_choices': super_ret['listener_images'],
+            'target': super_ret['target'],
             'lang_id': self.lang_id
         }
         if self.has_vocab_constraint:
