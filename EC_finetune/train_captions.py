@@ -16,8 +16,14 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from EC_finetune.agents import CommunicationAgent
-from EC_finetune.dataloader import ImageCaptionDataset
-from EC_finetune.util import print_loss_, remove_duplicate
+from EC_finetune.dataloader import CaptionTrainingDataset
+from EC_finetune.util import print_loss_
+from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
+from EC_finetune.listeners import (
+    Listener, BartListener, MBartListener, RnnListener
+)
 
 
 def set_seed(args):
@@ -46,9 +52,8 @@ def evaluate(args, model, dataloader, epoch=0):
         model.eval()
 
         # Move data to the GPU
-        batch['speaker_image'] = batch['speaker_image'].to(args.device)
-        batch['listener_images'] = batch['listener_images'].to(args.device)
-        batch['target'] = batch['target'].to(args.device)
+        batch['image'] = batch['image'].to(args.device)
+        batch['caption'] = batch['caption'].to(args.device)
 
         eval_return_dict = model(batch)
 
@@ -106,9 +111,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             model.train()
 
             # Move data to the GPU
-            batch['speaker_image'] = batch['speaker_image'].to(args.device)
-            batch['listener_images'] = batch['listener_images'].to(args.device)
-            batch['target'] = batch['target'].to(args.device)
+            batch['caption'] = batch['caption'].to(args.device)
+            batch['image'] = batch['image'].to(args.device)
+            batch['image_choices'] = batch['image_choices'].to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -124,14 +129,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     save(args, model, logger)
                 return global_step
 
-            train_return_dict['loss'] = loss.item()
-            train_return_dict['mean_length'] = (
-                train_return_dict['mean_length'].item()
-            )
-
-            for key, value in train_return_dict.items():
-                if key in ['loss', 'accuracy', 'mean_length']:
-                    checkpoint_stats[key].append(value)
+            checkpoint_stats[key].append(loss.item())
 
             if global_step % args.print_every == 0:
                 checkpoint_average_stats = {}
@@ -215,8 +213,37 @@ def main():
     logger.info('Configuration:')
     print(args)
 
-    # Initialize agent
-    model = CommunicationAgent(args)
+    # Initialize Speaker and Listener, either from pretrained Bart or as a
+    # from-scratch RNN
+    # TODO: Have RNN stack be shared between Speaker and Listener
+    if args.model_name == 'bart':
+        comm_model = BartForConditionalGeneration.from_pretrained(
+            'facebook/bart-large'
+        )
+        speaker = BartSpeaker(comm_model, args.hidden_dim, **vars(args))
+        listener = BartListener(comm_model, args.hidden_dim, **vars(args))
+    elif args.model_name == "mbart":
+        comm_model = MBartForConditionalGeneration.from_pretrained(
+            'facebook/mbart-large-cc25'
+        )
+        speaker = MBartSpeaker(comm_model, args.hidden_dim, **vars(args))
+        listener = MBartListener(comm_model, args.hidden_dim, **vars(args))
+    elif args.model_name == 'rnn':
+        comm_model = nn.GRU(
+            input_size=args.hidden_dim,
+            hidden_size=args.hidden_dim,
+            num_layers=args.num_layers,
+            batch_first=True
+        )
+        speaker = RnnSpeaker(
+            comm_model, args.hidden_dim, args.vocab_size, args.bos_idx
+        )
+        listener = RnnListener(comm_model, args.hidden_dim, args.vocab_size)
+    else:
+        raise ValueError(f"Model type {args.model_name} is not valid")
+
+    # Initialize agent setup
+    model = CommunicationAgent(speaker, listener, args)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
@@ -233,10 +260,10 @@ def main():
         "drop_last": False
     }
     tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
-    training_set = ImageCaptionDataset(
+    training_set = CaptionTrainingDataset(
         train_images, train_captions, tokenizer, args
     )
-    valid_set = ImageCaptionDataset(
+    valid_set = CaptionTrainingDataset(
         valid_images, valid_captions, tokenizer, args
     )
     training_dataloader = DataLoader(training_set, **training_params)

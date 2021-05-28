@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from argparse import Namespace
 
 import torch
@@ -6,25 +7,25 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
-from EC_finetune.listeners import (
-    Listener, BartEncoder, MBartEncoder, RnnEncoder
-)
-from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.speakers import Speaker
+from EC_finetune.listeners import Listener
 
 
 class CommunicationAgent(Module):
     """
-    A PyTorch module instantiating a sender/receiver or speaker/listener agent
-    set for communication games
-    Speaker and Listener components can currently be set to have either an RNN
-    or pretrained Bart architecture. Beholder (image embedding compoment) can
-    either be shared between Speaker and Listener, or independent for both
+    An abstract PyTorch Module for creating a sender/receiver or
+    speaker/listener agent set for communication games
+
+    Speaker and Listener are passed in as arguments, and must meet the
+    interfaces specified by the Speaker and Listener abstract classes,
+    respectively. Beholder (image embedding compoment) can either be shared
+    between Speaker and Listener, or independent for both
     Args:
-        args: A dictionary of parameters
+        speaker: the speaker/sender module, subclassed from Speaker
+        listener: the listener/receiver module, subclassed from Listener
+        args: a dictionary of parameters
     """
-    def __init__(self, args: Namespace):
+    def __init__(self, speaker: Speaker, listener: Listener, args: Namespace):
         super().__init__()
 
         # Initialize the image Beholder, and clone if there is to be a separate
@@ -36,7 +37,6 @@ class CommunicationAgent(Module):
             unit_norm=args.unit_norm,
             two_ffwd=args.two_ffwd
         )
-        self.native, self.foreign = 'en', args.l2
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = self.beholder
@@ -45,36 +45,8 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
-        # Initialize Speaker and Listener, either from pretrained Bart or as a
-        # from-scratch RNN
-        # TODO: Have RNN stack be shared between Speaker and Listener
-        if args.model_name == 'bart':
-            self.model = BartForConditionalGeneration.from_pretrained(
-                'facebook/bart-large'
-            )
-            self.speaker = BartSpeaker(self.model, self.native, **vars(args))
-            listener_model = BartEncoder(self.model, args.hidden_dim)
-        elif args.model_name == "mbart":
-            self.model = MBartForConditionalGeneration.from_pretrained(
-                'facebook/mbart-large-cc25'
-            )
-            self.speaker = MBartSpeaker(self.model, self.native, **vars(args))
-            listener_model = MBartEncoder(self.model, args.hidden_dim)
-        elif args.model_name == 'rnn':
-            self.speaker = RnnSpeaker(self.native, args)
-            listener_model = RnnEncoder(
-                args.vocab_size, args.embedding_dim, args.hidden_dim,
-                args.num_layers, args.bidirectional
-            )
-            self.model = None
-        else:
-            raise ValueError(f"Model type {args.model_name} is not valid")
-
-        self.listener = Listener(
-            listener_model, dropout=args.dropout, unit_norm=args.unit_norm
-        )
-
-        self.crossentropy = torch.nn.CrossEntropyLoss()
+        self.speaker = speaker
+        self.listener = listener
 
         self.image_dim = args.image_dim
         self.hidden_dim = args.hidden_dim
@@ -83,23 +55,22 @@ class CommunicationAgent(Module):
         self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
 
+    @abstractmethod
+    def forward(self, batch):
+        raise NotImplementedError
+
+    
+class ECImageIdentificationAgent(CommunicationAgent):
     def forward(self, batch):
         target_image = batch['target']
         speaker_images = batch['speaker_image']
         listener_images = batch['listener_images']
-        speaker_captions_in = batch['speaker_caps_in']
-        speaker_caption_lengths = batch['speaker_cap_lens']
 
         num_image_choices = listener_images.size(1)
 
         # Embed the Speaker's image using the Beholder
         speaker_image_embeddings = self.beholder1(speaker_images)
-        batch["speaker_images_hidden"] = speaker_image_embeddings
-        # input_dict = {"speaker_images_hidden": speaker_image_embeddings}
-        # if "lang_ids" in batch:
-        #     input_dict["lang_ids"] = batch["lang_ids"]
-        # if "lang_masks" in batch:
-        #     input_dict["lang_masks"] = batch["lang_masks"]
+        batch["image_hidden"] = speaker_image_embeddings
 
         # Generate the Speaker's message/caption about the image. (The speaker
         # classes are currently not accepting input captions)
@@ -107,11 +78,6 @@ class CommunicationAgent(Module):
         message_ids = message_dict["message_ids"]
         message_logits = message_dict["message_logits"]
         message_lengths = message_dict["message_lengths"]
-        '''
-        message_logits, message_ids, message_lengths = self.speaker(
-            speaker_image_embeddings, speaker_captions_in, speaker_caption_lengths
-        )
-        '''
 
         end_idx_ = 0
         end_loss_ = 0
@@ -162,34 +128,51 @@ class CommunicationAgent(Module):
         return return_dict
 
 
-class Captioner(Module):
+class ImageCaptionGrounder(CommunicationAgent):
     """
-    An agent to train image captioning
+    An agent to train grounding of text to images, by producing captions based
+    on images, and picking images based on a caption (independently)
     """
-    def __init__(self, args: Namespace):
-        super().__init__()
-        self.beholder = Beholder(
-            image_dim=args.image_dim,
-            hidden_dim=args.hidden_dim,
-            dropout=args.dropout,
-            unit_norm=args.unit_norm,
-            two_ffwd=args.two_ffwd
-        )
-        self.model = MBartForConditionalGeneration.from_pretrained(
-            'facebook/mbart-large-cc25'
-        )
-        self.speaker = BartSpeaker(self.model, args.source_lang, **vars(args))
-        self.crossentropy = torch.nn.CrossEntropyLoss()
-
     def forward(self, batch):
         image = batch['image']
         caption = batch['caption']
+        image_choices = batch['image_choices']
+
+        num_image_choices = image_choices.size(1)
 
         image_embedding = self.beholder(image)
         message_dict = self.speaker(image_embedding, **batch)
         message_ids = message_dict["message_ids"]
+        caption_loss = F.cross_entropy(message_ids, caption['input_ids'])
 
-        loss = self.crossentropy(message_ids, caption['input_ids'])
+        # Embed the candidate images using the Beholder
+        image_choices = image_choices.view(-1, self.image_dim)
+        image_choice_embeddings = self.beholder2(image_choices)
+        image_choice_embeddings = image_choice_embeddings.view(
+            -1, num_image_choices, self.hidden_dim
+        )
+
+        listener_hidden = self.listener(**caption)
+        # (batch_size, num_image_choices, hidden_dim)
+        listener_hidden = listener_hidden.unsqueeze(1).repeat(
+            1, num_image_choices, 1
+        )
+
+        # Get the Mean Squared Error between the final listener representation
+        # and all of the candidate images
+        image_candidate_errors = F.mse_loss(
+            listener_hidden, image_choice_embeddings, reduction='none'
+        ).mean(dim=2).view(-1, num_image_choices)
+        # Transform this to the inverted MSE (for use as scores)
+        image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
+
+        # Get final cross-entropy loss
+        image_choice_loss = self.crossentropy(
+            image_candidate_logits, batch['target']
+        )
+
+        loss = caption_loss + image_choice_loss
+
         return {
             "loss": loss,
             "message": message_ids
