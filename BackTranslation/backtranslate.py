@@ -42,7 +42,7 @@ def generate_synthetic_dataset(args, source_meta2pack):
         random.shuffle(source_metas)
 
         # TODO: 1. have support to constrain generation!!!
-        # TODO: 3. have support to clip_grad_norm
+        # TODO: 3. have support to clip_grad_norm?
         # TODO: 4. validate every X
 
         for source_meta in source_metas:
@@ -61,6 +61,7 @@ def generate_synthetic_dataset(args, source_meta2pack):
                                                            return_tensors="pt")
             # generate the synthetic target sentence
             max_len = source_batch["input_ids"].shape[1]
+            # not necessrily using gumbel_generate  consider beam search
             translated_tokens = source2target_model.gumbel_generate(**source_batch,
                                                                     decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                     target_code],
