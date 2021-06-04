@@ -21,9 +21,7 @@ from EC_finetune.util import print_loss_
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
-from EC_finetune.listeners import (
-    Listener, BartListener, MBartListener, RnnListener
-)
+from EC_finetune.listeners import BartListener, MBartListener, RnnListener
 
 
 def set_seed(args):
@@ -112,8 +110,8 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             # Move data to the GPU
             batch['caption'] = batch['caption'].to(args.device)
-            batch['image'] = batch['image'].to(args.device)
-            batch['image_choices'] = batch['image_choices'].to(args.device)
+            batch['speaker_image'] = batch['speaker_image'].to(args.device)
+            batch['listener_images'] = batch['listener_images'].to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -215,7 +213,6 @@ def main():
 
     # Initialize Speaker and Listener, either from pretrained Bart or as a
     # from-scratch RNN
-    # TODO: Have RNN stack be shared between Speaker and Listener
     if args.model_name == 'bart':
         comm_model = BartForConditionalGeneration.from_pretrained(
             'facebook/bart-large'

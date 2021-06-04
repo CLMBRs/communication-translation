@@ -55,37 +55,20 @@ class CommunicationAgent(Module):
         self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
 
-    @abstractmethod
-    def forward(self, batch):
-        raise NotImplementedError
-
-    
-class ECImageIdentificationAgent(CommunicationAgent):
-    def forward(self, batch):
-        target_image = batch['target']
-        speaker_images = batch['speaker_image']
-        listener_images = batch['listener_images']
-
-        num_image_choices = listener_images.size(1)
-
+    def image_to_message(self, batch):
         # Embed the Speaker's image using the Beholder
-        speaker_image_embeddings = self.beholder1(speaker_images)
-        batch["image_hidden"] = speaker_image_embeddings
+        image_embedding = self.beholder1(batch['speaker_image'])
 
-        # Generate the Speaker's message/caption about the image. (The speaker
-        # classes are currently not accepting input captions)
-        message_dict = self.speaker(**batch)
-        message_ids = message_dict["message_ids"]
-        message_logits = message_dict["message_logits"]
-        message_lengths = message_dict["message_lengths"]
+        # Generate the Speaker's message/caption about the image
+        message_dict = self.speaker(image_embedding, **batch)
+        return message_dict
 
-        end_idx_ = 0
-        end_loss_ = 0
+    def choose_image_from_message(self, message_dict, listener_images):
+        num_image_choices = listener_images.size(1)
 
         # Embed the Listener's candidate images using the Beholder
         listener_images = listener_images.view(-1, self.image_dim)
         listener_image_embeddings = self.beholder2(listener_images)
-        # TODO: this is a problem
         listener_image_embeddings = listener_image_embeddings.view(
             -1, num_image_choices, self.hidden_dim
         )
@@ -106,26 +89,48 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
+        return image_candidate_logits
 
-        # Get final cross-entropy loss
+    @abstractmethod
+    def forward(self, batch):
+        raise NotImplementedError
+
+    
+class ECImageIdentificationAgent(CommunicationAgent):
+    def forward(self, batch):
+        # Get the message dictionary (ids, logits, lengths) from the speaker
+        # based on the input image
+        message_dict = self.image_to_message(batch)
+
+        end_idx_ = 0
+        end_loss_ = 0
+
+        # Get the logits for the image choice candidates based on the speaker's
+        # message
+        image_candidate_logits = self.choose_image_from_message(
+            message_dict, batch['listener_images']
+        )
+
+        # Get final cross-entropy loss between the candidates and the target
+        # images
+        target_image = batch['target']
         communication_loss = self.crossentropy(
             image_candidate_logits, target_image
         )
+
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)
         eq = torch.eq(predicted_idx, target_image)
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
-        return_dict = {
+        return {
             'loss': communication_loss,
             'accuracy': 100 * accuracy,
-            'message': message_ids,
+            'message': message_dict['message_ids'],
             'end_idx': end_idx_,
             'end_loss': end_loss_,
-            'mean_length': torch.mean(message_lengths.float())
+            'mean_length': torch.mean(message_dict['message_lengths'].float())
         }
-
-        return return_dict
 
 
 class ImageCaptionGrounder(CommunicationAgent):
@@ -134,48 +139,38 @@ class ImageCaptionGrounder(CommunicationAgent):
     on images, and picking images based on a caption (independently)
     """
     def forward(self, batch):
-        image = batch['image']
+        # Get the message dictionary (ids, logits, lengths) from the speaker
+        # based on the input image
+        message_dict = self.image_to_message(batch)
         caption = batch['caption']
-        image_choices = batch['image_choices']
-
-        num_image_choices = image_choices.size(1)
-
-        image_embedding = self.beholder(image)
-        message_dict = self.speaker(image_embedding, **batch)
-        message_ids = message_dict["message_ids"]
-        caption_loss = F.cross_entropy(message_ids, caption['input_ids'])
-
-        # Embed the candidate images using the Beholder
-        image_choices = image_choices.view(-1, self.image_dim)
-        image_choice_embeddings = self.beholder2(image_choices)
-        image_choice_embeddings = image_choice_embeddings.view(
-            -1, num_image_choices, self.hidden_dim
+        caption_generation_loss = F.cross_entropy(
+            message_dict['message_ids'], caption['input_ids']
         )
 
-        listener_hidden = self.listener(**caption)
-        # (batch_size, num_image_choices, hidden_dim)
-        listener_hidden = listener_hidden.unsqueeze(1).repeat(
-            1, num_image_choices, 1
+        # Get the logits for the image choice candidates based on the gold
+        # caption (NOT the speaker's message)
+        image_candidate_logits = self.choose_image_from_message(
+            caption, batch['listener_images']
+        )
+        # Get final cross-entropy loss between the candidates and the target
+        # images
+        target_image = batch['target']
+        caption_understanding_loss = self.crossentropy(
+            image_candidate_logits, target_image
         )
 
-        # Get the Mean Squared Error between the final listener representation
-        # and all of the candidate images
-        image_candidate_errors = F.mse_loss(
-            listener_hidden, image_choice_embeddings, reduction='none'
-        ).mean(dim=2).view(-1, num_image_choices)
-        # Transform this to the inverted MSE (for use as scores)
-        image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
+        # Get predicted accuracy
+        _, predicted_idx = torch.max(image_candidate_logits, dim=1)
+        eq = torch.eq(predicted_idx, target_image)
+        accuracy = float(eq.sum().data) / float(eq.nelement())
 
-        # Get final cross-entropy loss
-        image_choice_loss = self.crossentropy(
-            image_candidate_logits, batch['target']
-        )
-
-        loss = caption_loss + image_choice_loss
+        loss = caption_generation_loss + caption_understanding_loss
 
         return {
             "loss": loss,
-            "message": message_ids
+            'accuracy': 100 * accuracy,
+            "message": message_dict['message_ids'],
+            'mean_length': torch.mean(message_dict['message_lengths'].float())
         }
 
 

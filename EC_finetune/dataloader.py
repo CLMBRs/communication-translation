@@ -140,9 +140,11 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                 self.caption_lookup[caption_index] = (
                     image_index, secondary_index
                 )
-                self.captions[image_index][secondary_index] = tokenizer(
+                caption_dict = tokenizer(
                     [self.captions[image_index][secondary_index]]
                 )
+                caption_dict['message_ids'] = caption_dict['input_ids']
+                self.captions[image_index][secondary_index] = caption_dict
                 caption_index += 1
 
         # Prepartion for language-constrained generation
@@ -165,14 +167,13 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
     def __getitem__(self, index: int) -> dict:
         # Get the image and caption-option index from the lookup table
         image_index, secondary_index = self.caption_lookup[index]
-        
         # Use the supertype's __getitem__ to get the image, distractors, and 
         # correct image index
         super_ret = super().__getitem__(image_index)
         ret = {
-            'image': super_ret['speaker_image'],
+            'speaker_image': super_ret['speaker_image'],
             'caption': self.captions[image_index][secondary_index],
-            'image_choices': super_ret['listener_images'],
+            'listener_images': super_ret['listener_images'],
             'target': super_ret['target'],
             'lang_id': self.lang_id
         }
