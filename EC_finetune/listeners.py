@@ -19,7 +19,9 @@ class Listener(Module):
     docstring for the CommunicationAgent to work
     """
     @abstractmethod
-    def forward(self, message_ids: Tensor, message_logits: Tensor) -> Tensor:
+    def forward(
+        self, message_ids: Tensor, message_logits: Tensor = None
+    ) -> Tensor:
         """
         Convert a gumbel-generated sequence of natural language logits and ids
         to a hidden representation
@@ -68,7 +70,9 @@ class BartListener(Listener):
         self.hidden_to_output = nn.Linear(1024, output_dim)
         self.unit_norm = unit_norm
 
-    def forward(self, message_ids: Tensor, message_logits: Tensor) -> Tensor:
+    def forward(
+        self, message_ids: Tensor, message_logits: Tensor = None
+    ) -> Tensor:
         """
         Return the pooled representation of the Bart encoder stack over the
         embedded input message
@@ -83,7 +87,10 @@ class BartListener(Listener):
             The batch of hidden states representing each sequence.
                 `(batch_size, output_dim)`
         """
-        message_embedding = torch.matmul(message_logits, self.embedding.weight)
+        message_embedding = torch.matmul(
+            message_logits, self.embedding.weight
+        ) if message_logits is not None else self.embedding(message_ids)
+
         if self.dropout:
             message_embedding = self.dropout(message_embedding)
         hidden = self.encoder(
@@ -148,7 +155,12 @@ class RnnListener(Listener):
             self.num_directions * self.hidden_dim, self.output_dim
         )
 
-    def forward(self, message_ids, message_logits, message_lengths):
+    def forward(
+        self,
+        message_ids: Tensor,
+        message_lengths: Tensor,
+        message_logits: Tensor = None
+    ):
         """
         Return the final representation of the RNN encoder stack over the
         embedded input message
@@ -165,7 +177,10 @@ class RnnListener(Listener):
             The batch of hidden states representing each sequence.
                 `(batch_size, output_dim)`
         """
-        message_embedding = torch.matmul(message_logits, self.embedding.weight)
+        message_embedding = torch.matmul(
+            message_logits, self.embedding.weight
+        ) if message_logits is not None else self.embedding(message_ids)
+
         if self.dropout:
             message_embedding = self.dropout(message_embedding)
         packed_seq = torch.nn.utils.rnn.pack_padded_sequence(

@@ -50,8 +50,9 @@ def evaluate(args, model, dataloader, epoch=0):
         model.eval()
 
         # Move data to the GPU
-        batch['image'] = batch['image'].to(args.device)
         batch['caption'] = batch['caption'].to(args.device)
+        batch['speaker_image'] = batch['speaker_image'].to(args.device)
+        batch['listener_images'] = batch['listener_images'].to(args.device)
 
         eval_return_dict = model(batch)
 
@@ -67,9 +68,9 @@ def evaluate(args, model, dataloader, epoch=0):
     for key, value in stats.items():
         average_stats[key] = mean(value)
 
-    s_new = print_loss_(epoch, args.alpha, average_stats, 'valid')
+    printout = print_loss_(epoch, args.alpha, average_stats, 'valid')
 
-    return average_stats, output_ids, s_new
+    return average_stats, output_ids, printout
 
 
 def save(args, model, logger):
@@ -142,13 +143,11 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             if global_step % args.valid_every == 0:
                 with torch.no_grad():
-                    results, output_ids, s_new = evaluate(
+                    results, output_ids, printout = evaluate(
                         args, model, valid_dataloader, epoch
                     )
-
                     # Output evaluation statistics
-                    logger.info(s_new)
-
+                    logger.info(printout)
                     # Add one hyperparameter target_acc to the yml file.
                     cur_acc = float(results['accuracy'])
                     if cur_acc > args.target_acc and cur_acc > best_acc:
@@ -277,7 +276,7 @@ def main():
         model.load_state_dict(torch.load(checkpoint))
         model.to(args.device)
         model.eval()
-        results, output_ids, s_new = evaluate(args, model, valid_dataloader)
+        results, output_ids, printout = evaluate(args, model, valid_dataloader)
         if args.save_output_txt:
             output_texts = ids_to_texts(output_ids, tokenizer)
             with open(args.output_dir + '/eval_texts.txt', 'w') as f:
@@ -285,7 +284,7 @@ def main():
                     f.write(i)
 
         logger.info("Best model stats: ")
-        logger.info(s_new)
+        logger.info(printout)
 
 
 if __name__ == '__main__':

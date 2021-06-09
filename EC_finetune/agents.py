@@ -52,7 +52,6 @@ class CommunicationAgent(Module):
         self.hidden_dim = args.hidden_dim
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
-        self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
 
     def image_to_message(self, batch):
@@ -102,9 +101,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # based on the input image
         message_dict = self.image_to_message(batch)
 
-        end_idx_ = 0
-        end_loss_ = 0
-
         # Get the logits for the image choice candidates based on the speaker's
         # message
         image_candidate_logits = self.choose_image_from_message(
@@ -127,8 +123,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
             'loss': communication_loss,
             'accuracy': 100 * accuracy,
             'message': message_dict['message_ids'],
-            'end_idx': end_idx_,
-            'end_loss': end_loss_,
             'mean_length': torch.mean(message_dict['message_lengths'].float())
         }
 
@@ -146,6 +140,9 @@ class ImageCaptionGrounder(CommunicationAgent):
         caption_generation_loss = F.cross_entropy(
             message_dict['message_ids'], caption['input_ids']
         )
+
+        # Convert the caption kwargs to what the listener expects
+        caption['message_ids'] = caption['input_ids']
 
         # Get the logits for the image choice candidates based on the gold
         # caption (NOT the speaker's message)
@@ -167,9 +164,9 @@ class ImageCaptionGrounder(CommunicationAgent):
         loss = caption_generation_loss + caption_understanding_loss
 
         return {
-            "loss": loss,
+            'loss': loss,
             'accuracy': 100 * accuracy,
-            "message": message_dict['message_ids'],
+            'message': message_dict['message_ids'],
             'mean_length': torch.mean(message_dict['message_lengths'].float())
         }
 
