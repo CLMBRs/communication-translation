@@ -4,7 +4,8 @@ from typing import Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Module, Tensor
+from torch import Tensor
+from torch.nn import Module
 
 
 class Speaker(Module):
