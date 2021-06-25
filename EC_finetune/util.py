@@ -397,3 +397,15 @@ def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file, threshold=0.01):
     mask = torch.zeros(len(tokenizer))
     mask[bad_token_ids] = -float("inf")
     return mask
+
+
+def convert_token2count_file(tokenizer, file):
+    import json
+    from tqdm import tqdm
+    dic = json.load(open(file, "r"))
+    ret = {}
+    for t, freq in tqdm(dic.items()):
+        token_id = tokenizer.vocab[t]
+        assert token_id not in ret
+        ret[token_id] = freq
+    return ret
