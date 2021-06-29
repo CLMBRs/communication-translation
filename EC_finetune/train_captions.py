@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import CommunicationAgent
+from EC_finetune.agents import ImageCaptionGrounder
 from EC_finetune.dataloader import CaptionTrainingDataset
 from EC_finetune.util import print_loss_
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
@@ -50,7 +50,7 @@ def evaluate(args, model, dataloader, epoch=0):
         model.eval()
 
         # Move data to the GPU
-        batch['caption'] = batch['caption'].to(args.device)
+        batch['caption_ids'] = batch['caption_ids'].to(args.device)
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
 
@@ -110,7 +110,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             model.train()
 
             # Move data to the GPU
-            batch['caption'] = batch['caption'].to(args.device)
+            batch['caption_ids'] = batch['caption_ids'].to(args.device)
             batch['speaker_image'] = batch['speaker_image'].to(args.device)
             batch['listener_images'] = batch['listener_images'].to(args.device)
 
@@ -210,6 +210,9 @@ def main():
     logger.info('Configuration:')
     print(args)
 
+    tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
+    args.padding_index = tokenizer.get_vocab()['<pad>']
+
     # Initialize Speaker and Listener, either from pretrained Bart or as a
     # from-scratch RNN
     if args.model_name == 'bart':
@@ -236,7 +239,7 @@ def main():
         speaker = MBartSpeaker(
             comm_model,
             args.hidden_dim,
-            seq_len=args.seq_len,
+            seq_len=args.max_seq_length,
             temperature=args.temp,
             hard=args.hard
         )
@@ -261,7 +264,7 @@ def main():
         raise ValueError(f"Model type {args.model_name} is not valid")
 
     # Initialize agent setup
-    model = CommunicationAgent(speaker, listener, args)
+    model = ImageCaptionGrounder(speaker, listener, args)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
@@ -277,7 +280,7 @@ def main():
         "shuffle": False,
         "drop_last": False
     }
-    tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
+
     training_set = CaptionTrainingDataset(
         train_images,
         train_captions,

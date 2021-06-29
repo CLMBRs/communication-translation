@@ -53,6 +53,7 @@ class CommunicationAgent(Module):
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
         self.no_share_bhd = args.no_share_bhd
+        self.padding_index = args.padding_index
 
     def image_to_message(self, batch):
         # Embed the Speaker's image using the Beholder
@@ -136,16 +137,13 @@ class ImageCaptionGrounder(CommunicationAgent):
         # Get the message dictionary (ids, logits, lengths) from the speaker
         # based on the input image
         message_dict = self.image_to_message(batch)
-        caption = batch['caption']
         caption_generation_loss = F.cross_entropy(
-            message_dict['message_ids'], caption['input_ids']
+            message_dict['message_ids'], batch['caption_ids'], ignore_index=self.padding_index
         )
-
-        # Convert the caption kwargs to what the listener expects
-        caption['message_ids'] = caption['input_ids']
 
         # Get the logits for the image choice candidates based on the gold
         # caption (NOT the speaker's message)
+        caption = {'message_ids': batch['caption_ids']}
         image_candidate_logits = self.choose_image_from_message(
             caption, batch['listener_images']
         )

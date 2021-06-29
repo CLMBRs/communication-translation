@@ -2,6 +2,7 @@ import random
 from typing import List
 
 from numpy import ndarray
+from torch import LongTensor
 from torch.utils.data.dataset import Dataset
 
 from EC_finetune.util import *
@@ -147,11 +148,6 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                 self.caption_lookup[caption_index] = (
                     image_index, secondary_index
                 )
-                caption_dict = tokenizer(
-                    [self.captions[image_index][secondary_index]]
-                )
-                caption_dict['message_ids'] = caption_dict['input_ids']
-                self.captions[image_index][secondary_index] = caption_dict
                 caption_index += 1
 
         # Prepartion for language-constrained generation
@@ -182,13 +178,11 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
             caption,
             max_length=self.max_length,
             padding='max_length',
-            truncate=True
+            truncation=True
         )
-        caption['message_ids'] = caption['input_ids']
-        del caption['input_ids']
         ret = {
             'speaker_image': super_ret['speaker_image'],
-            'caption': caption,
+            'caption_ids': LongTensor(caption['input_ids']),
             'listener_images': super_ret['listener_images'],
             'target': super_ret['target'],
             'lang_id': self.lang_id
