@@ -216,14 +216,36 @@ def main():
         comm_model = BartForConditionalGeneration.from_pretrained(
             'facebook/bart-large'
         )
-        speaker = BartSpeaker(comm_model, args.hidden_dim, seq_len=args.seq_len, temperature=args.temp, hard=args.hard)
-        listener = BartListener(comm_model, args.hidden_dim, dropout=args.dropout, unit_norm=args.unit_norm)
+        speaker = BartSpeaker(
+            comm_model,
+            args.hidden_dim,
+            seq_len=args.seq_len,
+            temperature=args.temp,
+            hard=args.hard
+        )
+        listener = BartListener(
+            comm_model,
+            args.hidden_dim,
+            dropout=args.dropout,
+            unit_norm=args.unit_norm
+        )
     elif args.model_name == "mbart":
         comm_model = MBartForConditionalGeneration.from_pretrained(
             'facebook/mbart-large-cc25'
         )
-        speaker = MBartSpeaker(comm_model, args.hidden_dim, seq_len=args.seq_len, temperature=args.temp, hard=args.hard)
-        listener = MBartListener(comm_model, args.hidden_dim, dropout=args.dropout, unit_norm=args.unit_norm)
+        speaker = MBartSpeaker(
+            comm_model,
+            args.hidden_dim,
+            seq_len=args.seq_len,
+            temperature=args.temp,
+            hard=args.hard
+        )
+        listener = MBartListener(
+            comm_model,
+            args.hidden_dim,
+            dropout=args.dropout,
+            unit_norm=args.unit_norm
+        )
     elif args.model_name == 'rnn':
         comm_model = nn.GRU(
             input_size=args.hidden_dim,
@@ -257,10 +279,20 @@ def main():
     }
     tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
     training_set = CaptionTrainingDataset(
-        train_images, train_captions, args.num_distractors_train, tokenizer, args
+        train_images,
+        train_captions,
+        args.num_distractors_train,
+        tokenizer,
+        args,
+        max_length=args.max_seq_length
     )
     valid_set = CaptionTrainingDataset(
-        valid_images, valid_captions, args.num_distractors_valid, tokenizer, args
+        valid_images,
+        valid_captions,
+        args.num_distractors_valid,
+        tokenizer,
+        args,
+        max_length=args.max_seq_length
     )
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)

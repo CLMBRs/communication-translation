@@ -18,7 +18,7 @@ beam_width: 12
 temperature: 1.0
 temp: 1.0
 hard: true
-seq_len: 32 # sequence length limit
+max_seq_length: 128 # sequence length limit
 TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Train and eval:

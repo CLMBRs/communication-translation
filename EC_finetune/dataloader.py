@@ -121,13 +121,20 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         args: a namespace of additional arguments
     """
     def __init__(
-        self, images: ndarray, captions: List[List[str]], num_distractors: int,
-        tokenizer, args
+        self,
+        images: ndarray,
+        captions: List[List[str]],
+        num_distractors: int,
+        tokenizer,
+        args,
+        max_length: int = 256
     ) -> Dataset:
         # Initialize using the ImageIdentificationDataset constructor
         super().__init__(images, num_distractors)
         self.captions = captions
-        
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
         # The total number of training instances is the sum of caption options,
         # since an image can have more than one caption. Create a lookup
         # dictionary that returns a (image_index, caption_index) pair based on a
@@ -167,12 +174,21 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
     def __getitem__(self, index: int) -> dict:
         # Get the image and caption-option index from the lookup table
         image_index, secondary_index = self.caption_lookup[index]
-        # Use the supertype's __getitem__ to get the image, distractors, and 
+        # Use the supertype's __getitem__ to get the image, distractors, and
         # correct image index
         super_ret = super().__getitem__(image_index)
+        caption = self.captions[image_index][secondary_index]
+        caption = self.tokenizer(
+            caption,
+            max_length=self.max_length,
+            padding='max_length',
+            truncate=True
+        )
+        caption['message_ids'] = caption['input_ids']
+        del caption['input_ids']
         ret = {
             'speaker_image': super_ret['speaker_image'],
-            'caption': self.captions[image_index][secondary_index],
+            'caption': caption,
             'listener_images': super_ret['listener_images'],
             'target': super_ret['target'],
             'lang_id': self.lang_id
