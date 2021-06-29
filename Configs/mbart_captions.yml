@@ -58,6 +58,6 @@ alpha: 1.0
 # Specify info about language and vocab constraint
 has_vocab_constraint: true
 source_lang: en_XX
-source_lang_vocab_constrain_file: ./Data/Cc/en_europarl_count_dict.json
-target_lang: ja_XX
-target_lang_vocab_constrain_file: ./Data/Cc/ja_smaller_count_dict.json
+source_lang_vocab_constrain_file: /projects/unmt/communication-translation/en_cc_tokenID2count_dict.cc25.json
+target_lang: zh_CN
+target_lang_vocab_constrain_file: /projects/unmt/communication-translation/zh-Hans_cc_tokenID2count_dict.cc25.json
