@@ -21,6 +21,17 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from transformers import pipeline, AutoTokenizer
 from transformers import BartForConditionalGeneration, MBartTokenizer
+import datasets
+from datasets.wmt19.wmt_utils import WmtConfig
+
+# dataset = datasets.load_dataset('wmt14', 'zh-en')
+config = WmtConfig(
+    version="0.0.1",
+    language_pair=("zh", "en"),
+    subsets={
+        datasets.Split.VALIDATION: ["newsdev2019"],
+    },
+)
 
 
 def set_seed(args):
