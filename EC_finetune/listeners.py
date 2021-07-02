@@ -100,8 +100,8 @@ class BartListener(Listener):
         if self.unit_norm:
             norm = torch.norm(pooled_hidden, p=2, dim=1, keepdim=True)
             norm = norm.detach() + 1e-9
-            output = pooled_hidden / norm
-        output = self.hidden_to_output(output)
+            pooled_hidden = pooled_hidden / norm
+        output = self.hidden_to_output(pooled_hidden)
         return output
 
 

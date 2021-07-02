@@ -53,6 +53,7 @@ def evaluate(args, model, dataloader, epoch=0):
         batch['caption_ids'] = batch['caption_ids'].to(args.device)
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
+        batch['target'] = batch['target'].to(args.device)
 
         eval_return_dict = model(batch)
 
@@ -92,7 +93,7 @@ def save(args, model, logger):
         # using `save_pretrained()`. They can then be
         # reloaded using `from_pretrained()`
         model_to_save = (
-            model.model.module if hasattr(model, "module") else model.model
+            model.speaker.speaker.module if hasattr(model.speaker.speaker, "module") else model.speaker.speaker
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
@@ -108,11 +109,12 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
         for batch in epoch_iterator:
             # Inform the training started.
             model.train()
-
+            
             # Move data to the GPU
             batch['caption_ids'] = batch['caption_ids'].to(args.device)
             batch['speaker_image'] = batch['speaker_image'].to(args.device)
             batch['listener_images'] = batch['listener_images'].to(args.device)
+            batch['target'] = batch['target'].to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -128,7 +130,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     save(args, model, logger)
                 return global_step
 
-            checkpoint_stats[key].append(loss.item())
+            checkpoint_stats['loss'].append(loss.item())
+            checkpoint_stats['mean_length'].append(train_return_dict['mean_length'].item())
+            checkpoint_stats['accuracy'].append(train_return_dict['accuracy'])
 
             if global_step % args.print_every == 0:
                 checkpoint_average_stats = {}

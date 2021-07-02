@@ -138,7 +138,7 @@ class ImageCaptionGrounder(CommunicationAgent):
         # based on the input image
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
-            message_dict['message_ids'], batch['caption_ids'], ignore_index=self.padding_index
+            message_dict['message_logits'].transpose(1,2), batch['caption_ids'], ignore_index=self.padding_index
         )
 
         # Get the logits for the image choice candidates based on the gold
@@ -150,7 +150,7 @@ class ImageCaptionGrounder(CommunicationAgent):
         # Get final cross-entropy loss between the candidates and the target
         # images
         target_image = batch['target']
-        caption_understanding_loss = self.crossentropy(
+        caption_understanding_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
 

@@ -320,7 +320,7 @@ def print_loss(epoch, alpha, avg_loss_dict, mode="train"):
                     avg_loss_dict[agent][person]["loss"] * alpha
                 )
                 prt_msg += " {:.2f}%".format(
-                    avg_loss_dict[agent][person]["acc"]
+                    avg_loss_dict[agent][person]["accuracy"]
                 )
             prt_msg += " |"
     return prt_msg
