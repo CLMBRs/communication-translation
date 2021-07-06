@@ -71,7 +71,10 @@ class BartListener(Listener):
         self.unit_norm = unit_norm
 
     def forward(
-        self, message_ids: Tensor, message_logits: Tensor = None
+        self,
+        message_ids: Tensor,
+        attention_mask: Tensor,
+        message_logits: Tensor = None
     ) -> Tensor:
         """
         Return the pooled representation of the Bart encoder stack over the
@@ -79,6 +82,8 @@ class BartListener(Listener):
         
         Args:
             message_ids: the batch of generated sentences as indices.
+                `(batch_size, sequence_length)`
+            attn_mask: the attention/padding mask for the batch.
                 `(batch_size, sequence_length)`
             message_logits: the batch of generated sentences as logits over the
                 vocabulary at each position. 
@@ -94,7 +99,9 @@ class BartListener(Listener):
         if self.dropout:
             message_embedding = self.dropout(message_embedding)
         hidden = self.encoder(
-            input_ids=message_ids, input_embeds=message_embedding
+            input_ids=message_ids,
+            input_embeds=message_embedding,
+            attention_mask=attention_mask
         )
         pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
         if self.unit_norm:

@@ -183,6 +183,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         ret = {
             'speaker_image': super_ret['speaker_image'],
             'caption_ids': LongTensor(caption['input_ids']),
+            'caption_mask': LongTensor(caption['attn_mask']),
             'listener_images': super_ret['listener_images'],
             'target': super_ret['target'],
             'lang_id': self.lang_id

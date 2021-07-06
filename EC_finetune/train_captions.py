@@ -51,6 +51,7 @@ def evaluate(args, model, dataloader, epoch=0):
 
         # Move data to the GPU
         batch['caption_ids'] = batch['caption_ids'].to(args.device)
+        batch['caption_mask'] = batch['caption_mask'].to(args.device)
         batch['speaker_image'] = batch['speaker_image'].to(args.device)
         batch['listener_images'] = batch['listener_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
@@ -112,6 +113,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             
             # Move data to the GPU
             batch['caption_ids'] = batch['caption_ids'].to(args.device)
+            batch['caption_mask'] = batch['caption_mask'].to(args.device)
             batch['speaker_image'] = batch['speaker_image'].to(args.device)
             batch['listener_images'] = batch['listener_images'].to(args.device)
             batch['target'] = batch['target'].to(args.device)

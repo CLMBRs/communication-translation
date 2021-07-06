@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from argparse import Namespace
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,6 +55,7 @@ class CommunicationAgent(Module):
         self.beam_width = args.beam_width
         self.no_share_bhd = args.no_share_bhd
         self.padding_index = args.padding_index
+        self.max_seq_length = args.max_seq_length
 
     def image_to_message(self, batch):
         # Embed the Speaker's image using the Beholder
@@ -61,6 +63,16 @@ class CommunicationAgent(Module):
 
         # Generate the Speaker's message/caption about the image
         message_dict = self.speaker(image_embedding, **batch)
+
+        # Create the padding mask
+        lengths = list(message_dict['message_lengths'])
+        batch_size = len(lengths)
+        padding_mask = np.ones(batch_size, self.max_seq_length)
+        for seq in range(batch_size):
+            padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
+        padding_mask = torch.tensor(padding_mask).to(message_dict['message_ids'].device)
+        message_dict['attention_mask'] = padding_mask
+        
         return message_dict
 
     def choose_image_from_message(self, message_dict, listener_images):
@@ -95,7 +107,7 @@ class CommunicationAgent(Module):
     def forward(self, batch):
         raise NotImplementedError
 
-    
+
 class ECImageIdentificationAgent(CommunicationAgent):
     def forward(self, batch):
         # Get the message dictionary (ids, logits, lengths) from the speaker
@@ -138,12 +150,17 @@ class ImageCaptionGrounder(CommunicationAgent):
         # based on the input image
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
-            message_dict['message_logits'].transpose(1,2), batch['caption_ids'], ignore_index=self.padding_index
+            message_dict['message_logits'].transpose(1, 2),
+            batch['caption_ids'],
+            ignore_index=self.padding_index
         )
 
         # Get the logits for the image choice candidates based on the gold
         # caption (NOT the speaker's message)
-        caption = {'message_ids': batch['caption_ids']}
+        caption = {
+            'message_ids': batch['caption_ids'],
+            'attention_mask': batch['caption_mask']
+        }
         image_candidate_logits = self.choose_image_from_message(
             caption, batch['listener_images']
         )
