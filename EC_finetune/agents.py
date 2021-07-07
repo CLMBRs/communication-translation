@@ -60,20 +60,8 @@ class CommunicationAgent(Module):
     def image_to_message(self, batch):
         # Embed the Speaker's image using the Beholder
         image_embedding = self.beholder1(batch['speaker_image'])
-
         # Generate the Speaker's message/caption about the image
-        message_dict = self.speaker(image_embedding, **batch)
-
-        # Create the padding mask
-        lengths = list(message_dict['message_lengths'])
-        batch_size = len(lengths)
-        padding_mask = np.ones(batch_size, self.max_seq_length)
-        for seq in range(batch_size):
-            padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
-        padding_mask = torch.tensor(padding_mask).to(message_dict['message_ids'].device)
-        message_dict['attention_mask'] = padding_mask
-        
-        return message_dict
+        return self.speaker(image_embedding, **batch)
 
     def choose_image_from_message(self, message_dict, listener_images):
         num_image_choices = listener_images.size(1)
@@ -114,6 +102,15 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # based on the input image
         message_dict = self.image_to_message(batch)
 
+        # Create the padding mask
+        lengths = list(message_dict['message_lengths'])
+        batch_size = len(lengths)
+        padding_mask = np.ones(batch_size, self.max_seq_length)
+        for seq in range(batch_size):
+            padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
+        padding_mask = torch.tensor(padding_mask).to(message_dict['message_ids'].device)
+        message_dict['attention_mask'] = padding_mask
+
         # Get the logits for the image choice candidates based on the speaker's
         # message
         image_candidate_logits = self.choose_image_from_message(
@@ -148,6 +145,7 @@ class ImageCaptionGrounder(CommunicationAgent):
     def forward(self, batch):
         # Get the message dictionary (ids, logits, lengths) from the speaker
         # based on the input image
+        batch['decoder_input_ids'] = batch['caption_ids']
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
             message_dict['message_logits'].transpose(1, 2),
@@ -167,7 +165,7 @@ class ImageCaptionGrounder(CommunicationAgent):
         # Get final cross-entropy loss between the candidates and the target
         # images
         target_image = batch['target']
-        caption_understanding_loss = F.cross_entropy(
+        image_selection_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
 
@@ -176,13 +174,14 @@ class ImageCaptionGrounder(CommunicationAgent):
         eq = torch.eq(predicted_idx, target_image)
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
-        loss = caption_generation_loss + caption_understanding_loss
+        loss = caption_generation_loss + image_selection_loss
 
         return {
             'loss': loss,
+            'caption generation loss': caption_generation_loss.item(),
+            'image selection loss': image_selection_loss.item(),
             'accuracy': 100 * accuracy,
-            'message': message_dict['message_ids'],
-            'mean_length': torch.mean(message_dict['message_lengths'].float())
+            'message': message_dict['message_ids']
         }
 
 

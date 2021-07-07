@@ -7,6 +7,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
+from EC_finetune.modelings.modeling_bart import _prepare_bart_decoder_inputs
+
 
 class Speaker(Module):
     """
@@ -50,6 +52,7 @@ class BartSpeaker(Speaker):
         """
         super().__init__()
         self.speaker = model
+        self.decoder = model.model.decoder
         self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
         self.speaker.temp = temperature
@@ -58,7 +61,9 @@ class BartSpeaker(Speaker):
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
 
-    def forward(self, image_hidden, **kwargs):
+    def forward(
+        self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
+    ):
         """
         TODO: Add documentation
         """
@@ -73,27 +78,50 @@ class BartSpeaker(Speaker):
         # (batch_size, max_sequence_length, embedding_dim)
         image_hidden = self.projection(image_hidden)
 
-        # Prepare special Bart parameters
-        if "lang_id" in kwargs:
-            kwargs["lang_id"] = kwargs["lang_id"].view(batch_size, -1)
-            kwargs["lang_id"] = \
-                kwargs["lang_id"].to(image_hidden.device)
-        if "lang_mask" in kwargs:
-            kwargs["lang_mask"] = \
-                kwargs["lang_mask"].to(image_hidden.device)
+        if decoder_input_ids is not None:
+            decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
+                config=self.speaker.config,
+                input_ids=decoder_input_ids,
+                causal_mask_dtype=self.speaker.model.shared.weight.dtype
+            )
+            output = self.decoder(
+                input_ids=decoder_input_ids,
+                encoder_hidden_states=image_hidden,
+                encoder_padding_mask=None,
+                decoder_padding_mask=decoder_padding_mask,
+                decoder_causal_mask=causal_mask
+            )
+            logits = F.linear(
+                output.last_hidden_state,
+                self.speaker.model.shared.weight,
+                bias=self.speaker.final_logits_bias
+            )
+            return {
+                "message_ids": torch.argmax(logits, dim=2, keepdim=False),
+                "message_logits": logits
+            }
+        else:
+            # Prepare special Bart parameters
+            if "lang_id" in kwargs:
+                kwargs["lang_id"] = kwargs["lang_id"].view(batch_size, -1)
+                kwargs["lang_id"] = \
+                    kwargs["lang_id"].to(image_hidden.device)
+            if "lang_mask" in kwargs:
+                kwargs["lang_mask"] = \
+                    kwargs["lang_mask"].to(image_hidden.device)
 
-        # Get the speaker model output and return
-        output = self.speaker.gumbel_generate(
-            input_images=image_hidden,
-            num_beams=1,
-            max_length=self.seq_len,
-            **kwargs
-        )
-        return {
-            "message_ids": output["generated_token_ids"],
-            "message_logits": output["generated_logits"],
-            "message_lengths": output["generated_sentence_len"]
-        }
+            # Get the speaker model output and return
+            output = self.speaker.gumbel_generate(
+                input_images=image_hidden,
+                num_beams=1,
+                max_length=self.seq_len,
+                **kwargs
+            )
+            return {
+                "message_ids": output["generated_token_ids"],
+                "message_logits": output["generated_logits"],
+                "message_lengths": output["generated_sentence_len"]
+            }
 
 
 MBartSpeaker = BartSpeaker

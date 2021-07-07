@@ -41,7 +41,17 @@ def ids_to_texts(output_ids, tokenizer):
     return text
 
 
-def evaluate(args, model, dataloader, epoch=0):
+def statbar_string(stat_dict: dict) -> str:
+    """
+    Return a printable "statbar" string from a dictionary of named statistics
+    """
+    stat_items = []
+    for key, value in stat_dict.items():
+        stat_items.append(f"{key} {value}")
+    return ' | '.join(stat_items)
+
+
+def evaluate(args, model, dataloader, epoch=0, global_step=0):
     stats = defaultdict(list)
     epoch_iterator = tqdm(dataloader, desc="Iteration")
     output_ids = []
@@ -61,16 +71,18 @@ def evaluate(args, model, dataloader, epoch=0):
         output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
-        eval_return_dict['mean_length'] = eval_return_dict['mean_length'].item()
         for key, value in eval_return_dict.items():
-            if key in ['loss', 'accuracy', 'mean_length']:
+            if key in ['loss', 'accuracy', 'mean_length', 'caption generation loss', 'image selection loss']:
                 stats[key].append(value)
 
     average_stats = {}
+    average_stats['epoch'] = epoch
+    average_stats['global step'] = global_step
+    average_stats['mode'] = 'validation'
     for key, value in stats.items():
-        average_stats[key] = mean(value)
+        average_stats[key] = round(mean(value), 4)
 
-    printout = print_loss_(epoch, args.alpha, average_stats, 'valid')
+    printout = statbar_string(average_stats)
 
     return average_stats, output_ids, printout
 
@@ -132,25 +144,25 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     save(args, model, logger)
                 return global_step
 
-            checkpoint_stats['loss'].append(loss.item())
-            checkpoint_stats['mean_length'].append(train_return_dict['mean_length'].item())
-            checkpoint_stats['accuracy'].append(train_return_dict['accuracy'])
+            train_return_dict['loss'] = train_return_dict['loss'].item()
+            for key, value in train_return_dict.items():
+                if key in ['loss', 'accuracy', 'mean_length', 'caption generation loss', 'image selection loss']:
+                    checkpoint_stats[key].append(value)
 
             if global_step % args.print_every == 0:
                 checkpoint_average_stats = {}
+                checkpoint_average_stats['epoch'] = epoch
+                checkpoint_average_stats['global step'] = global_step
+                checkpoint_average_stats['mode'] = 'train'
                 for key, value in checkpoint_stats.items():
-                    checkpoint_average_stats[key] = mean(value)
-                logger.info(
-                    print_loss_(
-                        epoch, args.alpha, checkpoint_average_stats, 'train'
-                    )
-                )
+                    checkpoint_average_stats[key] = round(mean(value), 4)
+                logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
 
             if global_step % args.valid_every == 0:
                 with torch.no_grad():
                     results, output_ids, printout = evaluate(
-                        args, model, valid_dataloader, epoch
+                        args, model, valid_dataloader, epoch, global_step
                     )
                     # Output evaluation statistics
                     logger.info(printout)
