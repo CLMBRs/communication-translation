@@ -47,8 +47,8 @@ def evaluate(args, model, dataloader, epoch=0):
         model.eval()
 
         # Move data to the GPU
-        batch['speaker_image'] = batch['speaker_image'].to(args.device)
-        batch['listener_images'] = batch['listener_images'].to(args.device)
+        batch['sender_image'] = batch['sender_image'].to(args.device)
+        batch['receiver_images'] = batch['receiver_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
 
         eval_return_dict = model(batch)
@@ -108,8 +108,8 @@ def train(args, model, dataloader, valid_dataloader, in_params, logger):
             model.train()
 
             # Move data to the GPU
-            batch['speaker_image'] = batch['speaker_image'].to(args.device)
-            batch['listener_images'] = batch['listener_images'].to(args.device)
+            batch['sender_image'] = batch['sender_image'].to(args.device)
+            batch['receiver_images'] = batch['receiver_images'].to(args.device)
             batch['target'] = batch['target'].to(args.device)
 
             train_return_dict = model(batch)
@@ -252,9 +252,9 @@ def main():
     in_params, out_params = [], []
     in_names, out_names = [], []
     for name, param in model.named_parameters():
-        speaker_named = ('speaker' in name and args.fix_spk)
+        sender_named = ('sender' in name and args.fix_spk)
         beholder_named = ('beholder' in name and args.fix_bhd)
-        if speaker_named or beholder_named:
+        if sender_named or beholder_named:
             out_params.append(param)
             out_names.append(name)
         else:

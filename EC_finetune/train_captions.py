@@ -17,11 +17,10 @@ from transformers import MBartTokenizer
 
 from EC_finetune.agents import ImageCaptionGrounder
 from EC_finetune.dataloader import CaptionTrainingDataset
-from EC_finetune.util import print_loss_
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
-from EC_finetune.listeners import BartListener, MBartListener, RnnListener
+from EC_finetune.senders import BartSender, MBartSender, RnnSender
+from EC_finetune.receivers import BartReceiver, MBartReceiver, RnnReceiver
 
 
 def set_seed(args):
@@ -62,8 +61,8 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         # Move data to the GPU
         batch['caption_ids'] = batch['caption_ids'].to(args.device)
         batch['caption_mask'] = batch['caption_mask'].to(args.device)
-        batch['speaker_image'] = batch['speaker_image'].to(args.device)
-        batch['listener_images'] = batch['listener_images'].to(args.device)
+        batch['sender_image'] = batch['sender_image'].to(args.device)
+        batch['receiver_images'] = batch['receiver_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
 
         eval_return_dict = model(batch)
@@ -72,7 +71,10 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
-            if key in ['loss', 'accuracy', 'mean_length', 'caption generation loss', 'image selection loss']:
+            if key in [
+                'loss', 'accuracy', 'mean_length', 'caption generation loss',
+                'image selection loss'
+            ]:
                 stats[key].append(value)
 
     average_stats = {}
@@ -106,7 +108,8 @@ def save(args, model, logger):
         # using `save_pretrained()`. They can then be
         # reloaded using `from_pretrained()`
         model_to_save = (
-            model.speaker.speaker.module if hasattr(model.speaker.speaker, "module") else model.speaker.speaker
+            model.sender.sender.module if
+            hasattr(model.sender.sender, "module") else model.sender.sender
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
@@ -114,20 +117,18 @@ def save(args, model, logger):
 def train(args, model, dataloader, valid_dataloader, params, logger):
     optimizer = torch.optim.Adam(params, lr=args.lr)
     global_step = 0
-    best_acc = 0.0
+    best_loss = np.inf
     checkpoint_stats = defaultdict(list)
 
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
         for batch in epoch_iterator:
-            # Inform the training started.
             model.train()
-            
             # Move data to the GPU
             batch['caption_ids'] = batch['caption_ids'].to(args.device)
             batch['caption_mask'] = batch['caption_mask'].to(args.device)
-            batch['speaker_image'] = batch['speaker_image'].to(args.device)
-            batch['listener_images'] = batch['listener_images'].to(args.device)
+            batch['sender_image'] = batch['sender_image'].to(args.device)
+            batch['receiver_images'] = batch['receiver_images'].to(args.device)
             batch['target'] = batch['target'].to(args.device)
 
             train_return_dict = model(batch)
@@ -137,16 +138,13 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             nn.utils.clip_grad_norm_(params, args.grad_clip)
             optimizer.step()
             global_step += 1
-            if global_step >= args.max_global_step:
-                # Save model even if it does not reach the target acc in the
-                # end
-                if best_acc == 0:
-                    save(args, model, logger)
-                return global_step
 
             train_return_dict['loss'] = train_return_dict['loss'].item()
             for key, value in train_return_dict.items():
-                if key in ['loss', 'accuracy', 'mean_length', 'caption generation loss', 'image selection loss']:
+                if key in [
+                    'loss', 'accuracy', 'mean_length',
+                    'caption generation loss', 'image selection loss'
+                ]:
                     checkpoint_stats[key].append(value)
 
             if global_step % args.print_every == 0:
@@ -168,16 +166,19 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     logger.info(printout)
                     # Add one hyperparameter target_acc to the yml file.
                     cur_acc = float(results['accuracy'])
-                    if cur_acc > args.target_acc and cur_acc > best_acc:
-                        best_acc = cur_acc
+                    cur_loss = float(results['loss'])
+                    if cur_loss < best_loss:
+                        best_loss = cur_loss
                         save(args, model, logger)
                         print(
-                            'Epoch :', epoch, 'Prediction Accuracy =',
-                            float(results['accuracy']), 'Saved to Path :',
-                            args.output_dir
+                            f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
+                            f" Saved to Path: {args.output_dir}"
                         )
-                        if args.TransferH:
+                        if cur_acc > args.target_acc and args.TransferH:
                             args.hard = True
+
+            if global_step >= args.max_global_step:
+                return global_step
 
 
 def main():
@@ -231,20 +232,20 @@ def main():
     tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
     args.padding_index = tokenizer.get_vocab()['<pad>']
 
-    # Initialize Speaker and Listener, either from pretrained Bart or as a
+    # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
     if args.model_name == 'bart':
         comm_model = BartForConditionalGeneration.from_pretrained(
             'facebook/bart-large'
         )
-        speaker = BartSpeaker(
+        sender = BartSender(
             comm_model,
             args.hidden_dim,
             seq_len=args.seq_len,
             temperature=args.temp,
             hard=args.hard
         )
-        listener = BartListener(
+        receiver = BartReceiver(
             comm_model,
             args.hidden_dim,
             dropout=args.dropout,
@@ -254,14 +255,14 @@ def main():
         comm_model = MBartForConditionalGeneration.from_pretrained(
             'facebook/mbart-large-cc25'
         )
-        speaker = MBartSpeaker(
+        sender = MBartSender(
             comm_model,
             args.hidden_dim,
             seq_len=args.max_seq_length,
             temperature=args.temp,
             hard=args.hard
         )
-        listener = MBartListener(
+        receiver = MBartReceiver(
             comm_model,
             args.hidden_dim,
             dropout=args.dropout,
@@ -274,15 +275,15 @@ def main():
             num_layers=args.num_layers,
             batch_first=True
         )
-        speaker = RnnSpeaker(
+        sender = RnnSender(
             comm_model, args.hidden_dim, args.vocab_size, args.bos_idx
         )
-        listener = RnnListener(comm_model, args.hidden_dim, args.vocab_size)
+        receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
     else:
         raise ValueError(f"Model type {args.model_name} is not valid")
 
     # Initialize agent setup
-    model = ImageCaptionGrounder(speaker, listener, args)
+    model = ImageCaptionGrounder(sender, receiver, args)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)

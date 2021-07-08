@@ -136,7 +136,7 @@ def trim_caps(caps, minlen, maxlen):
 
 def print_params(names, sizes):
     agents = "l1_agent l2_agent".split()
-    comps = "speaker listener beholder".split()
+    comps = "sender receiver beholder".split()
 
     dd = OrderedDict()
     for aa in agents:

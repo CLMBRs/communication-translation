@@ -10,12 +10,12 @@ from EC_finetune.util import *
 
 class ImageIdentificationDataset(Dataset):
     """
-    PyTorch Dataset subclass for image-identification games in which a "speaker"
-    agent takes in an image and communicates it, and a "listener" identifies the
+    PyTorch Dataset subclass for image-identification games in which a "sender"
+    agent takes in an image and communicates it, and a "receiver" identifies the
     correct image from among a selection of distractors
     Args:
         images: A numpy array of image data
-        num_distractors: Number of distractor images to show to the "listener"
+        num_distractors: Number of distractor images to show to the "receiver"
             alongside the target image
     """
     def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
@@ -36,34 +36,34 @@ class ImageIdentificationDataset(Dataset):
         distractor_images = (
             random.sample(distractor_candidates, k=self.num_distractors)
         )
-        listener_images = distractor_images + [index]
-        random.shuffle(listener_images)
-        which = listener_images.index(index)
+        receiver_images = distractor_images + [index]
+        random.shuffle(receiver_images)
+        which = receiver_images.index(index)
 
         # Get the actual image embedding data to be returned
-        speaker_image = self.images[index]
-        listener_images = torch.index_select(
-            self.images, 0, torch.tensor(listener_images)
+        sender_image = self.images[index]
+        receiver_images = torch.index_select(
+            self.images, 0, torch.tensor(receiver_images)
         )
 
         return {
-            'speaker_image': speaker_image,
-            'listener_images': listener_images,
+            'sender_image': sender_image,
+            'receiver_images': receiver_images,
             'target': which
         }
 
 
 class VisuaLingConstraintDataset(ImageIdentificationDataset):
     """
-    PyTorch Dataset subclass for image-identification games in which a "speaker"
-    agent takes in an image and communicates it, and a "listener" identifies the
+    PyTorch Dataset subclass for image-identification games in which a "sender"
+    agent takes in an image and communicates it, and a "receiver" identifies the
     correct image from among a selection of distractors. This Class differs from
     the ImageIdentificationDataset by allowing user to condition the generation
     on target language (id) and vocabulary constraint.
 
     Args:
         images: A numpy array of image data
-        num_distractors: Number of distractor images to show to the "listener"
+        num_distractors: Number of distractor images to show to the "receiver"
             alongside the target image
     """
     def __init__(self, images: ndarray, num_distractors: int, args, tokenizer):
@@ -181,10 +181,10 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
             truncation=True
         )
         ret = {
-            'speaker_image': super_ret['speaker_image'],
+            'sender_image': super_ret['sender_image'],
             'caption_ids': LongTensor(caption['input_ids']),
             'caption_mask': LongTensor(caption['attention_mask']),
-            'listener_images': super_ret['listener_images'],
+            'receiver_images': super_ret['receiver_images'],
             'target': super_ret['target'],
             'lang_id': self.lang_id
         }

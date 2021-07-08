@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.speakers import Speaker
-from EC_finetune.listeners import Listener
+from EC_finetune.senders import Sender
+from EC_finetune.receivers import Receiver
 
 
 class CommunicationAgent(Module):
@@ -17,20 +17,20 @@ class CommunicationAgent(Module):
     An abstract PyTorch Module for creating a sender/receiver or
     speaker/listener agent set for communication games
 
-    Speaker and Listener are passed in as arguments, and must meet the
-    interfaces specified by the Speaker and Listener abstract classes,
+    Sender and Receiver are passed in as arguments, and must meet the
+    interfaces specified by the Sender and Receiver abstract classes,
     respectively. Beholder (image embedding compoment) can either be shared
-    between Speaker and Listener, or independent for both
+    between Sender and Receiver, or independent for both
     Args:
-        speaker: the speaker/sender module, subclassed from Speaker
-        listener: the listener/receiver module, subclassed from Listener
+        sender: the sender/speaker module, subclassed from Sender
+        receiver: the receiver/listener module, subclassed from Receiver
         args: a dictionary of parameters
     """
-    def __init__(self, speaker: Speaker, listener: Listener, args: Namespace):
+    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__()
 
         # Initialize the image Beholder, and clone if there is to be a separate
-        # Beholder stack for both Speaker and Listener
+        # Beholder stack for both Sender and Receiver
         self.beholder = Beholder(
             image_dim=args.image_dim,
             hidden_dim=args.hidden_dim,
@@ -46,8 +46,8 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
-        self.speaker = speaker
-        self.listener = listener
+        self.sender = sender
+        self.receiver = receiver
 
         self.image_dim = args.image_dim
         self.hidden_dim = args.hidden_dim
@@ -58,34 +58,30 @@ class CommunicationAgent(Module):
         self.max_seq_length = args.max_seq_length
 
     def image_to_message(self, batch):
-        # Embed the Speaker's image using the Beholder
-        image_embedding = self.beholder1(batch['speaker_image'])
-        # Generate the Speaker's message/caption about the image
-        return self.speaker(image_embedding, **batch)
+        # Embed the Sender's image using the Beholder
+        image_embedding = self.beholder1(batch['sender_image'])
+        # Generate the Sender's message/caption about the image
+        return self.sender(image_embedding, **batch)
 
-    def choose_image_from_message(self, message_dict, listener_images):
-        num_image_choices = listener_images.size(1)
+    def choose_image_from_message(self, message_dict, receiver_images):
+        num_image_choices = receiver_images.size(1)
 
-        # Embed the Listener's candidate images using the Beholder
-        listener_images = listener_images.view(-1, self.image_dim)
-        listener_image_embeddings = self.beholder2(listener_images)
-        listener_image_embeddings = listener_image_embeddings.view(
-            -1, num_image_choices, self.hidden_dim
-        )
+        # Embed the Receiver's candidate images using the Beholder
+        receiver_image_embeddings = self.beholder2(receiver_images)
 
-        # Encode the Speaker's message to a hidden state to be used to select
+        # Encode the Sender's message to a hidden state to be used to select
         # a candidate image
-        listener_hidden = self.listener(**message_dict)
+        receiver_hidden = self.receiver(**message_dict)
         # (batch_size, num_image_choices, hidden_dim)
-        listener_hidden = listener_hidden.unsqueeze(1).repeat(
+        receiver_hidden = receiver_hidden.unsqueeze(1).repeat(
             1, num_image_choices, 1
         )
 
-        # Get the Mean Squared Error between the final listener representation
+        # Get the Mean Squared Error between the final receiver representation
         # and all of the candidate images
         image_candidate_errors = F.mse_loss(
-            listener_hidden, listener_image_embeddings, reduction='none'
-        ).mean(dim=2).view(-1, num_image_choices)
+            receiver_hidden, receiver_image_embeddings, reduction='none'
+        ).mean(dim=2).squeeze(-1)
 
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
@@ -98,7 +94,7 @@ class CommunicationAgent(Module):
 
 class ECImageIdentificationAgent(CommunicationAgent):
     def forward(self, batch):
-        # Get the message dictionary (ids, logits, lengths) from the speaker
+        # Get the message dictionary (ids, logits, lengths) from the sender
         # based on the input image
         message_dict = self.image_to_message(batch)
 
@@ -108,13 +104,15 @@ class ECImageIdentificationAgent(CommunicationAgent):
         padding_mask = np.ones(batch_size, self.max_seq_length)
         for seq in range(batch_size):
             padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
-        padding_mask = torch.tensor(padding_mask).to(message_dict['message_ids'].device)
+        padding_mask = torch.tensor(padding_mask).to(
+            message_dict['message_ids'].device
+        )
         message_dict['attention_mask'] = padding_mask
 
-        # Get the logits for the image choice candidates based on the speaker's
+        # Get the logits for the image choice candidates based on the sender's
         # message
         image_candidate_logits = self.choose_image_from_message(
-            message_dict, batch['listener_images']
+            message_dict, batch['receiver_images']
         )
 
         # Get final cross-entropy loss between the candidates and the target
@@ -143,7 +141,7 @@ class ImageCaptionGrounder(CommunicationAgent):
     on images, and picking images based on a caption (independently)
     """
     def forward(self, batch):
-        # Get the message dictionary (ids, logits, lengths) from the speaker
+        # Get the message dictionary (ids, logits, lengths) from the sender
         # based on the input image
         batch['decoder_input_ids'] = batch['caption_ids']
         message_dict = self.image_to_message(batch)
@@ -154,13 +152,13 @@ class ImageCaptionGrounder(CommunicationAgent):
         )
 
         # Get the logits for the image choice candidates based on the gold
-        # caption (NOT the speaker's message)
+        # caption (NOT the sender's message)
         caption = {
             'message_ids': batch['caption_ids'],
             'attention_mask': batch['caption_mask']
         }
         image_candidate_logits = self.choose_image_from_message(
-            caption, batch['listener_images']
+            caption, batch['receiver_images']
         )
         # Get final cross-entropy loss between the candidates and the target
         # images
@@ -230,4 +228,5 @@ class Beholder(Module):
         if self.unit_norm:
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)
+        
         return h_image
