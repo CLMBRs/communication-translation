@@ -53,7 +53,7 @@ class ImageIdentificationDataset(Dataset):
         }
 
 
-class VisuaLingConstraintDataset(ImageIdentificationDataset):
+class XLImageIdentificationDataset(ImageIdentificationDataset):
     """
     PyTorch Dataset subclass for image-identification games in which a "sender"
     agent takes in an image and communicates it, and a "receiver" identifies the
@@ -66,7 +66,9 @@ class VisuaLingConstraintDataset(ImageIdentificationDataset):
         num_distractors: Number of distractor images to show to the "receiver"
             alongside the target image
     """
-    def __init__(self, images: ndarray, num_distractors: int, args, tokenizer):
+    def __init__(
+        self, images: ndarray, num_distractors: int, args, tokenizer
+    ) -> Dataset:
         super().__init__()
         self.images = images
         self.img_index = list(range(len(images)))

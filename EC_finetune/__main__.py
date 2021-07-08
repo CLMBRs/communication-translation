@@ -15,12 +15,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import ImageCaptionGrounder
-from EC_finetune.dataloader import CaptionTrainingDataset
+from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
 from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.senders import BartSender, MBartSender, RnnSender
 from EC_finetune.receivers import BartReceiver, MBartReceiver, RnnReceiver
+from EC_finetune.dataloader import (
+    CaptionTrainingDataset, XLImageIdentificationDataset
+)
 
 
 def set_seed(args):
@@ -59,11 +61,12 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         model.eval()
 
         # Move data to the GPU
-        batch['caption_ids'] = batch['caption_ids'].to(args.device)
-        batch['caption_mask'] = batch['caption_mask'].to(args.device)
         batch['sender_image'] = batch['sender_image'].to(args.device)
         batch['receiver_images'] = batch['receiver_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
+        if args.mode == 'image_grounding':
+            batch['caption_ids'] = batch['caption_ids'].to(args.device)
+            batch['caption_mask'] = batch['caption_mask'].to(args.device)
 
         eval_return_dict = model(batch)
 
@@ -108,8 +111,8 @@ def save(args, model, logger):
         # using `save_pretrained()`. They can then be
         # reloaded using `from_pretrained()`
         model_to_save = (
-            model.sender.sender.module if
-            hasattr(model.sender.sender, "module") else model.sender.sender
+            model.sender.sender.module
+            if hasattr(model.sender.sender, "module") else model.sender.sender
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
@@ -125,11 +128,12 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
         for batch in epoch_iterator:
             model.train()
             # Move data to the GPU
-            batch['caption_ids'] = batch['caption_ids'].to(args.device)
-            batch['caption_mask'] = batch['caption_mask'].to(args.device)
             batch['sender_image'] = batch['sender_image'].to(args.device)
             batch['receiver_images'] = batch['receiver_images'].to(args.device)
             batch['target'] = batch['target'].to(args.device)
+            if args.mode == 'image_grounding':
+                batch['caption_ids'] = batch['caption_ids'].to(args.device)
+                batch['caption_mask'] = batch['caption_mask'].to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -214,12 +218,15 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    train_captions = [
-        json.loads(line) for line in open(args.train_captions, 'r').readlines()
-    ]
-    valid_captions = [
-        json.loads(line) for line in open(args.valid_captions, 'r').readlines()
-    ]
+    if args.mode == 'image_grounding':
+        train_captions = [
+            json.loads(line)
+            for line in open(args.train_captions, 'r').readlines()
+        ]
+        valid_captions = [
+            json.loads(line)
+            for line in open(args.valid_captions, 'r').readlines()
+        ]
     train_images = torch.load(args.train_images)
     valid_images = torch.load(args.valid_images)
 
@@ -283,7 +290,32 @@ def main():
         raise ValueError(f"Model type {args.model_name} is not valid")
 
     # Initialize agent setup
-    model = ImageCaptionGrounder(sender, receiver, args)
+    if args.mode == 'image_grounding':
+        model = ImageCaptionGrounder(sender, receiver, args)
+        training_set = CaptionTrainingDataset(
+            train_images,
+            train_captions,
+            args.num_distractors_train,
+            tokenizer,
+            args,
+            max_length=args.max_seq_length
+        )
+        valid_set = CaptionTrainingDataset(
+            valid_images,
+            valid_captions,
+            args.num_distractors_valid,
+            tokenizer,
+            args,
+            max_length=args.max_seq_length
+        )
+    else:
+        model = ECImageIdentificationAgent(sender, receiver, args)
+        training_set = XLImageIdentificationDataset(
+            train_images, args.num_distractors_train, args, tokenizer
+        )
+        valid_set = XLImageIdentificationDataset(
+            valid_images, args.num_distractors_valid, args, tokenizer
+        )
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
@@ -300,22 +332,6 @@ def main():
         "drop_last": False
     }
 
-    training_set = CaptionTrainingDataset(
-        train_images,
-        train_captions,
-        args.num_distractors_train,
-        tokenizer,
-        args,
-        max_length=args.max_seq_length
-    )
-    valid_set = CaptionTrainingDataset(
-        valid_images,
-        valid_captions,
-        args.num_distractors_valid,
-        tokenizer,
-        args,
-        max_length=args.max_seq_length
-    )
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)
 

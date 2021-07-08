@@ -292,38 +292,6 @@ def get_avg_from_loss_dict(log_loss_dict):
     return res
 
 
-def print_loss_(epoch, alpha, avg_loss_dict, mode="train"):
-    prt_msg = "epoch {:5d} {} ".format(epoch, mode)
-    prt_msg += "| loss"
-    prt_msg += " {:.4f}".format(avg_loss_dict["loss"])
-    prt_msg += "| prediction accuracy"
-    prt_msg += " {:.2f}%".format(avg_loss_dict["accuracy"])
-    prt_msg += " |"
-    return prt_msg
-
-
-def print_loss(epoch, alpha, avg_loss_dict, mode="train"):
-    prt_msg = "epoch {:5d} {} ".format(epoch, mode)
-    for agent in "l1 l2".split():
-        prt_msg += "| "  # en_agent / fr_agent
-        for person in "spk lsn".split():
-            prt_msg += " {}_{}".format(agent, person)  # spk / lsn
-            if person == "spk":
-                prt_msg += " {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"]
-                )
-            elif person == "lsn":
-                prt_msg += " {:.3f} * {} = {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"], alpha,
-                    avg_loss_dict[agent][person]["loss"] * alpha
-                )
-                prt_msg += " {:.2f}%".format(
-                    avg_loss_dict[agent][person]["accuracy"]
-                )
-            prt_msg += " |"
-    return prt_msg
-
-
 def clip_grad(v, min, max):
     v.register_hook(lambda g: g.clamp(min, max))
     return v
