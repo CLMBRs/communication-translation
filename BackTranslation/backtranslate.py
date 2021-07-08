@@ -22,16 +22,13 @@ from torch.nn.utils.rnn import pad_sequence
 from transformers import pipeline, AutoTokenizer
 from transformers import BartForConditionalGeneration, MBartTokenizer
 import datasets
-from datasets.wmt19.wmt_utils import WmtConfig
+# from datasets.wmt19.wmt_utils import WmtConfig
+import nlp
+from ipdb import set_trace
+from wmt19.wmt_utils import WmtConfig
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
-config = WmtConfig(
-    version="0.0.1",
-    language_pair=("zh", "en"),
-    subsets={
-        datasets.Split.VALIDATION: ["newsdev2019"],
-    },
-)
+# dataset = nlp.load_dataset("newstest2017", "zh-en")
 
 
 def set_seed(args):
@@ -65,19 +62,25 @@ def generate_synthetic_dataset(args, source_meta2pack):
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
-            source_string_batch = next(iter(lang1_dataloader))
+            source_string_batch = next(iter(source_dataloader))
             # tokenize the string batch
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
+                                                           tgt_lang=target_code,
                                                            return_tensors="pt")
             # generate the synthetic target sentence
             max_len = source_batch["input_ids"].shape[1]
             # not necessrily using gumbel_generate  consider beam search
-            translated_tokens = source2target_model.gumbel_generate(**source_batch,
-                                                                    decoder_start_token_id=tokenizer.lang_code_to_id[
-                                                                    target_code],
-                                                                    max_length=max_len,
-                                                                    lang_mask=target_mask)
+            # translated_tokens = source2target_model(**source_batch,
+            #                                         decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+            #                                         max_length=max_len,
+            #                                         lang_mask=target_mask)
+            translated_tokens = source2target_model.generate(**source_batch,
+                                                               decoder_start_token_id=tokenizer.lang_code_to_id[
+                                                               target_code],
+                                                               max_length=max_len,
+                                                               lang_mask=target_mask)
+
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
 
@@ -176,6 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
     # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
+    parser.add_argument('--threshold', type=float, default=0.00001)
     args = parser.parse_args()
     args_dict = vars(args)
 
@@ -197,6 +201,17 @@ if __name__ == "__main__":
     args.device = device
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
+
+    lang1_mask = vocab_mask_from_file(tokenizer=tokenizer,
+                                      file=args.lang1_vocab_constrain_file,
+                                      threshold=args.threshold)
+    print(f"Total tokens: {torch.sum(~torch.isinf(lang1_mask))}")
+    print(tokenizer.convert_ids_to_tokens((~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0]))
+    lang2_mask = vocab_mask_from_file(tokenizer=tokenizer,
+                                      file=args.lang2_vocab_constrain_file,
+                                      threshold=args.threshold)
+    print(f"Total tokens: {torch.sum(~torch.isinf(lang2_mask))}")
+    print(tokenizer.convert_ids_to_tokens((~torch.isinf(lang2_mask)).nonzero(as_tuple=True)[0]))
 
     training_args = torch.load(args.args_path)
     lang1_to_lang2_model = CommunicationAgent(training_args)
@@ -232,8 +247,8 @@ if __name__ == "__main__":
     lang2_to_lang1_model_optimizer = torch.optim.Adam(lang2_to_lang1_model.model.parameters(), lr=args.lr)
     lang1_to_lang2_model_optimizer = torch.optim.Adam(lang1_to_lang2_model.model.parameters(), lr=args.lr)
 
-    lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
-    lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
+    # lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
+    # lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
 
     lang1_meta = LangMeta(lang_id=args.lang1_id, lang_code=args.lang1_code, lang_mask=lang1_mask)
     lang2_meta = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask)

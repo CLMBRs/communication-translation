@@ -13,14 +13,14 @@ output_dir: Output/bt_en+ja/
 # dir to save model from lang2 to lang1
 
 # data config
-data_dir: ./Data/BackTranslate
-lang1_data_file: en/en_head100.txt
-lang1_id: ja
-lang1_vocab_constrain_file: ./Data/cc/en_europarl_count_dict.json
+data_dir: ./Data/cc
+lang1_data_file: en_head2000.txt
+lang1_id: en
+lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
-lang2_data_file: ja/ja_1_head100.txt
-lang2_id: en
-lang2_vocab_constrain_file: ./Data/cc/ja_smaller_count_dict.json
+lang2_data_file: zh_head2000.txt
+lang2_id: zh
+lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 # backtranslation language
 models_shared: true
