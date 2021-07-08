@@ -97,8 +97,7 @@ def generate_synthetic_dataset(args, source_meta2pack):
             target2source_model_optimizer.zero_grad()
             output.loss.backward()
             target2source_model_optimizer.step()
-            for key in ["loss"]:
-                checkpoint_stats[key].append(output[key])
+            checkpoint_stats["loss"].append(output["loss"].detach().numpy())
 
         if step % args.print_every == 0:
             checkpoint_average_stats = {}
