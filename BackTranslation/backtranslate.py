@@ -63,6 +63,8 @@ def generate_synthetic_dataset(args, source_meta2pack):
             source2target_model.eval()
             # get a batched string input
             source_string_batch = next(iter(source_dataloader))
+            print("input:")
+            print(source_string_batch)
             # tokenize the string batch
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
@@ -83,6 +85,8 @@ def generate_synthetic_dataset(args, source_meta2pack):
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
+            print("output:")
+            print(translation)
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
@@ -102,7 +106,7 @@ def generate_synthetic_dataset(args, source_meta2pack):
         if step % args.print_every == 0:
             checkpoint_average_stats = {}
             for key, value in checkpoint_stats.items():
-                checkpoint_average_stats[key] = mean(value)
+                checkpoint_average_stats[key] = np.mean(value)
             logger.info(
                 checkpoint_stats2string(
                     step, checkpoint_average_stats, 'train'
@@ -216,7 +220,7 @@ if __name__ == "__main__":
     lang1_to_lang2_model = CommunicationAgent(training_args)
     state_dict = torch.load(args.model_path, map_location=None if torch.cuda.is_available()
     else torch.device('cpu'))
-    lang1_to_lang2_model.load_state_dict(state_dict)
+    # lang1_to_lang2_model.load_state_dict(state_dict)
     if args.models_shared:
         lang2_to_lang1_model = lang1_to_lang2_model  # CommunicationAgent(training_args)
     else:
