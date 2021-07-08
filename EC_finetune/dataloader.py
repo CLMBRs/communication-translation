@@ -69,10 +69,7 @@ class XLImageIdentificationDataset(ImageIdentificationDataset):
     def __init__(
         self, images: ndarray, num_distractors: int, args, tokenizer
     ) -> Dataset:
-        super().__init__()
-        self.images = images
-        self.img_index = list(range(len(images)))
-        self.num_distractors = num_distractors
+        super().__init__(images, num_distractors)
         lang_code2id = dict(
             zip(
                 tokenizer.additional_special_tokens,

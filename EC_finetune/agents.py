@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from statistics import mean
 
 import numpy as np
 import torch
@@ -99,15 +100,16 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict = self.image_to_message(batch)
 
         # Create the padding mask
-        lengths = list(message_dict['message_lengths'])
+        lengths = message_dict['message_lengths'].tolist()
         batch_size = len(lengths)
-        padding_mask = np.ones(batch_size, self.max_seq_length)
+        padding_mask = np.ones((batch_size, self.max_seq_length))
         for seq in range(batch_size):
             padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
         padding_mask = torch.tensor(padding_mask).to(
             message_dict['message_ids'].device
         )
         message_dict['attention_mask'] = padding_mask
+        del message_dict['message_lengths']
 
         # Get the logits for the image choice candidates based on the sender's
         # message
@@ -118,7 +120,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # Get final cross-entropy loss between the candidates and the target
         # images
         target_image = batch['target']
-        communication_loss = self.crossentropy(
+        communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
 
@@ -131,7 +133,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
             'loss': communication_loss,
             'accuracy': 100 * accuracy,
             'message': message_dict['message_ids'],
-            'mean_length': torch.mean(message_dict['message_lengths'].float())
+            'mean_length': mean(lengths)
         }
 
 

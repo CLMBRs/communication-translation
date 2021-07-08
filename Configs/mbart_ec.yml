@@ -23,20 +23,20 @@ TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Train and eval:
 seed: 42
-mode: image_grounding
+mode: emergent_communication
 do_train: true # control whether we train
 do_eval: true # whether to do eval after training
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 3000
+max_global_step: 300
 lr: 1.0e-5
 batch_size: 16
 grad_clip: 1.0
 no_terminal: false
 no_write: false
-valid_every: 500
-print_every: 100
+valid_every: 50
+print_every: 10
 target_acc: 85.0
 
 # Number of image distractors
