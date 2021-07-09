@@ -161,7 +161,6 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     )
                     # Output evaluation statistics
                     logger.info(printout)
-                    # Add one hyperparameter target_acc to the yml file.
                     cur_acc = float(results['accuracy'])
                     cur_loss = float(results['loss'])
                     if cur_loss < best_loss:
