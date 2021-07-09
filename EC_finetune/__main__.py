@@ -16,10 +16,9 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
-from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.senders import BartSender, MBartSender, RnnSender
-from EC_finetune.receivers import BartReceiver, MBartReceiver, RnnReceiver
+from EC_finetune.senders import MBartSender, RnnSender
+from EC_finetune.receivers import MBartReceiver, RnnReceiver
 from EC_finetune.dataloader import (
     CaptionTrainingDataset, XLImageIdentificationDataset
 )
