@@ -74,10 +74,7 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
-            if key in [
-                'loss', 'accuracy', 'mean_length', 'caption generation loss',
-                'image selection loss'
-            ]:
+            if key in args.stats_to_print:
                 stats[key].append(value)
 
     average_stats = {}
@@ -145,10 +142,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             train_return_dict['loss'] = train_return_dict['loss'].item()
             for key, value in train_return_dict.items():
-                if key in [
-                    'loss', 'accuracy', 'mean_length',
-                    'caption generation loss', 'image selection loss'
-                ]:
+                if key in args.stats_to_print:
                     checkpoint_stats[key].append(value)
 
             if global_step % args.print_every == 0:
