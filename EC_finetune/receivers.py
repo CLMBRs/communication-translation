@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 
 
 class Receiver(Module):
@@ -43,7 +43,7 @@ class Receiver(Module):
         raise NotImplementedError
 
 
-class BartReceiver(Receiver):
+class MBartReceiver(Receiver):
     """
     A Bart Receiver subclass that can be input to a CommunicationAgent for
     communication games
@@ -58,7 +58,7 @@ class BartReceiver(Receiver):
     """
     def __init__(
         self,
-        model: BartForConditionalGeneration,
+        model: MBartForConditionalGeneration,
         output_dim: int,
         dropout: float = 0.0,
         unit_norm: bool = False
@@ -110,9 +110,6 @@ class BartReceiver(Receiver):
             pooled_hidden = pooled_hidden / norm
         output = self.hidden_to_output(pooled_hidden)
         return output
-
-
-MBartReceiver = BartReceiver
 
 
 class RnnReceiver(Receiver):

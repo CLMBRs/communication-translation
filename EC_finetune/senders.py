@@ -7,9 +7,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_bart import (
-    BartForConditionalGeneration, _prepare_bart_decoder_inputs
-)
+from EC_finetune.modelings.modeling_bart import _prepare_bart_decoder_inputs
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 
 
 class Sender(Module):
@@ -45,10 +44,10 @@ class Sender(Module):
         raise NotImplementedError
 
 
-class BartSender(Sender):
+class MBartSender(Sender):
     def __init__(
         self,
-        model: BartForConditionalGeneration,
+        model: MBartForConditionalGeneration,
         input_dim: int,
         seq_len: int = None,
         temperature: float = None,
@@ -164,9 +163,6 @@ class BartSender(Sender):
                 'message_logits': output['generated_logits'],
                 'message_lengths': output['generated_sentence_len']
             }
-
-
-MBartSender = BartSender
 
 
 class RnnSender(Sender):

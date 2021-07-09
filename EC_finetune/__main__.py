@@ -230,31 +230,27 @@ def main():
     logger.info('Configuration:')
     print(args)
 
-    tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
-    args.padding_index = tokenizer.get_vocab()['<pad>']
+    tokenizer = MBartTokenizer.from_pretrained(args.model_string)
+    vocab = tokenizer.get_vocab()
+    args.padding_index = vocab['<pad>']
+    args.vocab_size = len(vocab)
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
-    if args.model_name == 'bart':
-        comm_model = BartForConditionalGeneration.from_pretrained(
-            'facebook/bart-large'
+    if args.model_string == 'rnn':
+        comm_model = nn.GRU(
+            input_size=args.hidden_dim,
+            hidden_size=args.hidden_dim,
+            num_layers=args.num_layers,
+            batch_first=True
         )
-        sender = BartSender(
-            comm_model,
-            args.hidden_dim,
-            seq_len=args.seq_len,
-            temperature=args.temp,
-            hard=args.hard
+        sender = RnnSender(
+            comm_model, args.hidden_dim, args.vocab_size, args.bos_idx
         )
-        receiver = BartReceiver(
-            comm_model,
-            args.hidden_dim,
-            dropout=args.dropout,
-            unit_norm=args.unit_norm
-        )
-    elif args.model_name == "mbart":
+        receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
+    else:
         comm_model = MBartForConditionalGeneration.from_pretrained(
-            'facebook/mbart-large-cc25'
+            args.model_string
         )
         sender = MBartSender(
             comm_model,
@@ -269,19 +265,6 @@ def main():
             dropout=args.dropout,
             unit_norm=args.unit_norm
         )
-    elif args.model_name == 'rnn':
-        comm_model = nn.GRU(
-            input_size=args.hidden_dim,
-            hidden_size=args.hidden_dim,
-            num_layers=args.num_layers,
-            batch_first=True
-        )
-        sender = RnnSender(
-            comm_model, args.hidden_dim, args.vocab_size, args.bos_idx
-        )
-        receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
-    else:
-        raise ValueError(f"Model type {args.model_name} is not valid")
 
     # Initialize agent setup
     if args.mode == 'image_grounding':
