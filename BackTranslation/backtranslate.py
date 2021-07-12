@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
     # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
-    parser.add_argument('--threshold', type=float, default=0.00001)
+    parser.add_argument('--threshold', type=float, default=0.01)
     args = parser.parse_args()
     args_dict = vars(args)
 

@@ -387,6 +387,8 @@ def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file, threshold=0.01):
     total_freq = sum(freq for _, freq in token_freq)
     # we kept tokens that appear more than 1%
     good_token_ids = set(int(token_id) for token_id, freq in token_freq if freq/total_freq >= threshold)
+    # Leo's comment: this is added for generation purpose; EOS and BOS are valid special tokens to be generated.
+    good_token_ids.update(set([tokenizer.eos_token_id, tokenizer.bos_token_id]))
 
     bad_token_ids = []
     for k, v in tokenizer.get_vocab().items():
