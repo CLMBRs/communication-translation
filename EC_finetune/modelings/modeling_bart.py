@@ -1600,9 +1600,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
                 next_token_logits += model_kwargs["lang_mask"]
-                valid_token_ids = torch.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"])]
-                invalid_token_ids = torch.arange(len(model_kwargs["lang_mask"]))[
-                    ~torch.isfinite(model_kwargs["lang_mask"])]
+                valid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"])])
+                invalid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[
+                    ~torch.isfinite(model_kwargs["lang_mask"])])
 
             # adjust tokens for Bart, *e.g.*
             # next_token_logits = self.adjust_logits_during_generation(
@@ -1617,8 +1617,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
             # reshape for beam search
             vocab_size = next_token_scores.shape[-1]
-            if torch.any(torch.isnan(next_token_scores)) or cur_len == 68:
-                print()
             next_token_scores = next_token_scores.view(batch_size, num_beams * vocab_size)
 
             next_token_scores, next_tokens = torch.topk(
@@ -1650,7 +1648,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
             # if not all(t in valid_token_ids for t in beam_next_tokens):
             #     print()
             beam_idx = beam_outputs["next_beam_indices"]
-
+            if "lang_mask" in model_kwargs:
+                assert all(int(t) in valid_token_ids for t in beam_next_tokens)
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
             cur_len = cur_len + 1
 
