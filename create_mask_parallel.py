@@ -7,12 +7,13 @@ import os
 import glob
 from collections import Counter
 import json
+import io
 
 
 def tokenize_and_count(args, filepath, tokenizer) -> Counter:
     ret = Counter()
     # batch = []
-    with open(filepath, "r") as f:
+    with open(filepath, "r", encoding='utf-8', errors='ignore') as f:
         for line in f:
             if line == "":
                 continue

@@ -1355,7 +1355,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
     def get_output_embeddings(self):
         return _make_linear_from_emb(self.model.shared)  # make it on the fly
 
-    @overrides
+    # @overrides
     def greedy_search(
         self,
         input_ids: torch.LongTensor,

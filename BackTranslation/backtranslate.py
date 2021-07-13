@@ -24,7 +24,7 @@ from transformers import BartForConditionalGeneration, MBartTokenizer
 import datasets
 # from datasets.wmt19.wmt_utils import WmtConfig
 import nlp
-from ipdb import set_trace
+from ipdb import set_trace as bp
 from wmt19.wmt_utils import WmtConfig
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
@@ -204,17 +204,19 @@ if __name__ == "__main__":
     args.device = device
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
-
+    # bp()
     lang1_mask = vocab_mask_from_file(tokenizer=tokenizer,
                                       file=args.lang1_vocab_constrain_file,
                                       threshold=args.threshold)
     print(f"Total tokens: {torch.sum(~torch.isinf(lang1_mask))}")
-    print(tokenizer.convert_ids_to_tokens((~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0]))
+    lang1_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0])
+    # print(str(lang1_valid_tokens).encode('utf-8'))
     lang2_mask = vocab_mask_from_file(tokenizer=tokenizer,
                                       file=args.lang2_vocab_constrain_file,
                                       threshold=args.threshold)
     print(f"Total tokens: {torch.sum(~torch.isinf(lang2_mask))}")
-    print(tokenizer.convert_ids_to_tokens((~torch.isinf(lang2_mask)).nonzero(as_tuple=True)[0]))
+    lang2_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang2_mask)).nonzero(as_tuple=True)[0])
+    # print(str(lang2_valid_tokens).encode('utf-8'))
 
     training_args = torch.load(args.args_path)
     lang1_to_lang2_model = CommunicationAgent(training_args)

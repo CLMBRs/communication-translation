@@ -3,11 +3,11 @@ args_path: Output/mbart_wcons/training_args.bin
 
 # training config
 lr: 1.0e-05
-batch_size: 2
+batch_size: 32
 seed: 42
 n_gpu: 0
-print_every: 2
-num_steps: 1000
+print_every: 100
+num_steps: 100000
 # dir to save model from lang1 to lang2
 output_dir: Output/bt_en+ja/
 # dir to save model from lang2 to lang1
