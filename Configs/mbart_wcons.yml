@@ -18,6 +18,7 @@ no_share_bhd: false
 
 # Train and eval:
 # train eval basic setting
+mode: image_grounding
 do_train: true # control whether we train
 do_eval: true # whether to do eval after training
 seed: 42
