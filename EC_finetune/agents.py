@@ -58,16 +58,48 @@ class CommunicationAgent(Module):
         self.padding_index = args.padding_index
         self.max_seq_length = args.max_seq_length
 
-    def image_to_message(self, batch):
+    def image_to_message(self, batch: dict) -> dict:
+        """
+        Take in an image embedding and use the sender to return a
+        message/caption representing the image
+
+        If the batch contains `decoder_input_ids`, the sender generates in a
+        "supervised" way (passing in the gold decoder input at each timestep).
+        If not, Gumbel generation is used
+
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `sender_image`, the embedding of the image from which to
+                generate the message. The rest of the batch is passed to the 
+                sender as kwargs
+        """
+
         # Embed the Sender's image using the Beholder
         image_embedding = self.beholder1(batch['sender_image'])
         # Generate the Sender's message/caption about the image
         return self.sender(image_embedding, **batch)
 
-    def choose_image_from_message(self, message_dict, receiver_images):
+    def choose_image_from_message(
+        self, message_dict: dict, receiver_images: Tensor
+    ) -> Tensor:
+        """
+        Take in a message from the sender, as well as a set of image choices,
+        and use the receiver to embed/interpret the message. Compare the final
+        receiver representation to the image embeddings to form logits over the
+        choices
+
+        Args:
+            message_dict: a dictionary of Tensors representing the sender's
+                message/caption. Must minimally include `message_ids`. See
+                `EC_finetune.senders` for more information
+            receiver_images: a Tensor of image embeddings for the model to
+                choose between. `(batch_size, num_image_choices, image_dim)`
+        Returns: a Tensor of logits over the image choices for the batch
+        """
         num_image_choices = receiver_images.size(1)
 
         # Embed the Receiver's candidate images using the Beholder
+        # (batch_size, num_image_choices, hidden_dim)
         receiver_image_embeddings = self.beholder2(receiver_images)
 
         # Encode the Sender's message to a hidden state to be used to select
@@ -94,7 +126,26 @@ class CommunicationAgent(Module):
 
 
 class ECImageIdentificationAgent(CommunicationAgent):
-    def forward(self, batch):
+    def forward(self, batch: dict) -> dict:
+        """
+        Train a model to convert the target image of a batch to a message using
+        the sender and then encode the message back into a hidden state using
+        the receiver. Use the final hidden state to choose the correct target
+        image from among distractors
+
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `sender_image`, `receiver_images`, and `target`
+        Returns:
+            a dictionary of results with the following keys:
+                `loss` (Tensor): the cross-entropy loss for selecting the
+                    correct image
+                `accuracy` (float): the percent of the image selections the
+                    model chose correctly
+                `message` (Tensor): the batch of messages as indices
+                `mean_length` (float): the mean length of the messages
+        """
+
         # Get the message dictionary (ids, logits, lengths) from the sender
         # based on the input image
         message_dict = self.image_to_message(batch)
@@ -143,8 +194,33 @@ class ImageCaptionGrounder(CommunicationAgent):
     on images, and picking images based on a caption (independently)
     """
     def forward(self, batch):
-        # Get the message dictionary (ids, logits, lengths) from the sender
-        # based on the input image
+        """
+        Train the sender to generate a gold-standard caption given an image.
+        Also train to select the correct image from among distractors using the
+        receiver's representation of the gold-standard caption
+
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `caption_ids`, `caption_mask`, `sender_image`,
+                `receiver_images`, and `target`
+        Returns:
+            a dictionary of results with the following keys:
+                `loss` (Tensor): the combination of the mean cross-entropy loss
+                    for generating the caption and the cross-entropy for 
+                    selecting the correct image
+                `caption generation loss` (float): the value of the loss for
+                    caption generation
+                `image selection loss` (float): the value of the loss for
+                    selecting the correct image
+                `accuracy` (float): the percent of the image selections the
+                    model chose correctly
+                `message` (Tensor): the batch of generated messages as indices
+        """
+
+        # Get the message dictionary (ids, logits) from the sender
+        # based on the input image and calculate loss with the gold caption.
+        # Adding the caption ids as `decoder_input_ids` puts the caption
+        # generation into a supervised mode rather than free generation
         batch['decoder_input_ids'] = batch['caption_ids']
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
@@ -230,5 +306,5 @@ class Beholder(Module):
         if self.unit_norm:
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)
-        
+
         return h_image
