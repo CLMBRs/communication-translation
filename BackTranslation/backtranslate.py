@@ -70,11 +70,11 @@ def main(args, source_meta2pack):
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
                                                            max_length=source_max_len,
-                                                           target_max_len=target_max_len,
+                                                           # target_max_len=target_max_len,
                                                            return_tensors="pt")
             source_batch = source_batch.to(args.device)
             # generate the synthetic target sentence
-            max_len = source_batch["input_ids"].shape[1] if args.max_length is None else args.max_length
+            # max_len = source_batch["input_ids"].shape[1] if args.max_length is None else args.max_length
             # not necessrily using gumbel_generate  consider beam search
             # translated_tokens = source2target_model(**source_batch,
             #                                         decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
@@ -84,7 +84,7 @@ def main(args, source_meta2pack):
             translated_tokens = source2target_model.generate(**source_batch,
                                                              decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                  target_code],
-                                                             max_length=max_len,
+                                                             max_length=target_max_len,
                                                              lang_mask=target_mask)
 
             # turn the predicted subtokens into sentence in string
@@ -94,7 +94,7 @@ def main(args, source_meta2pack):
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
-            bp()
+            # bp()
             # Note the synthetic output is the input
             parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
                                                              src_lang=target_code,
@@ -104,12 +104,12 @@ def main(args, source_meta2pack):
                                                              max_target_length=source_max_len,
                                                              return_tensors="pt")
             parallel_batch = parallel_batch.to(args.device)
-            bp()
+            # bp()
             output = target2source_model(**parallel_batch)
             target2source_model_optimizer.zero_grad()
             output.loss.backward()
             target2source_model_optimizer.step()
-            checkpoint_stats["loss"].append(output["loss"].detach().numpy())
+            checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
 
         if step % args.print_every == 0:
             bp()
@@ -126,8 +126,8 @@ def main(args, source_meta2pack):
     for source_meta in source_metas:
         source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
             list(source_meta2pack[source_meta])
-        source_id, source_code = list(source_meta)
-        target_id, target_code = list(target_meta)
+        source_id, source_code, source_mask, source_max_len = list(source_meta)
+        target_id, target_code, target_mask, target_max_len = list(target_meta)
 
         # Save the general part of the model
         if args.models_shared:
