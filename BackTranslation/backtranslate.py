@@ -55,8 +55,8 @@ def main(args, source_meta2pack):
         for source_meta in source_metas:
             source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, \
             target2source_model_optimizer = list(source_meta2pack[source_meta])
-            source_id, source_code, source_mask = list(source_meta)
-            target_id, target_code, target_mask = list(target_meta)
+            source_id, source_code, source_mask, source_max_len = list(source_meta)
+            target_id, target_code, target_mask, target_max_len = list(target_meta)
             # bp()
 
             # 1. we use source2target_model to generate synthetic text in target language
@@ -69,6 +69,8 @@ def main(args, source_meta2pack):
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
+                                                           max_length=source_max_len,
+                                                           target_max_len=target_max_len,
                                                            return_tensors="pt")
             source_batch = source_batch.to(args.device)
             # generate the synthetic target sentence
@@ -80,10 +82,10 @@ def main(args, source_meta2pack):
             #                                         lang_mask=target_mask)
             # bp()
             translated_tokens = source2target_model.generate(**source_batch,
-                                                               decoder_start_token_id=tokenizer.lang_code_to_id[
-                                                               target_code],
-                                                               max_length=max_len,
-                                                               lang_mask=target_mask)
+                                                             decoder_start_token_id=tokenizer.lang_code_to_id[
+                                                                 target_code],
+                                                             max_length=max_len,
+                                                             lang_mask=target_mask)
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
@@ -98,6 +100,8 @@ def main(args, source_meta2pack):
                                                              src_lang=target_code,
                                                              tgt_lang=source_code,
                                                              tgt_texts=source_string_batch,
+                                                             max_length=target_max_len,
+                                                             max_target_length=source_max_len,
                                                              return_tensors="pt")
             parallel_batch = parallel_batch.to(args.device)
             bp()
@@ -160,7 +164,7 @@ def main(args, source_meta2pack):
         break
 
 
-LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask"])
+LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask", "max_length"])
 
 BackTranslationPack = namedtuple("BackTranslationPack",
                                  ["source_dataloader",
@@ -266,8 +270,10 @@ if __name__ == "__main__":
     # lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
     # lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
 
-    lang1_meta = LangMeta(lang_id=args.lang1_id, lang_code=args.lang1_code, lang_mask=lang1_mask)
-    lang2_meta = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask)
+    lang1_meta = LangMeta(lang_id=args.lang1_id, lang_code=args.lang1_code, lang_mask=lang1_mask,
+                          max_length=args.lang1_max_len)
+    lang2_meta = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask,
+                          max_length=args.lang2_max_len)
 
     lang1_to_lang2_pack = BackTranslationPack(source_dataloader=lang1_dataloader,
                                               source_tokenizer=tokenizer,
