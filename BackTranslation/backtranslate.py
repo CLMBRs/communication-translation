@@ -39,7 +39,7 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def generate_synthetic_dataset(args, source_meta2pack):
+def main(args, source_meta2pack):
     assert len(source_meta2pack) == 2
     source_metas = list(source_meta2pack.keys())
     checkpoint_stats = defaultdict(list)
@@ -49,7 +49,6 @@ def generate_synthetic_dataset(args, source_meta2pack):
         # to learn the pattern that we do, e.g., English first and then Japanese second.
         random.shuffle(source_metas)
 
-        # TODO: 1. have support to constrain generation!!!
         # TODO: 3. have support to clip_grad_norm?
         # TODO: 4. validate every X
 
@@ -58,25 +57,28 @@ def generate_synthetic_dataset(args, source_meta2pack):
             target2source_model_optimizer = list(source_meta2pack[source_meta])
             source_id, source_code, source_mask = list(source_meta)
             target_id, target_code, target_mask = list(target_meta)
+            # bp()
 
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
             source_string_batch = next(iter(source_dataloader))
-            print("input:")
-            print(source_string_batch)
+            # print("input:")
+            # print(source_string_batch)
             # tokenize the string batch
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
                                                            return_tensors="pt")
+            source_batch = source_batch.to(args.device)
             # generate the synthetic target sentence
-            max_len = source_batch["input_ids"].shape[1]
+            max_len = source_batch["input_ids"].shape[1] if args.max_length is None else args.max_length
             # not necessrily using gumbel_generate  consider beam search
             # translated_tokens = source2target_model(**source_batch,
             #                                         decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
             #                                         max_length=max_len,
             #                                         lang_mask=target_mask)
+            # bp()
             translated_tokens = source2target_model.generate(**source_batch,
                                                                decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                target_code],
@@ -85,18 +87,20 @@ def generate_synthetic_dataset(args, source_meta2pack):
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
-            print("output:")
-            print(translation)
+            # print("output:")
+            # print(translation)
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
+            bp()
             # Note the synthetic output is the input
             parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
                                                              src_lang=target_code,
                                                              tgt_lang=source_code,
                                                              tgt_texts=source_string_batch,
                                                              return_tensors="pt")
-
+            parallel_batch = parallel_batch.to(args.device)
+            bp()
             output = target2source_model(**parallel_batch)
             target2source_model_optimizer.zero_grad()
             output.loss.backward()
@@ -104,6 +108,7 @@ def generate_synthetic_dataset(args, source_meta2pack):
             checkpoint_stats["loss"].append(output["loss"].detach().numpy())
 
         if step % args.print_every == 0:
+            bp()
             checkpoint_average_stats = {}
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = np.mean(value)
@@ -183,6 +188,7 @@ if __name__ == "__main__":
     # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
     parser.add_argument('--threshold', type=float, default=0.01)
+    # parser.add_argument('--max_length', type=int, default=60)
     args = parser.parse_args()
     args_dict = vars(args)
 
@@ -201,6 +207,7 @@ if __name__ == "__main__":
 
     # Setup CUDA, GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # bp()
     args.device = device
 
     tokenizer = MBartTokenizer.from_pretrained("facebook/mbart-large-cc25")
@@ -208,20 +215,24 @@ if __name__ == "__main__":
     lang1_mask = vocab_mask_from_file(tokenizer=tokenizer,
                                       file=args.lang1_vocab_constrain_file,
                                       threshold=args.threshold)
-    print(f"Total tokens: {torch.sum(~torch.isinf(lang1_mask))}")
+    lang1_mask = lang1_mask.to(args.device)
+    print(f"Total valid {args.lang1_id} tokens: {torch.sum(~torch.isinf(lang1_mask))}")
+
     lang1_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0])
     # print(str(lang1_valid_tokens).encode('utf-8'))
     lang2_mask = vocab_mask_from_file(tokenizer=tokenizer,
                                       file=args.lang2_vocab_constrain_file,
                                       threshold=args.threshold)
-    print(f"Total tokens: {torch.sum(~torch.isinf(lang2_mask))}")
+    lang2_mask = lang2_mask.to(args.device)
+    print(f"Total valid {args.lang2_id} tokens: {torch.sum(~torch.isinf(lang2_mask))}")
     lang2_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang2_mask)).nonzero(as_tuple=True)[0])
     # print(str(lang2_valid_tokens).encode('utf-8'))
+    # bp()
 
     training_args = torch.load(args.args_path)
-    lang1_to_lang2_model = CommunicationAgent(training_args)
-    state_dict = torch.load(args.model_path, map_location=None if torch.cuda.is_available()
-    else torch.device('cpu'))
+    lang1_to_lang2_model = CommunicationAgent(training_args).to(args.device)
+    # state_dict = torch.load(args.model_path, map_location=None if torch.cuda.is_available()
+    # else torch.device('cpu'))
     # lang1_to_lang2_model.load_state_dict(state_dict)
     if args.models_shared:
         lang2_to_lang1_model = lang1_to_lang2_model  # CommunicationAgent(training_args)
@@ -276,6 +287,6 @@ if __name__ == "__main__":
         lang1_meta: lang1_to_lang2_pack,
         lang2_meta: lang2_to_lang1_pack
     }
-    generate_synthetic_dataset(args, lang_meta2pack)
+    main(args, lang_meta2pack)
 
     print()

@@ -3,23 +3,25 @@ args_path: Output/mbart_wcons/training_args.bin
 
 # training config
 lr: 1.0e-05
-batch_size: 32
+batch_size: 16
 seed: 42
-n_gpu: 0
-print_every: 100
-num_steps: 100000
+n_gpu: 1
+print_every: 5
+num_steps: 200
 # dir to save model from lang1 to lang2
-output_dir: Output/bt_en+ja/
+output_dir: Output/bt_en+zh/
 # dir to save model from lang2 to lang1
 
 # data config
 data_dir: ./Data/cc
 lang1_data_file: en_head2000.txt
 lang1_id: en
+lang1_max_len: 200
 lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
 lang2_data_file: zh_head2000.txt
 lang2_id: zh
+lang2_max_len: 200
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 # backtranslation language
