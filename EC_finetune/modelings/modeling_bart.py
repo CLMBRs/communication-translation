@@ -1606,9 +1606,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 #     ~torch.isfinite(model_kwargs["lang_mask"])])
 
             # adjust tokens for Bart, *e.g.*
-            # next_token_logits = self.adjust_logits_during_generation(
-            #     next_token_logits, cur_len=cur_len, max_length=max_length
-            # )
+            next_token_logits = self.adjust_logits_during_generation(
+                next_token_logits, cur_len=cur_len, max_length=max_length
+            )
             next_token_scores = F.log_softmax(next_token_logits, dim=-1)
             # mask = logit_after_softmax > 0
             # next_token_scores = torch.log(logit_after_softmax)  # (batch_size * num_beams, vocab_size)

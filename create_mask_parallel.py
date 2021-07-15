@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 import multiprocessing as mp
 from fsplit.filesplit import Filesplit
 import argparse
-from typing import Dict
+from typing import Dict, Tuple
 import os
 import glob
 from collections import Counter
@@ -10,8 +10,9 @@ import json
 import io
 
 
-def tokenize_and_count(args, filepath, tokenizer) -> Counter:
-    ret = Counter()
+def tokenize_and_count(args, filepath, tokenizer) -> Tuple[Counter, Counter]:
+    tokens_ret = Counter()
+    ids_ret = Counter()
     # batch = []
     with open(filepath, "r", encoding='utf-8', errors='ignore') as f:
         for line in f:
@@ -22,12 +23,14 @@ def tokenize_and_count(args, filepath, tokenizer) -> Counter:
             #     batch.append(line.strip())
             #     continue
             tokens = tokenizer.tokenize(line)
-            ret.update(tokens)
+            ids = tokenizer.convert_tokens_to_ids(tokens)
+            tokens_ret.update(tokens)
+            ids_ret.update(ids)
 
     # if len(batch) == 0:
     #     return ret
 
-    return ret
+    return tokens_ret, ids_ret
 
 
 if __name__ == "__main__":
@@ -36,7 +39,7 @@ if __name__ == "__main__":
                                             "Also equal to number of files to be split into",
                         type=int, default=2)
     parser.add_argument("--lang", help="Language to be processed",
-                        type=str, default="zu")
+                        type=str, default="en")
     parser.add_argument("--extension", help="File extension",
                         type=str, default="txt")
     parser.add_argument("--source_dir", help="Source directory that stores langauge files",
@@ -50,7 +53,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # load tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("facebook/mbart-large-cc25")
+    tokenizer_name = "facebook/mbart-large-cc25"
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     # create path to source file
     source_filepath = os.path.join(args.source_dir, f"{args.lang}.{args.extension}")
     assert os.path.exists(source_filepath)
@@ -63,8 +67,8 @@ if __name__ == "__main__":
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
     # empty the target directory
-    for f in glob.glob(os.path.join(target_dir, "*")):
-        os.remove(f)
+    # for f in glob.glob(os.path.join(target_dir, "*")):
+    #     os.remove(f)
 
     def split_cb(f, s):
         print("file: {0}, size: {1}".format(f, s))
@@ -79,10 +83,16 @@ if __name__ == "__main__":
     inputs = [(args, file, tokenizer) for file in splitted_files]
 
     results = pool.starmap(tokenize_and_count, inputs)
-    accumulative_counter = Counter()
+    accumulative_ids_counter = Counter()
+    accumulative_tokens_counter = Counter()
     for c in results:
-        accumulative_counter += c
-    json.dump(accumulative_counter, open(f"{args.lang}_{args.corpus_name}_count_dict.json", "w"))
+        tokens_ret, ids_ret = c
+        accumulative_tokens_counter += tokens_ret
+        accumulative_ids_counter += ids_ret
+    json.dump(accumulative_tokens_counter,
+              open(f"{args.lang}_{args.corpus_name}_token2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
+    json.dump(accumulative_ids_counter,
+              open(f"{args.lang}_{args.corpus_name}_tokenID2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
     print()
 
 
