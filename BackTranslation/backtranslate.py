@@ -1,5 +1,7 @@
 import argparse
 import logging
+from typing import Dict, List, Any, Union
+
 import torch
 import os
 import sys
@@ -16,7 +18,7 @@ from EC_finetune.util import vocab_mask_from_file
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from BackTranslation.dataloader import MbartMonolingualDataset
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import checkpoint_stats2string
+from BackTranslation.util import checkpoint_stats2string, translation2string
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from transformers import pipeline, AutoTokenizer
@@ -49,8 +51,9 @@ def main(args, source_meta2pack):
         # to learn the pattern that we do, e.g., English first and then Japanese second.
         random.shuffle(source_metas)
 
-        # TODO: 3. have support to clip_grad_norm?
         # TODO: 4. validate every X
+        if step % args.print_every == 0 and args.print_translation:
+            translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source_meta in source_metas:
             source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, \
@@ -73,14 +76,6 @@ def main(args, source_meta2pack):
                                                            # target_max_len=target_max_len,
                                                            return_tensors="pt")
             source_batch = source_batch.to(args.device)
-            # generate the synthetic target sentence
-            # max_len = source_batch["input_ids"].shape[1] if args.max_length is None else args.max_length
-            # not necessrily using gumbel_generate  consider beam search
-            # translated_tokens = source2target_model(**source_batch,
-            #                                         decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-            #                                         max_length=max_len,
-            #                                         lang_mask=target_mask)
-            # bp()
             translated_tokens = source2target_model.generate(**source_batch,
                                                              decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                  target_code],
@@ -91,6 +86,8 @@ def main(args, source_meta2pack):
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
             # print("output:")
             # print(translation)
+            if step % args.print_every == 0 and args.print_translation:
+                translation_results[target_id] = translation
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
@@ -112,7 +109,7 @@ def main(args, source_meta2pack):
             checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
 
         if step % args.print_every == 0:
-            bp()
+            # bp()
             checkpoint_average_stats = {}
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = np.mean(value)
@@ -122,6 +119,12 @@ def main(args, source_meta2pack):
                 )
             )
             checkpoint_stats = defaultdict(list)
+            if args.print_translation:
+                logger.info(
+                    translation2string(
+                        translation_results, args.num_printed_translation
+                    )
+                )
 
     for source_meta in source_metas:
         source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
@@ -192,6 +195,9 @@ if __name__ == "__main__":
     # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
     parser.add_argument('--threshold', type=float, default=0.01)
+    parser.add_argument('--print_translation', type=int, default=3)
+    parser.add_argument('--num_printed_translation', type=int, default=3)
+
     # parser.add_argument('--max_length', type=int, default=60)
     args = parser.parse_args()
     args_dict = vars(args)
