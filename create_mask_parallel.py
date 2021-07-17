@@ -5,6 +5,7 @@ import argparse
 from typing import Dict, Tuple
 import os
 import glob
+from ipdb import set_trace as bp
 from collections import Counter
 import json
 import io
@@ -37,7 +38,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--n_process", help="Number of process to be run in parallel. "
                                             "Also equal to number of files to be split into",
-                        type=int, default=2)
+                        type=int, default=-1)
     parser.add_argument("--lang", help="Language to be processed",
                         type=str, default="en")
     parser.add_argument("--extension", help="File extension",
@@ -60,9 +61,11 @@ if __name__ == "__main__":
     assert os.path.exists(source_filepath)
     # split files by byte size
     source_file_size_in_byte = os.path.getsize(source_filepath)
-    args.n_process = mp.cpu_count() - 1 if args.n_process in [mp.cpu_count() or -1] else args.n_process
+    # bp()
+    args.n_process = mp.cpu_count() - 1 if args.n_process in [mp.cpu_count(), -1] else args.n_process
     splitted_file_size_in_byte = source_file_size_in_byte // args.n_process
     # initialize target_dir
+    # bp()
     target_dir = os.path.join(args.source_dir, f"{args.lang}_split") if args.target_dir is None else args.target_dir
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
@@ -74,7 +77,9 @@ if __name__ == "__main__":
         print("file: {0}, size: {1}".format(f, s))
 
     fs = Filesplit()
+    # bp()
     fs.split(file=source_filepath, split_size=splitted_file_size_in_byte, output_dir=target_dir)
+    # bp()
     splitted_files = glob.glob(os.path.join(target_dir, f"*.{args.extension}"))
     args.n_process = len(splitted_files)
 
@@ -89,10 +94,11 @@ if __name__ == "__main__":
         tokens_ret, ids_ret = c
         accumulative_tokens_counter += tokens_ret
         accumulative_ids_counter += ids_ret
+    bp()
     json.dump(accumulative_tokens_counter,
-              open(f"{args.lang}_{args.corpus_name}_token2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
+              open(f"{args.source_dir}/{args.lang}_{args.corpus_name}_token2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
     json.dump(accumulative_ids_counter,
-              open(f"{args.lang}_{args.corpus_name}_tokenID2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
+              open(f"{args.source_dir}/{args.lang}_{args.corpus_name}_tokenID2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
     print()
 
 
