@@ -78,6 +78,7 @@ if __name__ == "__main__":
     splitted_files = glob.glob(os.path.join(target_dir, f"*.{args.extension}"))
     args.n_process = len(splitted_files)
 
+    print(f"Using {args.n_process} processes in parallel")
     # start parallel processing
     pool = mp.Pool(processes=args.n_process)
     inputs = [(args, file, tokenizer) for file in splitted_files]
@@ -93,7 +94,3 @@ if __name__ == "__main__":
               open(f"{args.lang}_{args.corpus_name}_token2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
     json.dump(accumulative_ids_counter,
               open(f"{args.lang}_{args.corpus_name}_tokenID2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
-    print()
-
-
-
