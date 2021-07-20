@@ -54,7 +54,7 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     target_id, target_code, _, target_max_len = list(target_meta)
     dataloader = torch.utils.data.DataLoader(reference_dataset, batch_size=args.batch_size)
     # args.validation_set_size is a lower bound of how many example used
-    num_batch = ceil(args.validation_set_size // args.batch_size)
+    num_batch = ceil(args.validation_set_size / args.batch_size)
 
     for i, batch in enumerate(tqdm(dataloader, total=num_batch,
                                    desc=f"val-{args.val_metric_name}:{source_id}->{target_id}")):
@@ -196,20 +196,14 @@ def main(args, source_meta2pack):
             torch.save(
                 source2target_model.state_dict(), os.path.join(args.output_dir, "model.pt")
             )
-            # Good practice: save your training arguments together
-            # with the trained model
-            torch.save(
-                args,
-                os.path.join(args.output_dir, "training_args.bin")
-            )
         else:
             torch.save(
                 source2target_model.state_dict(),
-                os.path.join(args.output_dir, f"{args.lang1_id}2{args.lang2_id}", "model.pt")
+                os.path.join(args.output_dir, f"{source_id}2{target_id}", "model.pt")
             )
             torch.save(
                 target2source_model.state_dict(),
-                os.path.join(args.output_dir, f"{args.lang2_id}2{args.lang1_id}", "model.pt")
+                os.path.join(args.output_dir, f"{target_id}2{source_id}", "model.pt")
             )
         # we just save once
         break
