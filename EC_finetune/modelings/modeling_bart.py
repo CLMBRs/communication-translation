@@ -1604,7 +1604,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
                 next_token_logits += model_kwargs["lang_mask"]
-                valid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"])])
+                valid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"]).cpu()])
                 # invalid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[
                 #     ~torch.isfinite(model_kwargs["lang_mask"])])
 
@@ -1662,7 +1662,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
         )
         if "lang_mask" in model_kwargs:
             for sent in decoded:
-                assert all(t in valid_token_ids for t in sent[1:].numpy())
+                # bp()
+                assert all(t in valid_token_ids for t in sent[1:].cpu().numpy())
 
         return decoded
 
