@@ -1,25 +1,25 @@
 import argparse
 import logging
-
-import torch
 import os
+import random
 import sys
 import time
-import yaml
-from tqdm import tqdm
-import random
-import numpy as np
+from collections import defaultdict, namedtuple
 from math import ceil, isinf
 
-from collections import defaultdict, namedtuple
-from EC_finetune.util import vocab_mask_from_file
+import datasets
+import torch
+import yaml
+import numpy as np
+from datasets import load_dataset
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.util import vocab_mask_from_file
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import MBartTokenizer
+
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import checkpoint_stats2string, translation2string
-from torch.utils.data import DataLoader
-from transformers import MBartTokenizer
-from datasets import load_dataset
-import datasets
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
 # dataset = nlp.load_dataset("newstest2017", "zh-en")
