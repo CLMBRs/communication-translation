@@ -32,7 +32,7 @@ from wmt19.wmt_utils import WmtConfig
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
 # dataset = nlp.load_dataset("newstest2017", "zh-en")
-WMT19_SCRIPT = "./wmt19/wmt19.py"
+WMT19_SCRIPT = "/Users/leoliu/proj/communication-translation/BackTranslation/wmt19/wmt19.py"
 
 
 def set_seed(args):
