@@ -1592,6 +1592,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         beam_scores = torch.zeros((batch_size, num_beams), dtype=torch.float, device=input_ids.device)
         beam_scores[:, 1:] = -1e9
         beam_scores = beam_scores.view((batch_size * num_beams,))
+        # since last token will be unconstrained (beam search doesn't allow it), we would just "over-generate" one token and then
+        # force the last token to be EOS
+        # max_length += 1
 
         while cur_len < max_length:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
@@ -1601,7 +1604,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
                 next_token_logits += model_kwargs["lang_mask"]
-                # valid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"])])
+                valid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[torch.isfinite(model_kwargs["lang_mask"])])
                 # invalid_token_ids = set(np.arange(len(model_kwargs["lang_mask"]))[
                 #     ~torch.isfinite(model_kwargs["lang_mask"])])
 
@@ -1610,9 +1613,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 next_token_logits, cur_len=cur_len, max_length=max_length
             )
             next_token_scores = F.log_softmax(next_token_logits, dim=-1)
-            # mask = logit_after_softmax > 0
-            # next_token_scores = torch.log(logit_after_softmax)  # (batch_size * num_beams, vocab_size)
-            # next_token_scores[~mask] = 0
 
             next_token_scores = logits_processor(input_ids, next_token_scores)
             next_token_scores = next_token_scores + beam_scores[:, None].expand_as(next_token_scores)
@@ -1624,13 +1624,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 # Leo's comment: I am not sure why there's a magic number of 2 here. I deleted it
                 next_token_scores, 2 * num_beams, dim=1, largest=True, sorted=True
             )
-            # if cur_len == max_length - 1:
-            #     # the 2 * num_beams will lead to generating invalid tokens, so I enforce the scores and tokens to avoid that situation
-            #     # print()
-            #     next_tokens.fill_(eos_token_id)
-            #     assert torch.all(torch.isinf(next_token_scores[:, num_beams:]))
-            #     assert torch.all(torch.isfinite(next_token_scores[:, :num_beams]))
-            #     next_token_scores[:, :num_beams] = next_token_scores[:, num_beams:]
 
             next_indices = next_tokens // vocab_size
             next_tokens = next_tokens % vocab_size
@@ -1667,6 +1660,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         decoded = beam_scorer.finalize(
             input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id
         )
+        if "lang_mask" in model_kwargs:
+            for sent in decoded:
+                assert all(t in valid_token_ids for t in sent[1:].numpy())
 
         return decoded
 

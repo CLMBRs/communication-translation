@@ -4,7 +4,7 @@ model_path: Data/mbart-large-cc25
 
 # training config
 lr: 1.0e-05
-batch_size: 16
+batch_size: 2
 seed: 42
 n_gpu: 1
 print_every: 5
@@ -14,9 +14,11 @@ validate_every: 5
 # ceil(validation_set_size / batch_size) batches (of size batch_size) are run.
 validation_set_size: 50
 
-num_steps: 10
+num_steps: 13
 # script to load validation datasets
 val_dataset_script: BackTranslation/wmt19/wmt19.py
+use_early_stopping: true
+patience: 5
 # dir to save model from lang1 to lang2
 output_dir: Output/bt_en+zh/
 # dir to save model from lang2 to lang1
@@ -25,12 +27,12 @@ output_dir: Output/bt_en+zh/
 data_dir: ./Data/cc
 lang1_data_file: en_head2000.txt
 lang1_id: en
-lang1_max_len: 40
+lang1_max_len: 10
 lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
 lang2_data_file: zh_head2000.txt
 lang2_id: zh
-lang2_max_len: 40
+lang2_max_len: 10
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 lang_pair: zh-en

@@ -17,7 +17,7 @@ from collections import defaultdict, namedtuple
 from EC_finetune.agents import CommunicationAgent
 from EC_finetune.util import vocab_mask_from_file
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration, BartForConditionalGeneration
-from BackTranslation.dataloader import MbartMonolingualDataset
+# from BackTranslation.dataloader import MbartMonolingualDataset
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import checkpoint_stats2string, translation2string
 from torch.utils.data import DataLoader
@@ -119,7 +119,7 @@ def main(args, source_meta2pack):
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
-            source_string_batch = next(iter(source_dataloader))
+            source_string_batch = next(iter(source_dataloader))["text"]
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
@@ -224,12 +224,14 @@ if __name__ == "__main__":
     # Configure the logger (boilerplate)
     logger = logging.getLogger(__name__)
     out_handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(out_handler)
     message_format = '%(asctime)s - %(message)s'
     date_format = '%m-%d-%y %H:%M:%S'
+    # logger.Formatter(message_format, date_format)
     out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    # out_handler.setLevel(logging.INFO)
+    out_handler.setLevel(logging.INFO)
     logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    # logger.setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
@@ -322,23 +324,19 @@ if __name__ == "__main__":
     assert args.lang1_id in LANG_ID_2_LANGUAGE_CODES and args.lang2_id in LANG_ID_2_LANGUAGE_CODES
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
-
-    lang1_dataset = MbartMonolingualDataset(
-        source_file=os.path.join(args.data_dir, args.lang1_data_file),
-        tokenizer=tokenizer,
-        lang_code=LANG_ID_2_LANGUAGE_CODES[args.lang1_id],
-    )
-    lang2_dataset = MbartMonolingualDataset(
-        source_file=os.path.join(args.data_dir, args.lang2_data_file),
-        tokenizer=tokenizer,
-        lang_code=LANG_ID_2_LANGUAGE_CODES[args.lang2_id],
-    )
+    lang1_dataset = load_dataset("text",
+                                 data_files=os.path.join(args.data_dir, args.lang1_data_file))["train"]
+    lang2_dataset = load_dataset("text",
+                                 data_files=os.path.join(args.data_dir, args.lang2_data_file))["train"]
     lang1_dataloader = DataLoader(lang1_dataset, batch_size=args.batch_size, shuffle=True)
     lang2_dataloader = DataLoader(lang2_dataset, batch_size=args.batch_size, shuffle=True)
     # collate_fn=lambda x: pad_sequence(x, batch_first=True, padding_value=tokenizer.vocab['<pad>']))
 
     lang2_to_lang1_model_optimizer = torch.optim.Adam(lang2_to_lang1_model.parameters(), lr=args.lr)
-    lang1_to_lang2_model_optimizer = torch.optim.Adam(lang1_to_lang2_model.parameters(), lr=args.lr)
+    if args.models_shared:
+        lang1_to_lang2_model_optimizer = lang2_to_lang1_model_optimizer
+    else:
+        lang1_to_lang2_model_optimizer = torch.optim.Adam(lang1_to_lang2_model.parameters(), lr=args.lr)
 
     # lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
     # lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
