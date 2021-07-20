@@ -226,7 +226,7 @@ if __name__ == "__main__":
     out_handler = logging.StreamHandler(sys.stdout)
     message_format = '%(asctime)s - %(message)s'
     date_format = '%m-%d-%y %H:%M:%S'
-    # out_handler.setFormatter(logging.Formatter(message_format, date_format))
+    logger.setFormatter(logging.Formatter(message_format, date_format))
     # out_handler.setLevel(logging.INFO)
     # logger.addHandler(out_handler)
     logger.setLevel(logging.INFO)
