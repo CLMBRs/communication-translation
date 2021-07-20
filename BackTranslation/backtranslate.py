@@ -10,7 +10,7 @@ import yaml
 from tqdm import tqdm
 import random
 import numpy as np
-from math import ceil
+from math import ceil, isinf
 
 from statistics import mean
 from collections import defaultdict, namedtuple
@@ -95,17 +95,45 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     return accumulative_bleu / total_translations
 
 
+def save_model(args, source_meta2pack, saved_model_name):
+    source_metas = list(source_meta2pack.keys())
+    for source_meta in source_metas:
+        source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
+            list(source_meta2pack[source_meta])
+        source_id, source_code, source_mask, source_max_len = list(source_meta)
+        target_id, target_code, target_mask, target_max_len = list(target_meta)
+
+        # Save the general part of the model
+        if args.models_shared:
+            torch.save(
+                source2target_model.state_dict(), os.path.join(args.output_dir, saved_model_name)
+            )
+        else:
+            torch.save(
+                source2target_model.state_dict(),
+                os.path.join(args.output_dir, f"{source_id}2{target_id}", saved_model_name)
+            )
+            torch.save(
+                target2source_model.state_dict(),
+                os.path.join(args.output_dir, f"{target_id}2{source_id}", saved_model_name)
+            )
+        # we just save once
+        break
+
+
 def main(args, source_meta2pack):
     assert len(source_meta2pack) == 2
     source_metas = list(source_meta2pack.keys())
     checkpoint_stats = defaultdict(list)
+    best_val = float("-inf")
+    val_score = None
+    patience_count = 0
 
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the model
         # to learn the pattern that we do, e.g., English first and then Japanese second.
         random.shuffle(source_metas)
 
-        # TODO: 4. validate every X
         if step % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
@@ -162,6 +190,20 @@ def main(args, source_meta2pack):
                 val_score = validation(args, source2target_model, tokenizer, source_meta, target_meta)
                 checkpoint_stats[f"val-{args.val_metric_name}:{source_id}->{target_id}"].append(val_score)
 
+        if args.do_validation and step % args.validate_every == 0:
+            # we use early stopping
+            assert val_score is not None
+            if best_val < val_score or isinf(best_val):
+                # if we encounter a better model, we restart patience counting
+                # and save the model
+                patience_count = 0
+                best_val = val_score
+                save_model(args, source_meta2pack, saved_model_name="model.pt")
+            else:
+                patience_count += 1
+                if patience_count >= args.patience:
+                    break
+
         if step % args.print_every == 0:
             # bp()
             # TODO: add call to validate() for lang1_2_lang2 model and lang2_2_lang1 model; take average
@@ -185,28 +227,9 @@ def main(args, source_meta2pack):
                     )
                 )
 
-    for source_meta in source_metas:
-        source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
-            list(source_meta2pack[source_meta])
-        source_id, source_code, source_mask, source_max_len = list(source_meta)
-        target_id, target_code, target_mask, target_max_len = list(target_meta)
+    if not args.do_validation:
+        save_model(args, source_meta2pack, saved_model_name="model.pt")
 
-        # Save the general part of the model
-        if args.models_shared:
-            torch.save(
-                source2target_model.state_dict(), os.path.join(args.output_dir, "model.pt")
-            )
-        else:
-            torch.save(
-                source2target_model.state_dict(),
-                os.path.join(args.output_dir, f"{source_id}2{target_id}", "model.pt")
-            )
-            torch.save(
-                target2source_model.state_dict(),
-                os.path.join(args.output_dir, f"{target_id}2{source_id}", "model.pt")
-            )
-        # we just save once
-        break
 
 
 LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask", "max_length"])
