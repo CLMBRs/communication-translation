@@ -204,23 +204,12 @@ def main(args, source_meta2pack):
             )
         else:
             torch.save(
-                source2target_model.state_dict(), os.path.join(args.output_dir, f"{source_id}2{target_id}", "model.pt")
+                source2target_model.state_dict(),
+                os.path.join(args.output_dir, f"{args.lang1_id}2{args.lang2_id}", "model.pt")
             )
-            # Good practice: save your training arguments together
-            # with the trained model
             torch.save(
-                args,
-                os.path.join(args.output_dir, f"{source_id}2{target_id}", "training_args.bin")
-            )
-
-            torch.save(
-                target2source_model.state_dict(), os.path.join(args.output_dir, f"{target_id}2{source_id}", "model.pt")
-            )
-            # Good practice: save your training arguments together
-            # with the trained model
-            torch.save(
-                args,
-                os.path.join(args.output_dir, f"{target_id}2{source_id}", "training_args.bin")
+                target2source_model.state_dict(),
+                os.path.join(args.output_dir, f"{args.lang2_id}2{args.lang1_id}", "model.pt")
             )
         # we just save once
         break
@@ -276,10 +265,21 @@ if __name__ == "__main__":
 
     # Good practice: save your training arguments together
     # with the trained model
-    torch.save(
-        args,
-        os.path.join(args.output_dir, "training_args.bin")
-    )
+    if args.shared:
+        torch.save(
+            args,
+            os.path.join(args.output_dir, "training_args.bin")
+        )
+    else:
+        torch.save(
+            args,
+            os.path.join(args.output_dir, f"{args.lang1_id}2{args.lang2_id}", "training_args.bin")
+        )
+        torch.save(
+            args,
+            os.path.join(args.output_dir, f"{args.lang2_id}2{args.lang1_id}", "training_args.bin")
+        )
+
     # set random seed
     set_seed(args)
 
