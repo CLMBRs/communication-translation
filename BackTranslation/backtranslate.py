@@ -10,6 +10,7 @@ import yaml
 from tqdm import tqdm
 import random
 import numpy as np
+from math import ceil
 
 from statistics import mean
 from collections import defaultdict, namedtuple
@@ -52,7 +53,10 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     source_id, source_code, _, source_max_len = list(source_meta)
     target_id, target_code, _, target_max_len = list(target_meta)
     dataloader = torch.utils.data.DataLoader(reference_dataset, batch_size=args.batch_size)
-    for i, batch in enumerate(tqdm(dataloader)):
+    # args.validation_set_size is a lower bound of how many example used
+    num_batch = ceil(args.validation_set_size // args.batch_size)
+
+    for i, batch in enumerate(tqdm(dataloader, total=num_batch)):
         translation_batch = batch["translation"]
         # translation_batch = {k: v.to(args.device) for k, v in translation_batch.items()}
         source_string_batch = translation_batch[source_id]
@@ -84,6 +88,8 @@ def validation(args, model, tokenizer, source_meta, target_meta):
 
         accumulative_bleu += results['score' if args.val_metric_name == "sacrebleu" else 'bleu'] * len(reference_batch)
         total_translations += len(reference_batch)
+        if i == num_batch - 1:
+            break
 
     return accumulative_bleu / total_translations
 
@@ -109,46 +115,46 @@ def main(args, source_meta2pack):
             target_id, target_code, target_mask, target_max_len = list(target_meta)
             # bp()
 
-            # 1. we use source2target_model to generate synthetic text in target language
-            source2target_model.eval()
-            # get a batched string input
-            source_string_batch = next(iter(source_dataloader))
-            source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
-                                                           src_lang=source_code,
-                                                           tgt_lang=target_code,
-                                                           max_length=source_max_len,
-                                                           return_tensors="pt")
-            source_batch = source_batch.to(args.device)
-            translated_tokens = source2target_model.generate(**source_batch,
-                                                             decoder_start_token_id=tokenizer.lang_code_to_id[
-                                                                 target_code],
-                                                             max_length=target_max_len,
-                                                             lang_mask=target_mask)
-
-            # turn the predicted subtokens into sentence in string
-            translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
-            if step % args.print_every == 0 and args.print_translation:
-                translation_results[target_id] = translation
-
-            # 2. we train the target2source_model on the model
-            target2source_model.train()
-            # bp()
-            # Note the synthetic text is the input
-            parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
-                                                             src_lang=target_code,
-                                                             tgt_lang=source_code,
-                                                             tgt_texts=source_string_batch,
-                                                             max_length=target_max_len,
-                                                             max_target_length=source_max_len,
-                                                             return_tensors="pt")
-            parallel_batch = parallel_batch.to(args.device)
-            # bp()
-
-            output = target2source_model(**parallel_batch)
-            target2source_model_optimizer.zero_grad()
-            output.loss.backward()
-            target2source_model_optimizer.step()
-            checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
+            # # 1. we use source2target_model to generate synthetic text in target language
+            # source2target_model.eval()
+            # # get a batched string input
+            # source_string_batch = next(iter(source_dataloader))
+            # source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
+            #                                                src_lang=source_code,
+            #                                                tgt_lang=target_code,
+            #                                                max_length=source_max_len,
+            #                                                return_tensors="pt")
+            # source_batch = source_batch.to(args.device)
+            # translated_tokens = source2target_model.generate(**source_batch,
+            #                                                  decoder_start_token_id=tokenizer.lang_code_to_id[
+            #                                                      target_code],
+            #                                                  max_length=target_max_len,
+            #                                                  lang_mask=target_mask)
+            #
+            # # turn the predicted subtokens into sentence in string
+            # translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
+            # if step % args.print_every == 0 and args.print_translation:
+            #     translation_results[target_id] = translation
+            #
+            # # 2. we train the target2source_model on the model
+            # target2source_model.train()
+            # # bp()
+            # # Note the synthetic text is the input
+            # parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
+            #                                                  src_lang=target_code,
+            #                                                  tgt_lang=source_code,
+            #                                                  tgt_texts=source_string_batch,
+            #                                                  max_length=target_max_len,
+            #                                                  max_target_length=source_max_len,
+            #                                                  return_tensors="pt")
+            # parallel_batch = parallel_batch.to(args.device)
+            # # bp()
+            #
+            # output = target2source_model(**parallel_batch)
+            # target2source_model_optimizer.zero_grad()
+            # output.loss.backward()
+            # target2source_model_optimizer.step()
+            # checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
 
             if args.do_validation and step % args.validate_every == 0:
                 source2target_model.eval()

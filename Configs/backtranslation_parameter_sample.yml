@@ -10,6 +10,7 @@ n_gpu: 1
 print_every: 5
 do_validation: true
 validate_every: 5
+validation_set_size: 50
 
 num_steps: 200
 # script to load validation datasets
