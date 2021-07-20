@@ -227,8 +227,7 @@ def main(args, source_meta2pack):
                     )
                 )
 
-    if not args.do_validation:
-        save_model(args, source_meta2pack, saved_model_name="model.pt")
+    save_model(args, source_meta2pack, saved_model_name="last.pt")
 
 
 
