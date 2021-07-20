@@ -300,6 +300,7 @@ if __name__ == "__main__":
 
     # training_args = torch.load(args.args_path)
     lang1_to_lang2_model = MBartForConditionalGeneration.from_pretrained(args.model_path)
+    lang1_to_lang2_model.to(args.device)
     # state_dict = torch.load(args.model_path, map_location=None if torch.cuda.is_available()
     # else torch.device('cpu'))
     # lang1_to_lang2_model.load_state_dict(state_dict)
