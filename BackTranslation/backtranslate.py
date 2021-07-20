@@ -56,7 +56,8 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     # args.validation_set_size is a lower bound of how many example used
     num_batch = ceil(args.validation_set_size // args.batch_size)
 
-    for i, batch in enumerate(tqdm(dataloader, total=num_batch)):
+    for i, batch in enumerate(tqdm(dataloader, total=num_batch,
+                                   desc=f"val-{args.val_metric_name}:{source_id}->{target_id}")):
         if i == num_batch:
             break
         translation_batch = batch["translation"]
@@ -273,6 +274,12 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
+    # Good practice: save your training arguments together
+    # with the trained model
+    torch.save(
+        args,
+        os.path.join(args.output_dir, "training_args.bin")
+    )
     # set random seed
     set_seed(args)
 
