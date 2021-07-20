@@ -57,6 +57,8 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     num_batch = ceil(args.validation_set_size // args.batch_size)
 
     for i, batch in enumerate(tqdm(dataloader, total=num_batch)):
+        if i == num_batch:
+            break
         translation_batch = batch["translation"]
         # translation_batch = {k: v.to(args.device) for k, v in translation_batch.items()}
         source_string_batch = translation_batch[source_id]
@@ -88,8 +90,6 @@ def validation(args, model, tokenizer, source_meta, target_meta):
 
         accumulative_bleu += results['score' if args.val_metric_name == "sacrebleu" else 'bleu'] * len(reference_batch)
         total_translations += len(reference_batch)
-        if i == num_batch - 1:
-            break
 
     return accumulative_bleu / total_translations
 
@@ -242,9 +242,9 @@ if __name__ == "__main__":
     out_handler = logging.StreamHandler(sys.stdout)
     message_format = '%(asctime)s - %(message)s'
     date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
+    # out_handler.setFormatter(logging.Formatter(message_format, date_format))
+    # out_handler.setLevel(logging.INFO)
+    # logger.addHandler(out_handler)
     logger.setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
