@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
     # Good practice: save your training arguments together
     # with the trained model
-    if args.shared:
+    if args.models_shared:
         torch.save(
             args,
             os.path.join(args.output_dir, "training_args.bin")
