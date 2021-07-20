@@ -14,6 +14,7 @@ __pycache__
 Data/en-zh
 Data/cc/dummy
 Data/UNv1.0.en-zh.tar.gz
+Data/mbart-large-cc25
 !Data/cc/*.json*
 
 Output/
