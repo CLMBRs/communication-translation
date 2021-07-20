@@ -32,8 +32,6 @@ from wmt19.wmt_utils import WmtConfig
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
 # dataset = nlp.load_dataset("newstest2017", "zh-en")
-WMT19_SCRIPT = "/Users/leoliu/proj/communication-translation/BackTranslation/wmt19/wmt19.py"
-
 
 def set_seed(args):
     random.seed(args.seed)
@@ -364,7 +362,7 @@ if __name__ == "__main__":
 
     if args.do_validation:
         args.val_metric = datasets.load_metric(args.val_metric_name)
-        args.val_dataset = load_dataset(WMT19_SCRIPT, args.lang_pair, split="validation")
+        args.val_dataset = load_dataset(args.val_dataset_script, args.lang_pair, split="validation")
 
     main(args, lang_meta2pack)
     print()

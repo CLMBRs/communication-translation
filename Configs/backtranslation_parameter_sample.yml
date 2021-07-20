@@ -12,6 +12,8 @@ do_validation: true
 validate_every: 1
 
 num_steps: 200
+# script to load validation datasets
+val_dataset_script: BackTranslation/wmt19/wmt19.py
 # dir to save model from lang1 to lang2
 output_dir: Output/bt_en+zh/
 # dir to save model from lang2 to lang1
