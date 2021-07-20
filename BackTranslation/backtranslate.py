@@ -15,14 +15,14 @@ from statistics import mean
 from collections import defaultdict, namedtuple
 from EC_finetune.agents import CommunicationAgent
 from EC_finetune.util import vocab_mask_from_file
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration, BartForConditionalGeneration
 from BackTranslation.dataloader import MbartMonolingualDataset
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import checkpoint_stats2string, translation2string
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from transformers import pipeline, AutoTokenizer
-from transformers import BartForConditionalGeneration, MBartTokenizer, MBartForConditionalGeneration
+from transformers import MBartTokenizer
 from datasets import load_dataset
 import datasets
 # from datasets.wmt19.wmt_utils import WmtConfig
@@ -32,6 +32,7 @@ from wmt19.wmt_utils import WmtConfig
 
 # dataset = datasets.load_dataset('wmt14', 'zh-en')
 # dataset = nlp.load_dataset("newstest2017", "zh-en")
+
 
 def set_seed(args):
     random.seed(args.seed)

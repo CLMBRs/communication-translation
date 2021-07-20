@@ -4,12 +4,12 @@ model_path: Data/mbart-large-cc25
 
 # training config
 lr: 1.0e-05
-batch_size: 2
+batch_size: 16
 seed: 42
 n_gpu: 1
 print_every: 5
 do_validation: true
-validate_every: 1
+validate_every: 5
 
 num_steps: 200
 # script to load validation datasets
