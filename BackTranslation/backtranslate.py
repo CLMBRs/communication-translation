@@ -53,7 +53,6 @@ def validation(args, model, tokenizer, source_meta, target_meta):
     source_id, source_code, _, source_max_len = list(source_meta)
     target_id, target_code, _, target_max_len = list(target_meta)
     dataloader = torch.utils.data.DataLoader(reference_dataset, batch_size=args.batch_size)
-    assert source_id
     for i, batch in enumerate(tqdm(dataloader)):
         translation_batch = batch["translation"]
         # translation_batch = {k: v.to(args.device) for k, v in translation_batch.items()}
@@ -71,12 +70,11 @@ def validation(args, model, tokenizer, source_meta, target_meta):
                                                        src_lang=source_code,
                                                        tgt_lang=target_code,
                                                        max_length=source_max_len,
-                                                       # target_max_len=target_max_len,
                                                        return_tensors="pt")
         source_batch = source_batch.to(args.device)
         translated_ids = model.generate(**source_batch,
-                                           decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-                                           max_length=target_max_len)
+                                        decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                                        max_length=target_max_len)
         if args.val_metric_name == "bleu":
             translations = [tokenizer.convert_ids_to_tokens(s, skip_special_tokens=True) for s in translated_ids]
         else:
@@ -95,7 +93,6 @@ def main(args, source_meta2pack):
     assert len(source_meta2pack) == 2
     source_metas = list(source_meta2pack.keys())
     checkpoint_stats = defaultdict(list)
-    # dataset = load_dataset(WMT19_SCRIPT, args.lang_pair, split="valid")
 
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the model
@@ -113,46 +110,46 @@ def main(args, source_meta2pack):
             target_id, target_code, target_mask, target_max_len = list(target_meta)
             # bp()
 
-            # # 1. we use source2target_model to generate synthetic text in target language
-            # source2target_model.eval()
-            # # get a batched string input
-            # source_string_batch = next(iter(source_dataloader))
-            # source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
-            #                                                src_lang=source_code,
-            #                                                tgt_lang=target_code,
-            #                                                max_length=source_max_len,
-            #                                                return_tensors="pt")
-            # source_batch = source_batch.to(args.device)
-            # translated_tokens = source2target_model.generate(**source_batch,
-            #                                                  decoder_start_token_id=tokenizer.lang_code_to_id[
-            #                                                      target_code],
-            #                                                  max_length=target_max_len,
-            #                                                  lang_mask=target_mask)
-            #
-            # # turn the predicted subtokens into sentence in string
-            # translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
-            # if step % args.print_every == 0 and args.print_translation:
-            #     translation_results[target_id] = translation
-            #
-            # # 2. we train the target2source_model on the model
-            # target2source_model.train()
-            # # bp()
-            # # Note the synthetic text is the input
-            # parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
-            #                                                  src_lang=target_code,
-            #                                                  tgt_lang=source_code,
-            #                                                  tgt_texts=source_string_batch,
-            #                                                  max_length=target_max_len,
-            #                                                  max_target_length=source_max_len,
-            #                                                  return_tensors="pt")
-            # parallel_batch = parallel_batch.to(args.device)
-            # # bp()
-            #
-            # output = target2source_model(**parallel_batch)
-            # target2source_model_optimizer.zero_grad()
-            # output.loss.backward()
-            # target2source_model_optimizer.step()
-            # checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
+            # 1. we use source2target_model to generate synthetic text in target language
+            source2target_model.eval()
+            # get a batched string input
+            source_string_batch = next(iter(source_dataloader))
+            source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
+                                                           src_lang=source_code,
+                                                           tgt_lang=target_code,
+                                                           max_length=source_max_len,
+                                                           return_tensors="pt")
+            source_batch = source_batch.to(args.device)
+            translated_tokens = source2target_model.generate(**source_batch,
+                                                             decoder_start_token_id=tokenizer.lang_code_to_id[
+                                                                 target_code],
+                                                             max_length=target_max_len,
+                                                             lang_mask=target_mask)
+
+            # turn the predicted subtokens into sentence in string
+            translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
+            if step % args.print_every == 0 and args.print_translation:
+                translation_results[target_id] = translation
+
+            # 2. we train the target2source_model on the model
+            target2source_model.train()
+            # bp()
+            # Note the synthetic text is the input
+            parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
+                                                             src_lang=target_code,
+                                                             tgt_lang=source_code,
+                                                             tgt_texts=source_string_batch,
+                                                             max_length=target_max_len,
+                                                             max_target_length=source_max_len,
+                                                             return_tensors="pt")
+            parallel_batch = parallel_batch.to(args.device)
+            # bp()
+
+            output = target2source_model(**parallel_batch)
+            target2source_model_optimizer.zero_grad()
+            output.loss.backward()
+            target2source_model_optimizer.step()
+            checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
 
             if args.do_validation and step % args.validate_every == 0:
                 source2target_model.eval()
@@ -175,12 +172,12 @@ def main(args, source_meta2pack):
                 )
             )
             checkpoint_stats = defaultdict(list)
-            # if args.print_translation:
-            #     logger.info(
-            #         translation2string(
-            #             translation_results, args.num_printed_translation
-            #         )
-            #     )
+            if args.print_translation:
+                logger.info(
+                    translation2string(
+                        translation_results, args.num_printed_translation
+                    )
+                )
 
     for source_meta in source_metas:
         source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
@@ -365,9 +362,9 @@ if __name__ == "__main__":
         lang2_meta: lang2_to_lang1_pack
     }
 
-    # main(args, lang_meta2pack)
     if args.do_validation:
         args.val_metric = datasets.load_metric(args.val_metric_name)
         args.val_dataset = load_dataset(WMT19_SCRIPT, args.lang_pair, split="validation")
 
+    main(args, lang_meta2pack)
     print()
