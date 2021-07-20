@@ -115,51 +115,51 @@ def main(args, source_meta2pack):
             target_id, target_code, target_mask, target_max_len = list(target_meta)
             # bp()
 
-            # # 1. we use source2target_model to generate synthetic text in target language
-            # source2target_model.eval()
-            # # get a batched string input
-            # source_string_batch = next(iter(source_dataloader))
-            # source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
-            #                                                src_lang=source_code,
-            #                                                tgt_lang=target_code,
-            #                                                max_length=source_max_len,
-            #                                                return_tensors="pt")
-            # source_batch = source_batch.to(args.device)
-            # translated_tokens = source2target_model.generate(**source_batch,
-            #                                                  decoder_start_token_id=tokenizer.lang_code_to_id[
-            #                                                      target_code],
-            #                                                  max_length=target_max_len,
-            #                                                  lang_mask=target_mask)
-            #
-            # # turn the predicted subtokens into sentence in string
-            # translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
-            # if step % args.print_every == 0 and args.print_translation:
-            #     translation_results[target_id] = translation
-            #
-            # # 2. we train the target2source_model on the model
-            # target2source_model.train()
-            # # bp()
-            # # Note the synthetic text is the input
-            # parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
-            #                                                  src_lang=target_code,
-            #                                                  tgt_lang=source_code,
-            #                                                  tgt_texts=source_string_batch,
-            #                                                  max_length=target_max_len,
-            #                                                  max_target_length=source_max_len,
-            #                                                  return_tensors="pt")
-            # parallel_batch = parallel_batch.to(args.device)
-            # # bp()
-            #
-            # output = target2source_model(**parallel_batch)
-            # target2source_model_optimizer.zero_grad()
-            # output.loss.backward()
-            # target2source_model_optimizer.step()
-            # checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
+            # 1. we use source2target_model to generate synthetic text in target language
+            source2target_model.eval()
+            # get a batched string input
+            source_string_batch = next(iter(source_dataloader))
+            source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
+                                                           src_lang=source_code,
+                                                           tgt_lang=target_code,
+                                                           max_length=source_max_len,
+                                                           return_tensors="pt")
+            source_batch = source_batch.to(args.device)
+            translated_tokens = source2target_model.generate(**source_batch,
+                                                             decoder_start_token_id=tokenizer.lang_code_to_id[
+                                                                 target_code],
+                                                             max_length=target_max_len,
+                                                             lang_mask=target_mask)
+
+            # turn the predicted subtokens into sentence in string
+            translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
+            if step % args.print_every == 0 and args.print_translation:
+                translation_results[target_id] = translation
+
+            # 2. we train the target2source_model on the model
+            target2source_model.train()
+            # bp()
+            # Note the synthetic text is the input
+            parallel_batch = tokenizer.prepare_seq2seq_batch(translation,
+                                                             src_lang=target_code,
+                                                             tgt_lang=source_code,
+                                                             tgt_texts=source_string_batch,
+                                                             max_length=target_max_len,
+                                                             max_target_length=source_max_len,
+                                                             return_tensors="pt")
+            parallel_batch = parallel_batch.to(args.device)
+            # bp()
+
+            output = target2source_model(**parallel_batch)
+            target2source_model_optimizer.zero_grad()
+            output.loss.backward()
+            target2source_model_optimizer.step()
+            checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
 
             if args.do_validation and step % args.validate_every == 0:
                 source2target_model.eval()
                 val_score = validation(args, source2target_model, tokenizer, source_meta, target_meta)
-                checkpoint_stats[f"val-{args.validation_metric}:{source_id}->{target_id}"].append(val_score)
+                checkpoint_stats[f"val-{args.val_metric_name}:{source_id}->{target_id}"].append(val_score)
 
         if step % args.print_every == 0:
             # bp()
@@ -168,9 +168,9 @@ def main(args, source_meta2pack):
             checkpoint_average_stats = {}
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = np.mean(value)
-            checkpoint_average_stats[f"ave-val-{args.validation_metric}"] = \
-                np.mean([checkpoint_stats[f"val-{args.validation_metric}:{args.lang1_id}->{args.lang2_id}"],
-                         checkpoint_stats[f"val-{args.validation_metric}:{args.lang2_id}->{args.lang1_id}"]])
+            checkpoint_average_stats[f"ave-val-{args.val_metric_name}"] = \
+                np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
+                         checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]])
             logger.info(
                 checkpoint_stats2string(
                     step, checkpoint_average_stats, 'train'
