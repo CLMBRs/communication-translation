@@ -317,7 +317,7 @@ if __name__ == "__main__":
                                       file=args.lang1_vocab_constrain_file,
                                       threshold=args.threshold)
     lang1_mask = lang1_mask.to(args.device)
-    print(f"Total valid {args.lang1_id} tokens: {torch.sum(~torch.isinf(lang1_mask))}")
+    logger.info(f"Total valid {args.lang1_id} tokens: {torch.sum(~torch.isinf(lang1_mask))}")
 
     lang1_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0])
     # print(str(lang1_valid_tokens).encode('utf-8'))
@@ -325,7 +325,7 @@ if __name__ == "__main__":
                                       file=args.lang2_vocab_constrain_file,
                                       threshold=args.threshold)
     lang2_mask = lang2_mask.to(args.device)
-    print(f"Total valid {args.lang2_id} tokens: {torch.sum(~torch.isinf(lang2_mask))}")
+    logger.info(f"Total valid {args.lang2_id} tokens: {torch.sum(~torch.isinf(lang2_mask))}")
     lang2_valid_tokens = tokenizer.convert_ids_to_tokens((~torch.isinf(lang2_mask)).nonzero(as_tuple=True)[0])
     # print(str(lang2_valid_tokens).encode('utf-8'))
     # bp()
