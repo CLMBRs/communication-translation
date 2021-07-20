@@ -252,9 +252,9 @@ if __name__ == "__main__":
     date_format = '%m-%d-%y %H:%M:%S'
     # logger.Formatter(message_format, date_format)
     out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
+    # out_handler.setLevel(logging.INFO)
     logger.addHandler(out_handler)
-    # logger.setLevel(logging.INFO)
+    logger.setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
