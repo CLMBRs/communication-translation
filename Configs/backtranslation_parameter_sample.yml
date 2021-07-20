@@ -1,12 +1,16 @@
-model_path: Output/mbart_wcons/model.pt
-args_path: Output/mbart_wcons/training_args.bin
+# Path to load model for generation
+model_path: Data/mbart-large-cc25
+#args_path: Output/mbart_wcons/training_args.bin
 
 # training config
 lr: 1.0e-05
-batch_size: 16
+batch_size: 2
 seed: 42
 n_gpu: 1
 print_every: 5
+do_validation: true
+validate_every: 1
+
 num_steps: 200
 # dir to save model from lang1 to lang2
 output_dir: Output/bt_en+zh/
@@ -24,5 +28,6 @@ lang2_id: zh
 lang2_max_len: 40
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
+lang_pair: zh-en
 # backtranslation language
 models_shared: true

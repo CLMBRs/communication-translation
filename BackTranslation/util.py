@@ -3,10 +3,12 @@ import random
 import numpy as np
 from typing import List
 
-def checkpoint_stats2string(step, avg_loss_dict, mode="train"):
+
+def checkpoint_stats2string(step, avg_stats_dict, mode="train"):
     prt_msg = "step {:5d} {} ".format(step, mode)
-    prt_msg += "| loss"
-    prt_msg += " {:.4f}".format(avg_loss_dict["loss"])
+    for name, value in avg_stats_dict.items():
+        prt_msg += f"| {name}"
+        prt_msg += " {:.4f}".format(value)
     # prt_msg += "| prediction accuracy"
     # prt_msg += " {:.2f}%".format(avg_loss_dict["accuracy"])
     # prt_msg += "| average message length"

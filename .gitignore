@@ -10,8 +10,12 @@ __pycache__
 *.tar
 *.tar.gz
 
-Data/
+# Data/**
+Data/en-zh
+Data/cc/dummy
+Data/UNv1.0.en-zh.tar.gz
 !Data/cc/*.json*
+
 Output/
 UMT_data/
 UMT_datasentence_level/
