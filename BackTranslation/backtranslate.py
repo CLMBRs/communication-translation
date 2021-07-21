@@ -121,6 +121,16 @@ def save_model(args, source_meta2pack, saved_model_name):
         break
 
 
+def get_next_batch(loader, iterator=None):
+    iterator = iter(loader) if iterator is None else iterator
+    try:
+        current_batch = next(iterator)
+    except StopIteration:
+        iterator = iter(loader)
+        current_batch = next(iterator)
+    return current_batch
+
+
 def main(args, source_meta2pack):
     assert len(source_meta2pack) == 2
     source_metas = list(source_meta2pack.keys())
@@ -138,7 +148,7 @@ def main(args, source_meta2pack):
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source_meta in source_metas:
-            source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, \
+            source_dataloader, source_dataiter, tokenizer, source2target_model, target_meta, target2source_model, \
             target2source_model_optimizer = list(source_meta2pack[source_meta])
             source_id, source_code, source_mask, source_max_len = list(source_meta)
             target_id, target_code, target_mask, target_max_len = list(target_meta)
@@ -147,7 +157,7 @@ def main(args, source_meta2pack):
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
-            source_string_batch = next(iter(source_dataloader))["text"]
+            source_string_batch = get_next_batch(source_dataloader, source_dataiter)["text"]
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
@@ -227,8 +237,7 @@ def main(args, source_meta2pack):
                     )
                 )
 
-    if not args.do_validation:
-        save_model(args, source_meta2pack, saved_model_name="model.pt")
+    save_model(args, source_meta2pack, saved_model_name="last.pt")
 
 
 
@@ -236,6 +245,7 @@ LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask", "max_len
 
 BackTranslationPack = namedtuple("BackTranslationPack",
                                  ["source_dataloader",
+                                  "source_dataiter",
                                   "source_tokenizer",
                                   "source2target_model",
                                   "target_meta",
@@ -353,6 +363,8 @@ if __name__ == "__main__":
                                  data_files=os.path.join(args.data_dir, args.lang2_data_file))["train"]
     lang1_dataloader = DataLoader(lang1_dataset, batch_size=args.batch_size, shuffle=True)
     lang2_dataloader = DataLoader(lang2_dataset, batch_size=args.batch_size, shuffle=True)
+    lang1_dataiter = iter(lang1_dataloader)
+    lang2_dataiter = iter(lang2_dataloader)
     # collate_fn=lambda x: pad_sequence(x, batch_first=True, padding_value=tokenizer.vocab['<pad>']))
 
     lang2_to_lang1_model_optimizer = torch.optim.Adam(lang2_to_lang1_model.parameters(), lr=args.lr)
@@ -372,12 +384,14 @@ if __name__ == "__main__":
     args.lang2_meta = lang2_meta
 
     lang1_to_lang2_pack = BackTranslationPack(source_dataloader=lang1_dataloader,
+                                              source_dataiter=lang1_dataiter,
                                               source_tokenizer=tokenizer,
                                               source2target_model=lang1_to_lang2_model,
                                               target_meta=lang2_meta,
                                               target2source_model=lang2_to_lang1_model,
                                               optimizer=lang2_to_lang1_model_optimizer)
     lang2_to_lang1_pack = BackTranslationPack(source_dataloader=lang2_dataloader,
+                                              source_dataiter=lang2_dataiter,
                                               source_tokenizer=tokenizer,
                                               source2target_model=lang2_to_lang1_model,
                                               target_meta=lang1_meta,
