@@ -134,8 +134,6 @@ def save_model(args, backtranslation_pack, saved_model_name):
 
 
 def main(args, backtranslation_pack):
-    dataloaders = (iter(backtranslation_pack['dataloaders'][0]), iter(backtranslation_pack['dataloaders'][1]))
-    backtranslation_pack['dataloaders'] = dataloaders
     checkpoint_stats = defaultdict(list)
     best_val = float("-inf")
     val_score = None
@@ -168,7 +166,7 @@ def main(args, backtranslation_pack):
         # 1. Use source2target_model to generate synthetic text in target language
         source2target_model.eval()
         # Get a batched string input
-        source_string_batch = next(source_dataloader)["text"]
+        source_string_batch = next(iter(source_dataloader))["text"]
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
             src_lang=source_code,
