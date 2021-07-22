@@ -140,7 +140,7 @@ def main(args, backtranslation_pack):
     global_step = 0
 
     while global_step < args.num_steps:
-        bp()
+        # bp()
         for batch_num in range(len(backtranslation_pack.dataloaders[0])):
             # We might want to randomly decide the order of languages
             source = random.randint(0, 1)
