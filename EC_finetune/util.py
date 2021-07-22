@@ -6,7 +6,7 @@ import numpy as np
 from collections import OrderedDict
 
 import torch
-import torch.nn.functional as F
+from torch import Tensor
 from torch.autograd import Variable
 from transformers import PreTrainedTokenizer
 
@@ -136,7 +136,7 @@ def trim_caps(caps, minlen, maxlen):
 
 def print_params(names, sizes):
     agents = "l1_agent l2_agent".split()
-    comps = "speaker listener beholder".split()
+    comps = "sender receiver beholder".split()
 
     dd = OrderedDict()
     for aa in agents:
@@ -241,23 +241,19 @@ def loss_and_acc(logits, labels, loss_fn):
 
 # TODO: I think the dictionary formatting can be a lot simpler than this
 def loss_acc_dict():
-    return {
-        "spk": {\
-               "loss": 0},\
-        "lsn": {\
-               "loss": 0,\
-               "acc": 0 }        \
-        }
+    return {"spk": {"loss": 0}, "lsn": {"loss": 0, "acc": 0}}
 
 
 def loss_acc_meter():
     return {
-        "spk": {\
-               "loss": AverageMeter()},\
-        "lsn": {\
-               "loss": AverageMeter(),\
-               "acc": AverageMeter() }        \
+        "spk": {
+            "loss": AverageMeter()
+        },
+        "lsn": {
+            "loss": AverageMeter(),
+            "acc": AverageMeter()
         }
+    }
 
 
 def get_loss_dict():
@@ -294,40 +290,6 @@ def get_avg_from_loss_dict(log_loss_dict):
             for k3, v3 in v2.items():  # loss / acc
                 res[k1][k2][k3] = v3.avg
     return res
-
-
-def print_loss_(epoch, alpha, avg_loss_dict, mode="train"):
-    prt_msg = "epoch {:5d} {} ".format(epoch, mode)
-    prt_msg += "| loss"
-    prt_msg += " {:.4f}".format(avg_loss_dict["loss"])
-    prt_msg += "| prediction accuracy"
-    prt_msg += " {:.2f}%".format(avg_loss_dict["accuracy"])
-    prt_msg += "| average message length"
-    prt_msg += " {:.4f}".format(avg_loss_dict["average_len"])
-    prt_msg += " |"
-    return prt_msg
-
-
-def print_loss(epoch, alpha, avg_loss_dict, mode="train"):
-    prt_msg = "epoch {:5d} {} ".format(epoch, mode)
-    for agent in "l1 l2".split():
-        prt_msg += "| "  # en_agent / fr_agent
-        for person in "spk lsn".split():
-            prt_msg += " {}_{}".format(agent, person)  # spk / lsn
-            if person == "spk":
-                prt_msg += " {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"]
-                )
-            elif person == "lsn":
-                prt_msg += " {:.3f} * {} = {:.3f}".format(
-                    avg_loss_dict[agent][person]["loss"], alpha,
-                    avg_loss_dict[agent][person]["loss"] * alpha
-                )
-                prt_msg += " {:.2f}%".format(
-                    avg_loss_dict[agent][person]["acc"]
-                )
-            prt_msg += " |"
-    return prt_msg
 
 
 def clip_grad(v, min, max):
@@ -382,20 +344,34 @@ def remove_duplicate(data):
     return data[:-10000], data[-10000:]
 
 
-def vocab_mask_from_file(tokenizer: PreTrainedTokenizer, file, threshold=0.01):
+def vocab_mask_from_file(
+    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01
+) -> Tensor:
+    """
+    Import a datafile of token frequencies to create a mask for constrained
+    generation
+
+    Args:
+        file: the datafile to be imported (in json format)
+        threshold: the proportion of the total token mass under which tokens
+            should be masked
+    Returns: a Tensor containing 0s at the indices of allowed tokens and
+        negative infinities at the indices of masked tokens
+    """
     token_freq = list(json.load(open(file, "r")).items())
     total_freq = sum(freq for _, freq in token_freq)
+    # TODO: I think this math is wrong, but we can deal with it in a separate
+    # pull/commit
     # we kept tokens that appear more than 1%
-    good_token_ids = set(int(token_id) for token_id, freq in token_freq if freq/total_freq >= threshold)
-    # Leo's comment: this is added for generation purpose; EOS and BOS are valid special tokens to be generated.
-    good_token_ids.update(set([tokenizer.eos_token_id, tokenizer.bos_token_id]))
-
+    good_token_ids = set(
+        int(token_id)
+        for token_id, freq in token_freq if freq / total_freq >= threshold
+    )
     bad_token_ids = []
     for k, v in tokenizer.get_vocab().items():
         if v in good_token_ids:
             continue
         bad_token_ids.append(v)
-
     mask = torch.zeros(len(tokenizer))
     mask[bad_token_ids] = -float("inf")
     return mask

@@ -18,6 +18,7 @@ no_share_bhd: false
 
 # Train and eval:
 # train eval basic setting
+mode: image_grounding
 do_train: true # control whether we train
 do_eval: true # whether to do eval after training
 seed: 42
@@ -30,7 +31,7 @@ hard: true # Gumbel softmax sampling; we always prefer to set this true
 seq_len: 15 # sequence length limit
 temp: 1.0 # temperature for gumbel softmax
 loss_type: xent
-lr: 1.0e-6
+lr: 5.0e-7
 no_share_bhd: false
 no_terminal: false
 no_write: false
@@ -56,7 +57,7 @@ temperature: 1.0
 translate_every: 2000
 two_ffwd: false
 unit_norm: false
-batch_size: 16
+batch_size: 64
 valid_batch_size: 128
 valid_every: 500
 print_every: 50
@@ -64,9 +65,10 @@ TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Loading and saving data:
 dataset: coco
-coco_path: Data/coco_new
+coco_path: ./UMT_data/coco_new
 save_pretrain_seperately: true
-output_dir: Output
+# good practice: set the output_dir name the same as the parameter file name
+output_dir: mbart_wcons  
 save_output_txt: true
 
 # Other (we may choose to delete these later):
@@ -78,9 +80,9 @@ no_write: false
 norm_pow: 0.0 # for MT part, not relevant here.
 sample_how: gumbel # we always use gumbel in our case
 
-
 # specify info about language and vocab constraint
+has_vocab_constraint: true
 source_lang: en_XX
-source_lang_vocab_constrain_file: ./Data/cc/en_europarl_count_dict.json
+source_lang_vocab_constrain_file: ./UMT_data/cc/en_europarl_count_dict.json
 target_lang: ja_XX
-target_lang_vocab_constrain_file: ./Data/cc/ja_smaller_count_dict.json
+target_lang_vocab_constrain_file: ./UMT_data/cc/ja_smaller_count_dict.json

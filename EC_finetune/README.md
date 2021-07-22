@@ -1,9 +1,12 @@
-## Code Guide 
-We use `.yml` file configure the hyper-parameters.
-- To run the EC training process: `sh run_training_wconfig.sh`.
-- `src/playground.py` is the file that sythesizes all the parts.
-- `src/bart_models.py (models.py)` is the central part of our engine, where
-the speaker/listener is initialized by the BART model (RNN model).
-- `src/modeling_bart.py` is the file that organize the BART model.
-- `src/forward.py` takes the output of the model and calculates the loss.
+## EC_finetune Module
+- `__main__.py` is the main training script for image caption grounding and
+emergent communication finetuning
+- `agents.py` contains the top-level classes for communication agents (i.e. a
+sender/receiver pair)
+- `senders.py` contains the abstract Sender class and some concrete
+subclasses
+- `receivers.py` contains the abstract Receiver class and some concrete
+subclasses
+- `dataloader.py` contains Dataset classes for image-grounding and emergent
+communication image-selection training
  

@@ -1,33 +1,37 @@
+from abc import abstractmethod
 from argparse import Namespace
+from statistics import mean
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from torch.autograd import Variable
 from torch.nn import Module
 
-from EC_finetune.speakers import BartSpeaker, MBartSpeaker, RnnSpeaker
-from EC_finetune.listeners import Listener, BartEncoder, MBartEncoder, RnnEncoder
-from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.senders import Sender
+from EC_finetune.receivers import Receiver
 
 
 class CommunicationAgent(Module):
     """
-    A PyTorch module instantiating a sender/receiver or speaker/listener agent
-    set for communication games
-    Speaker and Listener components can currently be set to have either an RNN
-    or pretrained Bart architecture. Beholder (image embedding compoment) can
-    either be shared between Speaker and Listener, or independent for both
+    An abstract PyTorch Module for creating a sender/receiver or
+    speaker/listener agent set for communication games
+
+    Sender and Receiver are passed in as arguments, and must meet the
+    interfaces specified by the Sender and Receiver abstract classes,
+    respectively. Beholder (image embedding compoment) can either be shared
+    between Sender and Receiver, or independent for both
     Args:
-        args: A dictionary of parameters
+        sender: the sender/speaker module, subclassed from Sender
+        receiver: the receiver/listener module, subclassed from Receiver
+        args: a dictionary of parameters
     """
-    def __init__(self, args: Namespace):
+    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__()
 
         # Initialize the image Beholder, and clone if there is to be a separate
-        # Beholder stack for both Speaker and Listener
+        # Beholder stack for both Sender and Receiver
         self.beholder = Beholder(
             image_dim=args.image_dim,
             hidden_dim=args.hidden_dim,
@@ -35,7 +39,6 @@ class CommunicationAgent(Module):
             unit_norm=args.unit_norm,
             two_ffwd=args.two_ffwd
         )
-        self.native, self.foreign = 'en', args.l2
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = self.beholder
@@ -44,141 +47,218 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
-            # Initialize Speaker and Listener, either from pretrained Bart or as a
-        # from-scratch RNN
-        # TODO: Have RNN stack be shared between Speaker and Listener
-        if args.model_name == 'bart':
-            self.model = BartForConditionalGeneration.from_pretrained(
-                'facebook/bart-large'
-            )
-            self.speaker = BartSpeaker(self.model, self.native, **vars(args))
-            listener_model = BartEncoder(self.model, args.hidden_dim)
-        elif args.model_name == "mbart":
-            self.model = MBartForConditionalGeneration.from_pretrained(
-                'facebook/mbart-large-cc25'
-            )
-            self.speaker = MBartSpeaker(self.model, self.native, **vars(args))
-            listener_model = MBartEncoder(self.model, args.hidden_dim)
-        elif args.model_name == 'rnn':
-            self.speaker = RnnSpeaker(self.native, args)
-            listener_model = RnnEncoder(
-                args.vocab_size, args.embedding_dim, args.hidden_dim,
-                args.num_layers, args.bidirectional
-            )
-            self.model = None
-        else:
-            raise ValueError(f"Model type {args.model_name} is not valid")
-
-        self.listener = Listener(
-            listener_model, dropout=args.dropout, unit_norm=args.unit_norm
-        )
-
-        self.crossentropy = torch.nn.CrossEntropyLoss()
+        self.sender = sender
+        self.receiver = receiver
 
         self.image_dim = args.image_dim
         self.hidden_dim = args.hidden_dim
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
-        self.norm_pow = args.norm_pow
         self.no_share_bhd = args.no_share_bhd
+        self.padding_index = args.padding_index
+        self.max_seq_length = args.max_seq_length
 
-    def forward(self, batch):
-        target_image = batch['target']
-        speaker_images = batch['speaker_image']
-        listener_images = batch['listener_images']
-        speaker_captions_in = batch['speaker_caps_in']
-        speaker_caption_lengths = batch['speaker_cap_lens']
+    def image_to_message(self, batch: dict) -> dict:
+        """
+        Take in an image embedding and use the sender to return a
+        message/caption representing the image
 
-        num_image_choices = listener_images.size(1)
+        If the batch contains `decoder_input_ids`, the sender generates in a
+        "supervised" way (passing in the gold decoder input at each timestep).
+        If not, Gumbel generation is used
 
-        # Embed the Speaker's image using the Beholder
-        speaker_image_embeddings = self.beholder1(speaker_images)
-        batch["speaker_images_hidden"] = speaker_image_embeddings
-        # input_dict = {"speaker_images_hidden": speaker_image_embeddings}
-        # if "lang_ids" in batch:
-        #     input_dict["lang_ids"] = batch["lang_ids"]
-        # if "lang_masks" in batch:
-        #     input_dict["lang_masks"] = batch["lang_masks"]
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `sender_image`, the embedding of the image from which to
+                generate the message. The rest of the batch is passed to the 
+                sender as kwargs
+        """
 
-        # Generate the Speaker's message/caption about the image. (The speaker
-        # classes are currently not accepting input captions)
-        message_dict = self.speaker(**batch)
-        message_ids = message_dict["message_ids"]
-        message_logits = message_dict["message_logits"]
-        message_lengths = message_dict["message_lengths"]
-        '''
-        message_logits, message_ids, message_lengths = self.speaker(
-            speaker_image_embeddings, speaker_captions_in, speaker_caption_lengths
-        ) 
-        '''
+        # Embed the Sender's image using the Beholder
+        image_embedding = self.beholder1(batch['sender_image'])
+        # Generate the Sender's message/caption about the image
+        return self.sender(image_embedding, **batch)
 
-        # Commenting this out until we know why it's here
-        '''
-        lenlen = False
-        if lenlen:
-            print(spk_cap_len_[:10])
-            end_idx = torch.max(
-                torch.ones(spk_cap_len_.size()).cuda(),
-                (spk_cap_len_ - 2).float()
-            )
-            end_idx_ = torch.arange(0, end_idx.size(0)
-                                   ).cuda() * spk_logits.size(1) + end_idx.int()
-            end_loss_ = 3 * torch.ones(end_idx_.size()).long().cuda()
-        else:
-        '''
-        end_idx_ = 0
-        end_loss_ = 0
+    def choose_image_from_message(
+        self, message_dict: dict, receiver_images: Tensor
+    ) -> Tensor:
+        """
+        Take in a message from the sender, as well as a set of image choices,
+        and use the receiver to embed/interpret the message. Compare the final
+        receiver representation to the image embeddings to form logits over the
+        choices
 
-        # Embed the Listener's candidate images using the Beholder
-        listener_images = listener_images.view(-1, self.image_dim)
-        listener_image_embeddings = self.beholder2(listener_images)
-        # TODO: this is a problem
-        listener_image_embeddings = listener_image_embeddings.view(
-            -1, num_image_choices, self.hidden_dim
-        )
+        Args:
+            message_dict: a dictionary of Tensors representing the sender's
+                message/caption. Must minimally include `message_ids`. See
+                `EC_finetune.senders` for more information
+            receiver_images: a Tensor of image embeddings for the model to
+                choose between. `(batch_size, num_image_choices, image_dim)`
+        Returns: a Tensor of logits over the image choices for the batch
+        """
+        num_image_choices = receiver_images.size(1)
 
-        # Encode the Speaker's message to a hidden state to be used to select
-        # a candidate image
-        listener_hidden = self.listener(**message_dict)
+        # Embed the Receiver's candidate images using the Beholder
         # (batch_size, num_image_choices, hidden_dim)
-        listener_hidden = listener_hidden.unsqueeze(1).repeat(
+        receiver_image_embeddings = self.beholder2(receiver_images)
+
+        # Encode the Sender's message to a hidden state to be used to select
+        # a candidate image
+        receiver_hidden = self.receiver(**message_dict)
+        # (batch_size, num_image_choices, hidden_dim)
+        receiver_hidden = receiver_hidden.unsqueeze(1).repeat(
             1, num_image_choices, 1
         )
 
-        # Get the Mean Squared Error between the final listener representation
+        # Get the Mean Squared Error between the final receiver representation
         # and all of the candidate images
         image_candidate_errors = F.mse_loss(
-            listener_hidden, listener_image_embeddings, reduction='none'
-        ).mean(dim=2).view(-1, num_image_choices)
+            receiver_hidden, receiver_image_embeddings, reduction='none'
+        ).mean(dim=2).squeeze(-1)
 
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
+        return image_candidate_logits
 
-        # Get final cross-entropy loss
-        communication_loss = self.crossentropy(
+    @abstractmethod
+    def forward(self, batch):
+        raise NotImplementedError
+
+
+class ECImageIdentificationAgent(CommunicationAgent):
+    def forward(self, batch: dict) -> dict:
+        """
+        Train a model to convert the target image of a batch to a message using
+        the sender and then encode the message back into a hidden state using
+        the receiver. Use the final hidden state to choose the correct target
+        image from among distractors
+
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `sender_image`, `receiver_images`, and `target`
+        Returns:
+            a dictionary of results with the following keys:
+                `loss` (Tensor): the cross-entropy loss for selecting the
+                    correct image
+                `accuracy` (float): the percent of the image selections the
+                    model chose correctly
+                `message` (Tensor): the batch of messages as indices
+                `mean_length` (float): the mean length of the messages
+        """
+
+        # Get the message dictionary (ids, logits, lengths) from the sender
+        # based on the input image
+        message_dict = self.image_to_message(batch)
+
+        # Create the padding mask
+        lengths = message_dict['message_lengths'].tolist()
+        batch_size = len(lengths)
+        padding_mask = np.ones((batch_size, self.max_seq_length))
+        for seq in range(batch_size):
+            padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
+        padding_mask = torch.tensor(padding_mask).to(
+            message_dict['message_ids'].device
+        )
+        message_dict['attention_mask'] = padding_mask
+        del message_dict['message_lengths']
+
+        # Get the logits for the image choice candidates based on the sender's
+        # message
+        image_candidate_logits = self.choose_image_from_message(
+            message_dict, batch['receiver_images']
+        )
+
+        # Get final cross-entropy loss between the candidates and the target
+        # images
+        target_image = batch['target']
+        communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
+
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)
         eq = torch.eq(predicted_idx, target_image)
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
-        return_dict = {
+        return {
             'loss': communication_loss,
-            'accuracy': accuracy,
-            'message': message_ids,
-            'end_idx': end_idx_,
-            'end_loss': end_loss_,
-            'mean_length': torch.mean(message_lengths.float())
+            'accuracy': 100 * accuracy,
+            'message': message_dict['message_ids'],
+            'mean_length': mean(lengths)
         }
 
-        return return_dict
-        # return speaker_message_logits, (listener_hiddens,
-        #                                 listener_images_hidden), speaker_message, (end_idx_, end_loss_), (
-        #                         torch.min(speaker_message_len.float()),
-        #
-        #                         torch.max(speaker_message_len.float())
-        #                     )
+
+class ImageCaptionGrounder(CommunicationAgent):
+    """
+    An agent to train grounding of text to images, by producing captions based
+    on images, and picking images based on a caption (independently)
+    """
+    def forward(self, batch):
+        """
+        Train the sender to generate a gold-standard caption given an image.
+        Also train to select the correct image from among distractors using the
+        receiver's representation of the gold-standard caption
+
+        Args:
+            batch: a dictionary of Tensors and other data. Must obligatorily
+                include `caption_ids`, `caption_mask`, `sender_image`,
+                `receiver_images`, and `target`
+        Returns:
+            a dictionary of results with the following keys:
+                `loss` (Tensor): the combination of the mean cross-entropy loss
+                    for generating the caption and the cross-entropy for 
+                    selecting the correct image
+                `caption generation loss` (float): the value of the loss for
+                    caption generation
+                `image selection loss` (float): the value of the loss for
+                    selecting the correct image
+                `accuracy` (float): the percent of the image selections the
+                    model chose correctly
+                `message` (Tensor): the batch of generated messages as indices
+        """
+
+        # Get the message dictionary (ids, logits) from the sender
+        # based on the input image and calculate loss with the gold caption.
+        # Adding the caption ids as `decoder_input_ids` puts the caption
+        # generation into a supervised mode rather than free generation
+        batch['decoder_input_ids'] = batch['caption_ids']
+        message_dict = self.image_to_message(batch)
+        caption_generation_loss = F.cross_entropy(
+            message_dict['message_logits'].transpose(1, 2),
+            batch['caption_ids'],
+            ignore_index=self.padding_index
+        )
+
+        # Get the logits for the image choice candidates based on the gold
+        # caption (NOT the sender's message)
+        caption = {
+            'message_ids': batch['caption_ids'],
+            'attention_mask': batch['caption_mask']
+        }
+        image_candidate_logits = self.choose_image_from_message(
+            caption, batch['receiver_images']
+        )
+        # Get final cross-entropy loss between the candidates and the target
+        # images
+        target_image = batch['target']
+        image_selection_loss = F.cross_entropy(
+            image_candidate_logits, target_image
+        )
+
+        # Get predicted accuracy
+        _, predicted_idx = torch.max(image_candidate_logits, dim=1)
+        eq = torch.eq(predicted_idx, target_image)
+        accuracy = float(eq.sum().data) / float(eq.nelement())
+
+        loss = caption_generation_loss + image_selection_loss
+
+        return {
+            'loss': loss,
+            'caption generation loss': caption_generation_loss.item(),
+            'image selection loss': image_selection_loss.item(),
+            'accuracy': 100 * accuracy,
+            'message': message_dict['message_ids']
+        }
 
 
 class Beholder(Module):
@@ -226,4 +306,5 @@ class Beholder(Module):
         if self.unit_norm:
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)
+
         return h_image
