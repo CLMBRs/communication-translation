@@ -1,5 +1,5 @@
 # Model:
-model_name: bart
+model_name: mbart
 #bart: true
 beam_width: 12
 cpu: True

@@ -360,18 +360,17 @@ def vocab_mask_from_file(
     """
     token_freq = list(json.load(open(file, "r")).items())
     total_freq = sum(freq for _, freq in token_freq)
-    # TODO: I think this math is wrong, but we can deal with it in a separate
-    # pull/commit
     # we kept tokens that appear more than 1%
-    good_token_ids = set(
-        int(token_id)
-        for token_id, freq in token_freq if freq / total_freq >= threshold
-    )
+    good_token_ids = set(int(token_id) for token_id, freq in token_freq if freq / total_freq >= threshold)
+    # Leo's comment: this is added for generation purpose; EOS and BOS are valid special tokens to be generated.
+    good_token_ids.update(set([tokenizer.eos_token_id, tokenizer.bos_token_id]))
+
     bad_token_ids = []
     for k, v in tokenizer.get_vocab().items():
         if v in good_token_ids:
             continue
         bad_token_ids.append(v)
+
     mask = torch.zeros(len(tokenizer))
     mask[bad_token_ids] = -float("inf")
     return mask
