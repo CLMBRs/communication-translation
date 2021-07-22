@@ -24,12 +24,12 @@ output_dir: Output/bt_en+zh/
 
 # data config
 data_dir: ./Data/cc
-lang1_data_file: en.txt
+lang1_data_file: en_sample.txt
 lang1_id: en
 lang1_max_len: 200
 lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
-lang2_data_file: zh.txt
+lang2_data_file: zh_sample.txt
 lang2_id: zh
 lang2_max_len: 200
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json

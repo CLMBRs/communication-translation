@@ -11,6 +11,7 @@ import datasets
 import torch
 import yaml
 import numpy as np
+from ipdb import set_trace as bp
 from datasets import load_dataset
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_mask_from_file
@@ -105,10 +106,10 @@ def validation(args, model, tokenizer, source_meta, target_meta):
 
 
 def save_model(args, backtranslation_pack, saved_model_name):
-    source2target_model, target2source_model = backtranslation_pack['models']
-    source_meta, target_meta = backtranslation_pack['lang_metas']
-    source_id = source_meta['lang_id']
-    target_id = target_meta['lang_id']
+    source2target_model, target2source_model = backtranslation_pack.models
+    source_meta, target_meta = backtranslation_pack.lang_metas
+    source_id = source_meta.lang_id
+    target_id = target_meta.lang_id
 
     # Save the general part of the model
     if args.models_shared:
@@ -139,7 +140,8 @@ def main(args, backtranslation_pack):
     global_step = 0
 
     while global_step < args.num_steps:
-        for batch_num in range(len(backtranslation_pack['dataloaders'][0])):
+        bp()
+        for batch_num in range(len(backtranslation_pack.dataloaders[0])):
             # We might want to randomly decide the order of languages
             source = random.randint(0, 1)
             target = np.abs(0 - source)
@@ -147,13 +149,13 @@ def main(args, backtranslation_pack):
             if global_step % args.print_every == 0 and args.print_translation:
                 translation_results = {args.lang1_id: [], args.lang2_id: []}
 
-            source_dataloader = backtranslation_pack['dataloaders'][source]
-            tokenizer = backtranslation_pack['tokenizers'][source]
-            source2target_model = backtranslation_pack['models'][source]
-            target2source_model = backtranslation_pack['models'][target]
-            optimizer = backtranslation_pack['optimizers'][target]
-            source_meta = backtranslation_pack['lang_metas'][source]
-            target_meta = backtranslation_pack['lang_metas'][target]
+            source_dataloader = backtranslation_pack.dataloaders[source]
+            tokenizer = backtranslation_pack.tokenizers[source]
+            source2target_model = backtranslation_pack.models[source]
+            target2source_model = backtranslation_pack.models[target]
+            optimizer = backtranslation_pack.optimizers[target]
+            source_meta = backtranslation_pack.lang_metas[source]
+            target_meta = backtranslation_pack.lang_metas[target]
 
             source_id, source_code, source_mask, source_max_len = list(
                 source_meta
