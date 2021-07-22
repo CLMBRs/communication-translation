@@ -13,9 +13,17 @@ __pycache__
 # Data/**
 Data/en-zh
 Data/cc/dummy
+Data/Coco/
 Data/UNv1.0.en-zh.tar.gz
 Data/mbart-large-cc25
-!Data/cc/*.json*
+Data/cc/de.txt
+Data/cc/en.txt
+Data/cc/ne.txt
+Data/cc/si.txt
+Data/cc/vi.txt
+Data/cc/zh-Hans.txt
+Data/cc/*.txt.xz
+
 
 Output/
 UMT_data/
