@@ -346,7 +346,10 @@ def remove_duplicate(data):
 
 
 def vocab_constraint_from_file(
-    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01, mode = "tensor"
+    tokenizer: PreTrainedTokenizer,
+    file: str,
+    threshold: float = 0.99,
+    mode="tensor"
 ) -> Union[Tensor, list]:
     """
     Import a datafile of token frequencies to create a mask for constrained
@@ -360,14 +363,22 @@ def vocab_constraint_from_file(
         return a list of bad words' ids (if mode == "list")
         return a tensor where bad words' location has -inf and 0 otherwise (if mode == 'tesnor')
     """
-    token_freq = list(json.load(open(file, "r")).items())
-    total_freq = sum(freq for _, freq in token_freq)
-    # TODO: I think this math is wrong, but we can deal with it in a separate
-    # pull/commit
-    # we kept tokens that appear more than 1%
+    token_counts = list(json.load(open(file, "r")).items())
+    total_count = sum(freq for _, freq in token_counts)
+    max_freq = threshold * total_count
+    token_counts.sort(key=lambda x: x[1], reverse=True)
+
+    cumulative_freq = 0
+    last_index = 0
+    for idx, freq in enumerate([x[1] for x in token_counts]):
+        cumulative_freq += freq
+        if cumulative_freq > max_freq:
+            last_index = idx
+            break
+
+    # Keep tokens that are in the top probability mass
     good_token_ids = set(
-        int(token_id)
-        for token_id, freq in token_freq if freq / total_freq >= threshold
+        int(token_id) for token_id, _ in token_counts[:last_index]
     )
     # Leo's comment: this is added for generation purpose; EOS and BOS are valid special tokens to be generated.
     good_token_ids.update(set([tokenizer.eos_token_id, tokenizer.bos_token_id]))
