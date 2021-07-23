@@ -173,10 +173,8 @@ def main(args, source_meta2pack):
                                                              decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                  target_code],
                                                              max_length=target_max_len,
-                                                             num_beams=1,
-                                                             do_sample=False,
                                                              lang_mask=target_vocab_constraint)
-            target_vocab_constraint_set = set(v[0] for v in target_vocab_constraint)
+            target_vocab_constraint_set = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint)])
             # bp()
             for sent in translated_tokens:
                 assert all(t not in target_vocab_constraint_set for t in sent[1:])
