@@ -82,10 +82,10 @@ class XLImageIdentificationDataset(ImageIdentificationDataset):
         self.has_vocab_constraint = args.has_vocab_constraint
 
         if self.has_vocab_constraint:
-            self.source_lang_mask = vocab_mask_from_file(
+            self.source_lang_mask = vocab_constraint_from_file(
                 tokenizer, args.source_lang_vocab_constrain_file
             )
-            self.target_lang_mask = vocab_mask_from_file(
+            self.target_lang_mask = vocab_constraint_from_file(
                 tokenizer, args.target_lang_vocab_constrain_file
             )
             self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
@@ -159,7 +159,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         self.lang_id = lang_code2id[args.source_lang]
         self.has_vocab_constraint = args.has_vocab_constraint
         if self.has_vocab_constraint:
-            self.lang_mask = vocab_mask_from_file(
+            self.lang_mask = vocab_constraint_from_file(
                 tokenizer, args.source_lang_vocab_constrain_file
             )
 

@@ -14,7 +14,7 @@ import numpy as np
 from ipdb import set_trace as bp
 from datasets import load_dataset
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.util import vocab_mask_from_file
+from EC_finetune.util import vocab_constraint_from_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
@@ -387,7 +387,7 @@ if __name__ == "__main__":
     args.device = device
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_path)
-    lang1_mask = vocab_mask_from_file(
+    lang1_mask = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang1_vocab_constrain_file,
         threshold=args.threshold
@@ -401,7 +401,7 @@ if __name__ == "__main__":
         (~torch.isinf(lang1_mask)).nonzero(as_tuple=True)[0]
     )
     # print(str(lang1_valid_tokens).encode('utf-8'))
-    lang2_mask = vocab_mask_from_file(
+    lang2_mask = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang2_vocab_constrain_file,
         threshold=args.threshold

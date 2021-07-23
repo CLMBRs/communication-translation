@@ -5,7 +5,7 @@ from numpy import ndarray
 from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 from transformers import MBartTokenizer
-from EC_finetune.util import vocab_mask_from_file
+from EC_finetune.util import vocab_constraint_from_file
 from BackTranslation.constant import FAIRSEQ_LANGUAGE_CODES
 from ipdb import set_trace as bp
 

@@ -4,6 +4,7 @@ import sys
 import json
 import numpy as np
 from collections import OrderedDict
+from typing import Union
 
 import torch
 from torch import Tensor
@@ -344,9 +345,9 @@ def remove_duplicate(data):
     return data[:-10000], data[-10000:]
 
 
-def vocab_mask_from_file(
+def vocab_constraint_from_file(
     tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01
-) -> Tensor:
+) -> Union[Tensor, list]:
     """
     Import a datafile of token frequencies to create a mask for constrained
     generation
@@ -355,8 +356,8 @@ def vocab_mask_from_file(
         file: the datafile to be imported (in json format)
         threshold: the proportion of the total token mass under which tokens
             should be masked
-    Returns: a Tensor containing 0s at the indices of allowed tokens and
-        negative infinities at the indices of masked tokens
+    Returns:
+        return a list of bad words' ids
     """
     token_freq = list(json.load(open(file, "r")).items())
     total_freq = sum(freq for _, freq in token_freq)
@@ -374,8 +375,6 @@ def vocab_mask_from_file(
     for k, v in tokenizer.get_vocab().items():
         if v in good_token_ids:
             continue
-        bad_token_ids.append(v)
+        bad_token_ids.append([v])
 
-    mask = torch.zeros(len(tokenizer))
-    mask[bad_token_ids] = -float("inf")
-    return mask
+    return bad_token_ids
