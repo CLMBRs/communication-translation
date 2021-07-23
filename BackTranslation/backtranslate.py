@@ -195,13 +195,13 @@ def main(args, source_meta2pack):
                                                              max_length=target_max_len,
                                                              lang_mask=target_vocab_constraint)
             # bp()
-            invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
+            # invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
             # for finished sequences, PAD is a valid token
-            if tokenizer.pad_token_id in invalid_token_ids:
-                invalid_token_ids.remove(tokenizer.pad_token_id)
-            for sent in translated_tokens.cpu().numpy():
-                if any(t in invalid_token_ids for t in sent[1:]):
-                    bp()
+            # if tokenizer.pad_token_id in invalid_token_ids:
+            #     invalid_token_ids.remove(tokenizer.pad_token_id)
+            # for sent in translated_tokens.cpu().numpy():
+            #     if any(t in invalid_token_ids for t in sent[1:]):
+            #         bp()
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
@@ -226,7 +226,7 @@ def main(args, source_meta2pack):
             target2source_optimizer.zero_grad()
             output.loss.backward()
             target2source_optimizer.step()
-            checkpoint_stats["loss"].append(output["loss"].detach().cpu().numpy())
+            checkpoint_stats["loss"].append(output["loss"].detach().cpu().item())
 
             if args.do_validation and step % args.validate_every == 0:
                 source2target_model.eval()

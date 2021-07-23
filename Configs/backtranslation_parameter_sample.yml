@@ -7,7 +7,7 @@ lr: 1.0e-05
 batch_size: 16
 seed: 42
 n_gpu: 1
-print_every: 5
+print_every: 1
 do_validation: true
 validate_every: 20
 early_stop_start_time: 400
