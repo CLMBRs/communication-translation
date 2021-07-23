@@ -116,6 +116,17 @@ def save_model(args, source_meta2pack, saved_model_name):
         break
 
 
+def get_next_batch(dataloader, data_iter):
+    try:
+        data = next(data_iter)
+    except StopIteration:
+        # StopIteration is thrown if dataset ends
+        # reinitialize data loader
+        data_iter = iter(dataloader)
+        data = next(data_iter)
+    return data
+
+
 def main(args, source_meta2pack):
     assert len(source_meta2pack) == 2
     source_metas = list(source_meta2pack.keys())
@@ -133,7 +144,7 @@ def main(args, source_meta2pack):
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source_meta in source_metas:
-            source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, \
+            source_dataloader, source_data_iter, tokenizer, source2target_model, target_meta, target2source_model, \
             target2source_model_optimizer = list(source_meta2pack[source_meta])
             source_id, source_code, source_mask, source_max_len = list(source_meta)
             target_id, target_code, target_mask, target_max_len = list(target_meta)
@@ -142,7 +153,7 @@ def main(args, source_meta2pack):
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
             # get a batched string input
-            source_string_batch = next(iter(source_dataloader))["text"]
+            source_string_batch = get_next_batch(source_dataloader, source_data_iter)["text"]
             source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                            src_lang=source_code,
                                                            tgt_lang=target_code,
