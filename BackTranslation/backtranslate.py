@@ -198,7 +198,8 @@ def main(args, backtranslation_pack):
                 translated_tokens, skip_special_tokens=True
             )
             if step % args.print_every == 0 and args.print_translation:
-                translation_results[target_id] = translation
+                bp()
+                translation_results[target_id] = list(zip(source_string_batch, translation))
 
             # 2. Train the target2source_model on the model
             target2source_model.train()
