@@ -176,8 +176,11 @@ def main(args, source_meta2pack):
                                                              lang_mask=target_vocab_constraint)
             # bp()
             invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
+            # for finished sequences, PAD is a valid token
+            if tokenizer.pad_token_id in invalid_token_ids:
+                invalid_token_ids.remove(tokenizer.pad_token_id)
             for sent in translated_tokens.cpu().numpy():
-                if any(t not in invalid_token_ids for t in sent[1:-1]):
+                if any(t in invalid_token_ids for t in sent[1:]):
                     bp()
 
             # turn the predicted subtokens into sentence in string
