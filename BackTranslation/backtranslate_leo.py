@@ -174,8 +174,8 @@ def main(args, source_meta2pack):
                                                                  target_code],
                                                              max_length=target_max_len,
                                                              bad_words_ids=target_vocab_constraint)
+            target_vocab_constraint_set = set(v[0] for v in target_vocab_constraint)
             bp()
-            target_vocab_constraint_set = set(target_vocab_constraint)
             for sent in translated_tokens:
                 assert all(t not in target_vocab_constraint_set for t in sent[1:])
 
