@@ -346,7 +346,7 @@ def remove_duplicate(data):
 
 
 def vocab_constraint_from_file(
-    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01
+    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01, mode = "list"
 ) -> Union[Tensor, list]:
     """
     Import a datafile of token frequencies to create a mask for constrained
@@ -375,6 +375,12 @@ def vocab_constraint_from_file(
     for k, v in tokenizer.get_vocab().items():
         if v in good_token_ids:
             continue
-        bad_token_ids.append([v])
-
-    return bad_token_ids
+        bad_token_ids.append(v)
+    if mode == "list":
+        return [[v] for v in bad_token_ids]
+    elif mode == "tensor":
+        mask = torch.zeros(len(tokenizer))
+        mask[bad_token_ids] = -float("inf")
+        return mask
+    else:
+        raise NotImplementedError

@@ -173,7 +173,9 @@ def main(args, source_meta2pack):
                                                              decoder_start_token_id=tokenizer.lang_code_to_id[
                                                                  target_code],
                                                              max_length=target_max_len,
-                                                             bad_words_ids=target_vocab_constraint)
+                                                             num_beams=1,
+                                                             do_sample=False,
+                                                             lang_mask=target_vocab_constraint)
             target_vocab_constraint_set = set(v[0] for v in target_vocab_constraint)
             bp()
             for sent in translated_tokens:
@@ -334,13 +336,13 @@ if __name__ == "__main__":
     # bp()
     lang1_vocab_constraint = vocab_constraint_from_file(tokenizer=tokenizer,
                                                         file=args.lang1_vocab_constrain_file,
-                                                        threshold=args.threshold)
+                                                        threshold=args.threshold, mode='tensor')
     logger.info(f"Total valid {args.lang1_id} tokens: {len(tokenizer) - len(lang1_vocab_constraint)}")
 
     # print(str(lang1_valid_tokens).encode('utf-8'))
     lang2_vocab_constraint = vocab_constraint_from_file(tokenizer=tokenizer,
                                             file=args.lang2_vocab_constrain_file,
-                                            threshold=args.threshold)
+                                            threshold=args.threshold, mode='tensor')
     logger.info(f"Total valid {args.lang2_id} tokens: {len(tokenizer) - len(lang2_vocab_constraint)}")
     # print(str(lang2_valid_tokens).encode('utf-8'))
     # bp()
