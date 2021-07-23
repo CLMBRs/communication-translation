@@ -337,12 +337,14 @@ if __name__ == "__main__":
     lang1_vocab_constraint = vocab_constraint_from_file(tokenizer=tokenizer,
                                                         file=args.lang1_vocab_constrain_file,
                                                         threshold=args.threshold, mode='tensor')
+    lang1_vocab_constraint = lang1_vocab_constraint.to(device)
     logger.info(f"Total valid {args.lang1_id} tokens: {torch.sum(torch.isfinite(lang1_vocab_constraint))}")
 
     # print(str(lang1_valid_tokens).encode('utf-8'))
     lang2_vocab_constraint = vocab_constraint_from_file(tokenizer=tokenizer,
                                                         file=args.lang2_vocab_constrain_file,
                                                         threshold=args.threshold, mode='tensor')
+    lang2_vocab_constraint = lang2_vocab_constraint.to(device)
     logger.info(f"Total valid {args.lang2_id} tokens: {torch.sum(torch.isfinite(lang2_vocab_constraint))}")
     # print(str(lang2_valid_tokens).encode('utf-8'))
     # bp()
