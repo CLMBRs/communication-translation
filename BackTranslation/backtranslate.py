@@ -223,7 +223,6 @@ def main(args, backtranslation_pack):
             optimizer.zero_grad()
             output.loss.backward()
             optimizer.step()
-            step += 1
             checkpoint_stats["loss"].append(
                 output["loss"].detach().cpu().numpy()
             )
