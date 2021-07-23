@@ -482,11 +482,12 @@ class BartGumbelEncoder(nn.Module):
     def forward(
         self,
         input_ids,
-        input_embeds,
+        input_embeds=None,  # Leo: I modify this to support BT
         attention_mask=None,
         output_attentions=False,
         output_hidden_states=False,
-        return_dict=True
+        return_dict=True,
+        lang_mask=None,
     ):
         """
         Args:
@@ -506,8 +507,8 @@ class BartGumbelEncoder(nn.Module):
         # check attention mask and invert
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
-
-        inputs_embeds = input_embeds * self.embed_scale
+        inputs_embeds = input_embeds if input_embeds else self.embed_tokens(input_ids)
+        inputs_embeds = inputs_embeds * self.embed_scale
         embed_pos = self.embed_positions(input_ids)
         x = inputs_embeds + embed_pos
         x = self.layernorm_embedding(x)
@@ -1594,7 +1595,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         beam_scores = beam_scores.view((batch_size * num_beams,))
         # since last token will be unconstrained (beam search doesn't allow it), we would just "over-generate" one token and then
         # force the last token to be EOS
-        # max_length += 1
+        max_length += 1
 
         while cur_len < max_length:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
@@ -1663,9 +1664,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         if "lang_mask" in model_kwargs:
             for sent in decoded:
                 # bp()
-                assert all(t in valid_token_ids for t in sent[1:].cpu().numpy())
+                assert all(t in valid_token_ids for t in sent[1:-1].cpu().numpy())
 
-        return decoded
+        return decoded[:, :-1]
 
     def gumbel_generate(
         self,

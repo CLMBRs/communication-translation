@@ -132,6 +132,17 @@ def save_model(args, backtranslation_pack, saved_model_name):
         )
 
 
+def get_next_batch(dataloader, data_iter):
+    try:
+        data = next(data_iter)
+    except StopIteration:
+        # StopIteration is thrown if dataset ends
+        # reinitialize data loader
+        data_iter = iter(dataloader)
+        data = next(data_iter)
+    return data
+
+
 def main(args, backtranslation_pack):
     checkpoint_stats = defaultdict(list)
     best_val = float("-inf")
@@ -150,6 +161,7 @@ def main(args, backtranslation_pack):
                 translation_results = {args.lang1_id: [], args.lang2_id: []}
 
             source_dataloader = backtranslation_pack.dataloaders[source]
+            source_iter = backtranslation_pack.data_iters[source]
             tokenizer = backtranslation_pack.tokenizers[source]
             source2target_model = backtranslation_pack.models[source]
             target2source_model = backtranslation_pack.models[target]
@@ -168,7 +180,7 @@ def main(args, backtranslation_pack):
             # language
             source2target_model.eval()
             # Get a batched string input
-            source_string_batch = source_dataloader[batch_num]["text"]
+            source_string_batch = get_next_batch(source_dataloader, source_iter)["text"]
             source_batch = tokenizer.prepare_seq2seq_batch(
                 src_texts=source_string_batch,
                 src_lang=source_code,
@@ -276,6 +288,7 @@ LangMeta = namedtuple(
 BackTranslationPack = namedtuple(
     "BackTranslationPack", [
         "lang_metas",
+        "data_iters",
         "dataloaders",
         "tokenizers",
         "models",
@@ -417,6 +430,8 @@ if __name__ == "__main__":
     lang2_dataloader = DataLoader(
         lang2_dataset, batch_size=args.batch_size, shuffle=True
     )
+    lang1_data_iter = iter(lang1_dataloader)
+    lang2_data_iter = iter(lang2_dataloader)
 
     lang2_to_lang1_model_optimizer = torch.optim.Adam(
         lang2_to_lang1_model.parameters(), lr=args.lr
@@ -446,6 +461,7 @@ if __name__ == "__main__":
     backtranslation_pack = BackTranslationPack(
         lang_metas=(lang1_meta, lang2_meta),
         dataloaders=(lang1_dataloader, lang2_dataloader),
+        data_iters=(lang1_data_iter, lang2_data_iter),
         tokenizers=(tokenizer, tokenizer),
         models=(lang1_to_lang2_model, lang2_to_lang1_model),
         optimizers=(
