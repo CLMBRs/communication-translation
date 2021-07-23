@@ -93,10 +93,10 @@ def validation(args, model, tokenizer, source_meta, target_meta):
 def save_model(args, source_meta2pack, saved_model_name):
     source_metas = list(source_meta2pack.keys())
     for source_meta in source_metas:
-        source_dataloader, tokenizer, source2target_model, target_meta, target2source_model, _ = \
+        _, _, _, source2target_model, target_meta, target2source_model, _ = \
             list(source_meta2pack[source_meta])
-        source_id, source_code, source_mask, source_max_len = list(source_meta)
-        target_id, target_code, target_mask, target_max_len = list(target_meta)
+        source_id, _, _, _ = list(source_meta)
+        target_id, _, _, _ = list(target_meta)
 
         # Save the general part of the model
         if args.models_shared:
