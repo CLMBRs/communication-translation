@@ -13,7 +13,7 @@ validate_every: 20
 early_stop_start_time: 400
 # validation_set_size is a lower bound of how many example used
 # ceil(validation_set_size / batch_size) batches (of size batch_size) are run.
-validation_set_size: 100
+validation_set_size: 50
 
 num_steps: 1000
 # script to load validation datasets

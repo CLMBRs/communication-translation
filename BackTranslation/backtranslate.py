@@ -206,7 +206,7 @@ def main(args, source_meta2pack):
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)
             if step % args.print_every == 0 and args.print_translation:
-                translation_results[target_id] = translation
+                translation_results[target_id] = list(zip(source_string_batch, translation))
 
             # 2. we train the target2source_model on the model
             target2source_model.train()
@@ -234,7 +234,7 @@ def main(args, source_meta2pack):
                 checkpoint_stats[f"val-{args.val_metric_name}:{source_id}->{target_id}"].append(val_score)
                 ave_val_score += val_score
 
-        if args.do_validation and step % args.validate_every == 0 and step >= args.early_stop_start_time:
+        if args.do_validation and step % args.validate_every == 0:
             # we use early stopping
             assert val_score is not None
             ave_val_score /= 2
@@ -247,9 +247,11 @@ def main(args, source_meta2pack):
                 validation(args, target2source_model, tokenizer, target_meta, source_meta, 'best.val')
                 save_model(args, source_meta2pack, saved_model_name="best.pt")
             else:
-                patience_count += 1
-                if patience_count >= args.patience:
-                    break
+                if step >= args.early_stop_start_time:
+                    # we start counting the early stopping after some 'warmup period'
+                    patience_count += 1
+                    if patience_count >= args.patience:
+                        break
 
         if step % args.print_every == 0:
             # bp()
@@ -261,7 +263,7 @@ def main(args, source_meta2pack):
                     np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
                              checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]], axis=0)
                 )
-            bp()
+            # bp()
             logger.info(
                 checkpoint_stats2string(
                     step, checkpoint_average_stats, 'train'
