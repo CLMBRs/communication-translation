@@ -17,10 +17,10 @@ def translation2string(translation_dict, num_printed_translation):
     prt_msg = ""
     for lang_id, translations in translation_dict.items():
         translations: List[str]
-        prt_msg += f"Language ID: {lang_id} \n"
+        prt_msg += f"Target Language ID: {lang_id} \n"
         num_printed_translation = min(num_printed_translation, len(translations))
         random_indices = np.random.choice(len(translations), num_printed_translation)
-        for i in random_indices:
-            prt_msg += translations[i] + "\n"
+        for i, idx in enumerate(random_indices):
+            prt_msg += f"{i}: {translations[idx]}\n"
         prt_msg += "\n"
     return prt_msg

@@ -185,18 +185,6 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
-<<<<<<< HEAD
-            translated_tokens = source2target_model.generate(**source_batch,
-                                                             decoder_start_token_id=tokenizer.lang_code_to_id[
-                                                                 target_code],
-                                                             max_length=target_max_len,
-                                                             lang_mask=target_vocab_constraint)
-            # bp()
-            invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
-            # for finished sequences, PAD is a valid token
-            if tokenizer.pad_token_id in invalid_token_ids:
-                invalid_token_ids.remove(tokenizer.pad_token_id)
-=======
 
             translated_tokens = source2target_model.generate(
                 **source_batch,
@@ -204,12 +192,6 @@ def main(args, backtranslation_pack):
                 max_length=target_max_len,
                 lang_mask=target_mask
             )
-
-            invalid_token_ids = set(np.arange(len(target_mask))[~torch.isfinite(target_mask).cpu().numpy()])
->>>>>>> 16ad6e601b217f9f793a4815fdc2e013ca90d7a1
-            for sent in translated_tokens.cpu().numpy():
-                if any(t in invalid_token_ids for t in sent[1:]):
-                    bp()
 
             # Turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
@@ -240,66 +222,69 @@ def main(args, backtranslation_pack):
                 output["loss"].detach().cpu().numpy()
             )
 
-            if args.do_validation and step % args.validate_every == 0:
-                source2target_model.eval()
-                val_score = validation(
-                    args, source2target_model, tokenizer, source_meta,
-                    target_meta
+        if args.do_validation and step % args.validate_every == 0:
+            ave_val_score = 0
+            source2target_model.eval()
+            val_score = validation(
+                args, source2target_model, tokenizer, source_meta,
+                target_meta
+            )
+            checkpoint_stats[
+                f"val-{args.val_metric_name}:{source_id}->{target_id}"
+            ].append(val_score)
+            ave_val_score += val_score
+
+            target2source_model.eval()
+            val_score = validation(
+                args, target2source_model, tokenizer, target_meta,
+                source_meta,
+            )
+            checkpoint_stats[
+                f"val-{args.val_metric_name}:{target_id}->{source_id}"
+            ].append(val_score)
+            ave_val_score += val_score
+            ave_val_score /= 2
+
+            # we use early stopping
+            assert ave_val_score is not None
+            if best_val < ave_val_score or isinf(best_val):
+                # if we encounter a better model, we restart patience counting
+                # and save the model
+                patience_count = 0
+                best_val = ave_val_score
+                save_model(
+                    args, backtranslation_pack, saved_model_name="best.pt"
                 )
-                checkpoint_stats[
-                    f"val-{args.val_metric_name}:{source_id}->{target_id}"
-                ].append(val_score)
+            else:
+                patience_count += 1
+                if patience_count >= args.patience:
+                    break
 
-                target2source_model.eval()
-                val_score = validation(
-                    args, target2source_model, tokenizer, target_meta,
-                    source_meta,
+        if step % args.print_every == 0:
+            # TODO: add call to validate() for lang1_2_lang2 model and
+            # lang2_2_lang1 model; take average
+
+            checkpoint_average_stats = {}
+            for key, value in checkpoint_stats.items():
+                checkpoint_average_stats[key] = np.mean(value)
+            checkpoint_average_stats[f"ave-val-{args.val_metric_name}"] = \
+                np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
+                        checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]])
+            logger.info(
+                checkpoint_stats2string(
+                    step, checkpoint_average_stats, 'train'
                 )
-                checkpoint_stats[
-                    f"val-{args.val_metric_name}:{target_id}->{source_id}"
-                ].append(val_score)
-
-            if args.do_validation and step % args.validate_every == 0:
-                # we use early stopping
-                assert val_score is not None
-                if best_val < val_score or isinf(best_val):
-                    # if we encounter a better model, we restart patience counting
-                    # and save the model
-                    patience_count = 0
-                    best_val = val_score
-                    save_model(
-                        args, backtranslation_pack, saved_model_name="model.pt"
-                    )
-                else:
-                    patience_count += 1
-                    if patience_count >= args.patience:
-                        break
-
-            if step % args.print_every == 0:
-                # TODO: add call to validate() for lang1_2_lang2 model and
-                # lang2_2_lang1 model; take average
-
-                checkpoint_average_stats = {}
-                for key, value in checkpoint_stats.items():
-                    checkpoint_average_stats[key] = np.mean(value)
-                checkpoint_average_stats[f"ave-val-{args.val_metric_name}"] = \
-                    np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
-                            checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]])
+            )
+            checkpoint_stats = defaultdict(list)
+            if args.print_translation:
                 logger.info(
-                    checkpoint_stats2string(
-                        step, checkpoint_average_stats, 'train'
+                    translation2string(
+                        translation_results, args.num_printed_translation
                     )
                 )
-                checkpoint_stats = defaultdict(list)
-                if args.print_translation:
-                    logger.info(
-                        translation2string(
-                            translation_results, args.num_printed_translation
-                        )
-                    )
 
-            if step >= args.num_steps:
-                break
+        if step >= args.num_steps:
+            break
 
     save_model(args, backtranslation_pack, saved_model_name="last.pt")
 
