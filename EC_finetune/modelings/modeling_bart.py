@@ -1661,10 +1661,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
         decoded = beam_scorer.finalize(
             input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id
         )
-        if "lang_mask" in model_kwargs:
-            for sent in decoded:
-                # bp()
-                assert all(t in valid_token_ids for t in sent[1:-1].cpu().numpy())
+        # if "lang_mask" in model_kwargs:
+        #     for sent in decoded:
+        #         # bp()
+        #         assert all(t in valid_token_ids for t in sent[1:-1].cpu().numpy())
 
         return decoded[:, :-1]
 

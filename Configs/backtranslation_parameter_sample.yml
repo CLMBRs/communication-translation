@@ -9,7 +9,7 @@ seed: 42
 n_gpu: 1
 print_every: 5
 do_validation: true
-validate_every: 20
+validate_every: 5
 # validation_set_size is a lower bound of how many example used
 # ceil(validation_set_size / batch_size) batches (of size batch_size) are run.
 validation_set_size: 100
