@@ -26,13 +26,8 @@ from transformers import pipeline, AutoTokenizer
 from transformers import MBartTokenizer
 from datasets import load_dataset
 import datasets
-# from datasets.wmt19.wmt_utils import WmtConfig
 import nlp
 from ipdb import set_trace as bp
-from wmt19.wmt_utils import WmtConfig
-
-# dataset = datasets.load_dataset('wmt14', 'zh-en')
-# dataset = nlp.load_dataset("newstest2017", "zh-en")
 
 
 def set_seed(args):
@@ -230,11 +225,11 @@ def main(args, source_meta2pack):
     save_model(args, source_meta2pack, saved_model_name="last.pt")
 
 
-
 LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "lang_mask", "max_length"])
 
 BackTranslationPack = namedtuple("BackTranslationPack",
                                  ["source_dataloader",
+                                  "source_data_iter",
                                   "source_tokenizer",
                                   "source2target_model",
                                   "target_meta",
@@ -352,6 +347,8 @@ if __name__ == "__main__":
                                  data_files=os.path.join(args.data_dir, args.lang2_data_file))["train"]
     lang1_dataloader = DataLoader(lang1_dataset, batch_size=args.batch_size, shuffle=True)
     lang2_dataloader = DataLoader(lang2_dataset, batch_size=args.batch_size, shuffle=True)
+    lang1_iter = iter(lang1_dataloader)
+    lang2_iter = iter(lang2_dataloader)
     # collate_fn=lambda x: pad_sequence(x, batch_first=True, padding_value=tokenizer.vocab['<pad>']))
 
     lang2_to_lang1_model_optimizer = torch.optim.Adam(lang2_to_lang1_model.parameters(), lr=args.lr)
@@ -365,18 +362,21 @@ if __name__ == "__main__":
 
     lang1_meta = LangMeta(lang_id=args.lang1_id, lang_code=args.lang1_code, lang_mask=lang1_mask,
                           max_length=args.lang1_max_len)
-    lang2_meta = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask,
+
+    lang2_meta  = LangMeta(lang_id=args.lang2_id, lang_code=args.lang2_code, lang_mask=lang2_mask,
                           max_length=args.lang2_max_len)
     args.lang1_meta = lang1_meta
     args.lang2_meta = lang2_meta
 
     lang1_to_lang2_pack = BackTranslationPack(source_dataloader=lang1_dataloader,
+                                              source_data_iter=lang1_iter,
                                               source_tokenizer=tokenizer,
                                               source2target_model=lang1_to_lang2_model,
                                               target_meta=lang2_meta,
                                               target2source_model=lang2_to_lang1_model,
                                               optimizer=lang2_to_lang1_model_optimizer)
     lang2_to_lang1_pack = BackTranslationPack(source_dataloader=lang2_dataloader,
+                                              source_data_iter=lang2_iter,
                                               source_tokenizer=tokenizer,
                                               source2target_model=lang2_to_lang1_model,
                                               target_meta=lang1_meta,
