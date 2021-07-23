@@ -236,6 +236,15 @@ def main(args, backtranslation_pack):
                     f"val-{args.val_metric_name}:{source_id}->{target_id}"
                 ].append(val_score)
 
+                target2source_model.eval()
+                val_score = validation(
+                    args, target2source_model, tokenizer, target_meta,
+                    source_meta,
+                )
+                checkpoint_stats[
+                    f"val-{args.val_metric_name}:{target_id}->{source_id}"
+                ].append(val_score)
+
             if args.do_validation and global_step % args.validate_every == 0:
                 # we use early stopping
                 assert val_score is not None
