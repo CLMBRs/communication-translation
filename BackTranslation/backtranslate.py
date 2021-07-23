@@ -243,7 +243,9 @@ def main(args, source_meta2pack):
                 # and save the model
                 patience_count = 0
                 best_val = val_score
-                save_model(args, source_meta2pack, saved_model_name="model.pt")
+                validation(args, source2target_model, tokenizer, source_meta, target_meta, 'best.val')
+                validation(args, target2source_model, tokenizer, target_meta, source_meta, 'best.val')
+                save_model(args, source_meta2pack, saved_model_name="best.pt")
             else:
                 patience_count += 1
                 if patience_count >= args.patience:
@@ -274,6 +276,8 @@ def main(args, source_meta2pack):
                     )
                 )
 
+    validation(args, source2target_model, tokenizer, source_meta, target_meta, 'last.val')
+    validation(args, target2source_model, tokenizer, target_meta, source_meta, 'last.val')
     save_model(args, source_meta2pack, saved_model_name="last.pt")
 
 
