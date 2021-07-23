@@ -185,12 +185,18 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
+
             translated_tokens = source2target_model.generate(
                 **source_batch,
                 decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
                 max_length=target_max_len,
                 lang_mask=target_mask
             )
+
+            invalid_token_ids = set(np.arange(len(target_mask))[~torch.isfinite(target_mask).cpu().numpy()])
+            for sent in translated_tokens.cpu().numpy():
+                if any(t not in invalid_token_ids for t in sent[1:-1]):
+                    bp()
 
             # Turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
