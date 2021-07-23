@@ -21,6 +21,9 @@ def translation2string(translation_dict, num_printed_translation):
         num_printed_translation = min(num_printed_translation, len(translations))
         random_indices = np.random.choice(len(translations), num_printed_translation)
         for i, idx in enumerate(random_indices):
-            prt_msg += f"{i}: {translations[idx]}\n"
+            source, translated = translations[idx]
+            prt_msg += f"source {i}: {source}\n"
+            prt_msg += f"translated {i}: {translated}\n"
+            prt_msg += "\n"
         prt_msg += "\n"
     return prt_msg
