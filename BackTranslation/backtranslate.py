@@ -269,8 +269,10 @@ def main(args, backtranslation_pack):
                 checkpoint_average_stats[key] = np.mean(value)
             bp()
             checkpoint_average_stats[f"ave-val-{args.val_metric_name}"] = \
-                np.mean(checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"] +
-                        checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"])
+                np.mean(
+                    np.sum([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
+                            checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]], axis=0)
+                )
             logger.info(
                 checkpoint_stats2string(
                     step, checkpoint_average_stats, 'train'
