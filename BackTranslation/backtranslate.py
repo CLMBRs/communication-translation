@@ -234,7 +234,7 @@ def main(args, source_meta2pack):
                 checkpoint_stats[f"val-{args.val_metric_name}:{source_id}->{target_id}"].append(val_score)
                 ave_val_score += val_score
 
-        if args.do_validation and step % args.validate_every == 0:
+        if args.do_validation and step % args.validate_every == 0 and step >= args.early_stop_start_time:
             # we use early stopping
             assert val_score is not None
             ave_val_score /= 2
