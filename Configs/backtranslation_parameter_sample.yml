@@ -4,7 +4,7 @@ model_path: Data/mbart-large-cc25
 
 # training config
 lr: 1.0e-05
-batch_size: 2
+batch_size: 16
 seed: 42
 n_gpu: 1
 print_every: 1
@@ -26,12 +26,12 @@ output_dir: Output/bt_en+zh/
 data_dir: ./Data/cc
 lang1_data_file: en_sample.txt
 lang1_id: en
-lang1_max_len: 50
+lang1_max_len: 100
 lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
 lang2_data_file: zh_sample.txt
 lang2_id: zh
-lang2_max_len: 50
+lang2_max_len: 100
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 lang_pair: zh-en

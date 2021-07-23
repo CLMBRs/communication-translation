@@ -174,10 +174,11 @@ def main(args, source_meta2pack):
                                                                  target_code],
                                                              max_length=target_max_len,
                                                              lang_mask=target_vocab_constraint)
-            target_vocab_constraint_set = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint)])
             # bp()
-            for sent in translated_tokens:
-                assert all(t not in target_vocab_constraint_set for t in sent[1:])
+            invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
+            for sent in translated_tokens.cpu().numpy():
+                if any(t not in invalid_token_ids for t in sent[1:-1]):
+                    bp()
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)

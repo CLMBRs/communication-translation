@@ -1777,7 +1777,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         if "lang_mask" in model_kwargs:
             # here, the place we don't want have value of -inf
             lang_mask = model_kwargs["lang_mask"]
-            invalid_token_ids = set(np.arange(len(lang_mask))[~torch.isfinite(lang_mask)])
+            invalid_token_ids = set(np.arange(len(lang_mask))[~torch.isfinite(lang_mask).cpu().numpy()])
 
         while cur_len < max_length:
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
@@ -1821,10 +1821,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             beam_scores = beam_outputs["next_beam_scores"]
             beam_next_tokens = beam_outputs["next_beam_tokens"]
             beam_idx = beam_outputs["next_beam_indices"]
-            for t in beam_next_tokens.cpu().numpy():
-                if t in invalid_token_ids:
-                    print()
-                assert t not in invalid_token_ids
+            # for t in beam_next_tokens.cpu().numpy():
+            #     if t in invalid_token_ids:
+            #         bp()
             input_ids = torch.cat([input_ids[beam_idx, :], beam_next_tokens.unsqueeze(-1)], dim=-1)
             cur_len = cur_len + 1
 
@@ -1836,7 +1835,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             if beam_scorer.is_done:
                 break
-
+        # bp()
         decoded = beam_scorer.finalize(
             input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id
         )
