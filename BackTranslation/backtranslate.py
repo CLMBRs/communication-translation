@@ -66,14 +66,14 @@ def validation(args, model, tokenizer, source_meta, target_meta, save_filename_s
         translation_batch = batch["translation"]
         # translation_batch = {k: v.to(args.device) for k, v in translation_batch.items()}
         source_string_batch = translation_batch[source_id]
-        reference_batch = translation_batch[target_id]
+        reference_batch_str = translation_batch[target_id]
 
         if args.val_metric_name == "bleu":
             # "bleu" -> tokenized sentences
-            reference_batch = [[tokenizer.tokenize(s)] for s in reference_batch]
+            reference_batch = [[tokenizer.tokenize(s)] for s in reference_batch_str]
         else:
             # "sacrebleu" -> untokenized sentences, sacrebleu's default tokenizers are used
-            reference_batch = [[s] for s in reference_batch]
+            reference_batch = [[s] for s in reference_batch_str]
 
         source_batch = tokenizer.prepare_seq2seq_batch(src_texts=source_string_batch,
                                                        src_lang=source_code,
@@ -100,7 +100,7 @@ def validation(args, model, tokenizer, source_meta, target_meta, save_filename_s
                 source_file.write('\n')
                 target_file.write(translation_str[i])
                 target_file.write('\n')
-                ref_file.write(reference_batch[i])
+                ref_file.write(reference_batch_str[i])
                 ref_file.write('\n')
         results = val_metric.compute(predictions=translations, references=reference_batch)
 
@@ -253,8 +253,6 @@ def main(args, source_meta2pack):
 
         if step % args.print_every == 0:
             # bp()
-            # TODO: add call to validate() for lang1_2_lang2 model and lang2_2_lang1 model; take average
-
             checkpoint_average_stats = {}
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = np.mean(value)
@@ -263,12 +261,12 @@ def main(args, source_meta2pack):
                     np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
                              checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]], axis=0)
                 )
+            bp()
             logger.info(
                 checkpoint_stats2string(
                     step, checkpoint_average_stats, 'train'
                 )
             )
-            checkpoint_stats = defaultdict(list)
             if args.print_translation:
                 logger.info(
                     translation2string(
