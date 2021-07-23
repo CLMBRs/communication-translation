@@ -346,7 +346,7 @@ def remove_duplicate(data):
 
 
 def vocab_constraint_from_file(
-    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01, mode = "list"
+    tokenizer: PreTrainedTokenizer, file: str, threshold: float = 0.01, mode = "tensor"
 ) -> Union[Tensor, list]:
     """
     Import a datafile of token frequencies to create a mask for constrained
@@ -357,7 +357,8 @@ def vocab_constraint_from_file(
         threshold: the proportion of the total token mass under which tokens
             should be masked
     Returns:
-        return a list of bad words' ids
+        return a list of bad words' ids (if mode == "list")
+        return a tensor where bad words' location has -inf and 0 otherwise (if mode == 'tesnor')
     """
     token_freq = list(json.load(open(file, "r")).items())
     total_freq = sum(freq for _, freq in token_freq)
