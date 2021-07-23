@@ -4,15 +4,15 @@ model_path: Data/mbart-large-cc25
 
 # training config
 lr: 1.0e-05
-batch_size: 2
+batch_size: 16
 seed: 42
 n_gpu: 1
 print_every: 5
 do_validation: true
-validate_every: 5
+validate_every: 20
 # validation_set_size is a lower bound of how many example used
 # ceil(validation_set_size / batch_size) batches (of size batch_size) are run.
-validation_set_size: 10
+validation_set_size: 100
 
 num_steps: 1000
 # script to load validation datasets
@@ -26,12 +26,12 @@ output_dir: Output/bt_en+zh/
 data_dir: ./Data/cc
 lang1_data_file: en_sample.txt
 lang1_id: en
-lang1_max_len: 13
+lang1_max_len: 200
 lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
 
 lang2_data_file: zh_sample.txt
 lang2_id: zh
-lang2_max_len: 13
+lang2_max_len: 200
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 lang_pair: zh-en
