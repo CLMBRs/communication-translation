@@ -1,5 +1,6 @@
 import argparse
 import logging
+from statistics import mean
 
 import torch
 import os
@@ -15,7 +16,7 @@ from collections import defaultdict, namedtuple
 from EC_finetune.util import vocab_constraint_from_file
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import checkpoint_stats2string, translation2string
+from BackTranslation.util import translation2string
 from torch.utils.data import DataLoader
 from transformers import MBartTokenizer
 from datasets import load_dataset
@@ -30,33 +31,102 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
-def validation(
+def statbar_string(stat_dict: dict) -> str:
+    """
+    Return a printable "statbar" string from a dictionary of named statistics
+    """
+    stat_items = []
+    for key, value in stat_dict.items():
+        stat_items.append(f"{key} {value}")
+    return ' | '.join(stat_items)
+
+
+def get_next_batch(dataloader, data_iter):
+    try:
+        data = next(data_iter)
+    except StopIteration:
+        # StopIteration is thrown if dataset ends
+        # reinitialize data loader
+        data_iter = iter(dataloader)
+        data = next(data_iter)
+    return data
+
+
+def write_validation_splits(
+    args, source_id, target_id
+):
+    reference_dataset = args.val_dataset
+    dataloader = torch.utils.data.DataLoader(
+        reference_dataset, batch_size=args.batch_size
+    )
+    source_lines = []
+    target_lines = []
+    num_batch = ceil(args.validation_set_size / args.batch_size)
+    for i, batch in enumerate(dataloader):
+        if i == num_batch:
+            break
+        translation_batch = batch["translation"]
+        source_lines += [line for line in translation_batch[source_id]]
+        target_lines += [line for line in translation_batch[target_id]]
+    source_filename = f"{args.lang_pair}.{source_id}.val"
+    target_filename = f"{args.lang_pair}.{target_id}.val"
+    source_file = os.path.join(args.output_dir, source_filename)
+    target_file = os.path.join(args.output_dir, target_filename)
+    with open(source_file, 'w+') as f:
+        for line in source_lines:
+            print(line, file=f)
+    with open(target_file, 'w+') as f:
+        for line in target_lines:
+            print(line, file=f)
+
+
+def save_model(args, backtranslation_pack, saved_model_name):
+    source_meta, target_meta = backtranslation_pack.metas
+    source2target_model, target2source_model = backtranslation_pack.models    
+    source_id, _, _ = list(source_meta)
+    target_id, _, _ = list(target_meta)
+
+    # Save the general part of the model
+    if args.models_shared:
+        torch.save(
+            source2target_model.state_dict(),
+            os.path.join(args.output_dir, saved_model_name)
+        )
+    else:
+        torch.save(
+            source2target_model.state_dict(),
+            os.path.join(
+                args.output_dir, f"{source_id}2{target_id}",
+                saved_model_name
+            )
+        )
+        torch.save(
+            target2source_model.state_dict(),
+            os.path.join(
+                args.output_dir, f"{target_id}2{source_id}",
+                saved_model_name
+            )
+        )
+
+
+def get_translation_score(
     args,
     model,
     tokenizer,
     source_meta,
-    target_meta,
-    save_filename_suffix=None
+    target_meta
 ):
-    # dictionary to store (source->target) statistics needed for ave bleu
     val_metric = args.val_metric
     reference_dataset = args.val_dataset
-    accumulative_bleu = 0
+    cumulative_score = 0
     total_translations = 0
-    # for source_meta, target_meta in [(args.lang1_meta, args.lang2_meta), (args.lang2_meta, args.lang1_meta)]:
+    translation_lines = []
+
     source_id, source_code, source_max_len = list(source_meta)
     target_id, target_code, target_max_len = list(target_meta)
-    if save_filename_suffix is not None:
-        source_file_name = f"{source_id}->{target_id}_{source_id}_{save_filename_suffix}"
-        target_file_name = f"{source_id}->{target_id}_{target_id}Pred_{save_filename_suffix}"
-        ref_target_file_name = f"{source_id}->{target_id}_{target_id}Ref_{save_filename_suffix}"
-        source_file = open(source_file_name, "w")
-        target_file = open(target_file_name, "w")
-        ref_file = open(ref_target_file_name, "w")
     dataloader = torch.utils.data.DataLoader(
         reference_dataset, batch_size=args.batch_size
     )
-    # args.validation_set_size is a lower bound of how many example used
     num_batch = ceil(args.validation_set_size / args.batch_size)
 
     for i, batch in enumerate(
@@ -69,7 +139,6 @@ def validation(
         if i == num_batch:
             break
         translation_batch = batch["translation"]
-        # translation_batch = {k: v.to(args.device) for k, v in translation_batch.items()}
         source_string_batch = translation_batch[source_id]
         reference_batch_str = translation_batch[target_id]
 
@@ -105,76 +174,76 @@ def validation(
             translations = tokenizer.batch_decode(
                 translated_ids, skip_special_tokens=True
             )
-        # print()
-        # save translated sentences to file
-        if save_filename_suffix is not None:
-            translation_str = tokenizer.batch_decode(
-                translated_ids, skip_special_tokens=True
-            )
-            for i in range(len(translated_ids)):
-                source_file.write(source_string_batch[i])
-                source_file.write('\n')
-                target_file.write(translation_str[i])
-                target_file.write('\n')
-                ref_file.write(reference_batch_str[i])
-                ref_file.write('\n')
+        translation_str = tokenizer.batch_decode(
+            translated_ids, skip_special_tokens=True
+        )
+        translation_lines += [line for line in translation_str]
+        
         results = val_metric.compute(
             predictions=translations, references=reference_batch
         )
 
-        accumulative_bleu += results['score' if args.val_metric_name ==
-                                     "sacrebleu" else 'bleu'
-                                    ] * len(reference_batch)
+        score = results['score' if args.val_metric_name == "sacrebleu" else 'bleu']
+        cumulative_score += score * len(reference_batch)
         total_translations += len(reference_batch)
 
-    return accumulative_bleu / total_translations
+    return cumulative_score / total_translations, translation_lines
 
 
-def save_model(args, backtranslation_pack, saved_model_name):
+def evaluate(args, backtranslation_pack, best_score, patience_count, step):
+    source2target_model, target2source_model = backtranslation_pack.models
+    tokenizer = backtranslation_pack.tokenizer
     source_meta, target_meta = backtranslation_pack.metas
-    source2target_model, target2source_model = backtranslation_pack.models    
     source_id, _, _ = list(source_meta)
     target_id, _, _ = list(target_meta)
+    
+    source2target_model.eval()
+    target2source_model.eval()
 
-    # Save the general part of the model
-    if args.models_shared:
-        torch.save(
-            source2target_model.state_dict(),
-            os.path.join(args.output_dir, saved_model_name)
-        )
+    source2target_score, source2target_translations = get_translation_score(
+        args, source2target_model, tokenizer, source_meta, target_meta
+    )
+    target2source_score, target2source_translations = get_translation_score(
+        args, target2source_model, tokenizer, target_meta, source_meta
+    )
+
+    mean_score = round(mean([source2target_score, target2source_score]), 4)
+    stats = {
+        'step': step,
+        'mode': 'validation',
+        f'{target_id} bleu': round(source2target_score, 4),
+        f'{source_id} bleu': round(target2source_score, 4),
+        'mean bleu': mean_score
+    }
+    logger.info(statbar_string(stats))
+
+    if mean_score > best_score or isinf(best_score):
+        # if we encounter a better model, we restart patience counting
+        # and save the model
+        patience_count = 0
+        best_score = mean_score
+        save_model(args, backtranslation_pack, saved_model_name="best.pt")
+        source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
+        target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
+        source_file = os.path.join(args.output_dir, source_filename)
+        target_file = os.path.join(args.output_dir, target_filename)
+        with open(source_file, 'w+') as f:
+            for line in source2target_translations:
+                print(line, file=f)
+        with open(target_file, 'w+') as f:
+            for line in target2source_translations:
+                print(line, file=f)
     else:
-        torch.save(
-            source2target_model.state_dict(),
-            os.path.join(
-                args.output_dir, f"{source_id}2{target_id}",
-                saved_model_name
-            )
-        )
-        torch.save(
-            target2source_model.state_dict(),
-            os.path.join(
-                args.output_dir, f"{target_id}2{source_id}",
-                saved_model_name
-            )
-        )
+        if step >= args.early_stop_start_time:
+            # we start counting the early stopping after some 'warmup period'
+            patience_count += 1
 
-
-def get_next_batch(dataloader, data_iter):
-    try:
-        data = next(data_iter)
-    except StopIteration:
-        # StopIteration is thrown if dataset ends
-        # reinitialize data loader
-        data_iter = iter(dataloader)
-        data = next(data_iter)
-    return data
+    return best_score, patience_count
 
 
 def main(args, backtranslation_pack):
-    source_metas = backtranslation_pack.metas
     checkpoint_stats = defaultdict(list)
-    best_val = float("-inf")
-    val_score = None
+    best_score = float("-inf")
     patience_count = 0
 
     for step in range(args.num_steps):
@@ -183,7 +252,6 @@ def main(args, backtranslation_pack):
 
         if step % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
-        ave_val_score = 0
 
         for source in random.sample([0, 1], 2):
             target = np.abs(1 - source)
@@ -200,6 +268,9 @@ def main(args, backtranslation_pack):
 
             source_id, source_code, source_max_len = list(source_meta)
             target_id, target_code, target_max_len = list(target_meta)
+
+            if step == 0:
+                write_validation_splits(args, source_id, target_id)
 
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
@@ -221,13 +292,6 @@ def main(args, backtranslation_pack):
                 max_length=target_max_len,
                 lang_mask=target_vocab_constraint
             )
-            # invalid_token_ids = set(np.arange(len(target_vocab_constraint))[~torch.isfinite(target_vocab_constraint).cpu().numpy()])
-            # for finished sequences, PAD is a valid token
-            # if tokenizer.pad_token_id in invalid_token_ids:
-            #     invalid_token_ids.remove(tokenizer.pad_token_id)
-            # for sent in translated_tokens.cpu().numpy():
-            #     if any(t in invalid_token_ids for t in sent[1:]):
-            #         bp()
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
@@ -260,56 +324,23 @@ def main(args, backtranslation_pack):
                 output["loss"].detach().cpu().item()
             )
 
-            if args.do_validation and step % args.validate_every == 0:
-                source2target_model.eval()
-                val_score = validation(
-                    args, source2target_model, tokenizer, source_meta,
-                    target_meta
-                )
-                checkpoint_stats[
-                    f"val-{args.val_metric_name}:{source_id}->{target_id}"
-                ].append(val_score)
-                ave_val_score += val_score
-
         if args.do_validation and step % args.validate_every == 0:
-            # we use early stopping
-            assert val_score is not None
-            ave_val_score /= 2
-            if best_val < val_score or isinf(best_val):
-                # if we encounter a better model, we restart patience counting
-                # and save the model
-                patience_count = 0
-                best_val = val_score
-                validation(
-                    args, source2target_model, tokenizer, source_meta,
-                    target_meta, 'best.val'
-                )
-                validation(
-                    args, target2source_model, tokenizer, target_meta,
-                    source_meta, 'best.val'
-                )
-                save_model(args, backtranslation_pack, saved_model_name="best.pt")
-            else:
-                if step >= args.early_stop_start_time:
-                    # we start counting the early stopping after some 'warmup period'
-                    patience_count += 1
-                    if patience_count >= args.patience:
-                        break
+            best_score, patience_count = evaluate(
+                args, backtranslation_pack, best_score, patience_count, step
+            )
+            if patience_count > args.patience:
+                break
 
         if step % args.print_every == 0:
             checkpoint_average_stats = {}
+            checkpoint_average_stats['step'] = step
+            checkpoint_average_stats['mode'] = "train"
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = np.mean(value)
-            checkpoint_average_stats[f"ave-val-{args.val_metric_name}"] = \
-                np.mean(
-                    np.mean([checkpoint_stats[f"val-{args.val_metric_name}:{args.lang1_id}->{args.lang2_id}"],
-                             checkpoint_stats[f"val-{args.val_metric_name}:{args.lang2_id}->{args.lang1_id}"]], axis=0)
-                )
             logger.info(
-                checkpoint_stats2string(
-                    step, checkpoint_average_stats, 'train'
-                )
+                statbar_string(checkpoint_average_stats)
             )
+            checkpoint_stats = defaultdict(list)
             if args.print_translation:
                 logger.info(
                     translation2string(
@@ -317,14 +348,6 @@ def main(args, backtranslation_pack):
                     )
                 )
 
-    validation(
-        args, source2target_model, tokenizer, source_meta, target_meta,
-        'last.val'
-    )
-    validation(
-        args, target2source_model, tokenizer, target_meta, source_meta,
-        'last.val'
-    )
     save_model(args, backtranslation_pack, saved_model_name="last.pt")
 
 
