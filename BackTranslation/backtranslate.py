@@ -130,38 +130,33 @@ def validation(
     return accumulative_bleu / total_translations
 
 
-def save_model(args, source_meta2pack, saved_model_name):
-    source_metas = list(source_meta2pack.keys())
-    for source_meta in source_metas:
-        source2target_model = source_meta2pack[source_meta].source2target_model
-        target_meta = source_meta2pack[source_meta].target_meta
-        target2source_model = source_meta2pack[source_meta].target2source_model
-        source_id, _, _ = list(source_meta)
-        target_id, _, _ = list(target_meta)
+def save_model(args, backtranslation_pack, saved_model_name):
+    source_meta, target_meta = backtranslation_pack.metas
+    source2target_model, target2source_model = backtranslation_pack.models    
+    source_id, _, _ = list(source_meta)
+    target_id, _, _ = list(target_meta)
 
-        # Save the general part of the model
-        if args.models_shared:
-            torch.save(
-                source2target_model.state_dict(),
-                os.path.join(args.output_dir, saved_model_name)
+    # Save the general part of the model
+    if args.models_shared:
+        torch.save(
+            source2target_model.state_dict(),
+            os.path.join(args.output_dir, saved_model_name)
+        )
+    else:
+        torch.save(
+            source2target_model.state_dict(),
+            os.path.join(
+                args.output_dir, f"{source_id}2{target_id}",
+                saved_model_name
             )
-        else:
-            torch.save(
-                source2target_model.state_dict(),
-                os.path.join(
-                    args.output_dir, f"{source_id}2{target_id}",
-                    saved_model_name
-                )
+        )
+        torch.save(
+            target2source_model.state_dict(),
+            os.path.join(
+                args.output_dir, f"{target_id}2{source_id}",
+                saved_model_name
             )
-            torch.save(
-                target2source_model.state_dict(),
-                os.path.join(
-                    args.output_dir, f"{target_id}2{source_id}",
-                    saved_model_name
-                )
-            )
-        # we just save once
-        break
+        )
 
 
 def get_next_batch(dataloader, data_iter):
@@ -175,9 +170,8 @@ def get_next_batch(dataloader, data_iter):
     return data
 
 
-def main(args, source_meta2pack):
-    assert len(source_meta2pack) == 2
-    source_metas = list(source_meta2pack.keys())
+def main(args, backtranslation_pack):
+    source_metas = backtranslation_pack.metas
     checkpoint_stats = defaultdict(list)
     best_val = float("-inf")
     val_score = None
@@ -186,29 +180,26 @@ def main(args, source_meta2pack):
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the model
         # to learn the pattern that we do, e.g., English first and then Japanese second.
-        random.shuffle(source_metas)
 
         if step % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
         ave_val_score = 0
 
-        for source_meta in source_metas:
-            source_dataloader = source_meta2pack[source_meta].source_dataloader
-            source_data_iter = source_meta2pack[source_meta].source_data_iter
-            tokenizer = source_meta2pack[source_meta].source_tokenizer
-            source2target_model = source_meta2pack[source_meta
-                                                  ].source2target_model
-            target_meta = source_meta2pack[source_meta].target_meta
-            target_vocab_constraint = source_meta2pack[source_meta
-                                                      ].target_vocab_constraint
-            target2source_model = source_meta2pack[source_meta
-                                                  ].target2source_model
-            target2source_optimizer = source_meta2pack[source_meta
-                                                      ].target2source_optimizer
+        for source in random.sample([0, 1], 2):
+            target = np.abs(1 - source)
+            
+            source_dataloader = backtranslation_pack.dataloaders[source]
+            source_data_iter = backtranslation_pack.iterators[source]
+            tokenizer = backtranslation_pack.tokenizer
+            source2target_model = backtranslation_pack.models[source]
+            target2source_model = backtranslation_pack.models[target]
+            target_vocab_constraint = backtranslation_pack.vocab_constraints[target]
+            target2source_optimizer = backtranslation_pack.optimizers[target]
+            source_meta = backtranslation_pack.metas[source]
+            target_meta = backtranslation_pack.metas[target]
 
             source_id, source_code, source_max_len = list(source_meta)
             target_id, target_code, target_max_len = list(target_meta)
-            # bp()
 
             # 1. we use source2target_model to generate synthetic text in target language
             source2target_model.eval()
@@ -297,7 +288,7 @@ def main(args, source_meta2pack):
                     args, target2source_model, tokenizer, target_meta,
                     source_meta, 'best.val'
                 )
-                save_model(args, source_meta2pack, saved_model_name="best.pt")
+                save_model(args, backtranslation_pack, saved_model_name="best.pt")
             else:
                 if step >= args.early_stop_start_time:
                     # we start counting the early stopping after some 'warmup period'
@@ -334,21 +325,20 @@ def main(args, source_meta2pack):
         args, target2source_model, tokenizer, target_meta, source_meta,
         'last.val'
     )
-    save_model(args, source_meta2pack, saved_model_name="last.pt")
+    save_model(args, backtranslation_pack, saved_model_name="last.pt")
 
 
 LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "max_length"])
 
 BackTranslationPack = namedtuple(
     "BackTranslationPack", [
-        "source_dataloader",
-        "source_data_iter",
-        "source_tokenizer",
-        "source2target_model",
-        "target_meta",
-        "target_vocab_constraint",
-        "target2source_model",
-        "target2source_optimizer",
+        "dataloaders",
+        "iterators",
+        "tokenizer",
+        "models",
+        "metas",
+        "vocab_constraints",
+        "optimizers",
     ]
 )
 
@@ -454,7 +444,6 @@ if __name__ == "__main__":
     logger.info(
         f"Total valid {args.lang2_id} tokens: {torch.sum(torch.isfinite(lang2_vocab_constraint))}"
     )
-    # print(str(lang2_valid_tokens).encode('utf-8'))
 
     lang1_to_lang2_model = MBartForConditionalGeneration.from_pretrained(
         args.model_path
@@ -483,13 +472,13 @@ if __name__ == "__main__":
     lang1_iter = iter(lang1_dataloader)
     lang2_iter = iter(lang2_dataloader)
 
-    lang2_to_lang1_model_optimizer = torch.optim.Adam(
+    lang2_to_lang1_optimizer = torch.optim.Adam(
         lang2_to_lang1_model.parameters(), lr=args.lr
     )
     if args.models_shared:
-        lang1_to_lang2_model_optimizer = lang2_to_lang1_model_optimizer
+        lang1_to_lang2_optimizer = lang2_to_lang1_optimizer
     else:
-        lang1_to_lang2_model_optimizer = torch.optim.Adam(
+        lang1_to_lang2_optimizer = torch.optim.Adam(
             lang1_to_lang2_model.parameters(), lr=args.lr
         )
 
@@ -510,32 +499,15 @@ if __name__ == "__main__":
     args.lang1_meta = lang1_meta
     args.lang2_meta = lang2_meta
 
-    lang1_to_lang2_pack = BackTranslationPack(
-        source_dataloader=lang1_dataloader,
-        source_data_iter=lang1_iter,
-        source_tokenizer=tokenizer,
-        source2target_model=lang1_to_lang2_model,
-        target_meta=lang2_meta,
-        target_vocab_constraint=lang2_vocab_constraint,
-        target2source_model=lang2_to_lang1_model,
-        target2source_optimizer=lang2_to_lang1_model_optimizer
+    backtranslation_pack = BackTranslationPack(
+        dataloaders=(lang1_dataloader, lang2_dataloader),
+        iterators=(lang1_iter, lang2_iter),
+        tokenizer=tokenizer,
+        models=(lang1_to_lang2_model, lang2_to_lang1_model),
+        metas=(lang1_meta, lang2_meta),
+        vocab_constraints=(lang1_vocab_constraint, lang2_vocab_constraint),
+        optimizers=(lang1_to_lang2_optimizer, lang2_to_lang1_optimizer)
     )
-    lang2_to_lang1_pack = BackTranslationPack(
-        source_dataloader=lang2_dataloader,
-        source_data_iter=lang2_iter,
-        source_tokenizer=tokenizer,
-        source2target_model=lang2_to_lang1_model,
-        target_meta=lang1_meta,
-        target_vocab_constraint=lang1_vocab_constraint,
-        target2source_model=lang1_to_lang2_model,
-        target2source_optimizer=lang1_to_lang2_model_optimizer
-    )
-
-    lang_meta2pack = {
-        # e.g. (JapanID, JapanCode): [JapanDataset, Japan2EnglishModel, English2JapanModel]
-        lang1_meta: lang1_to_lang2_pack,
-        lang2_meta: lang2_to_lang1_pack
-    }
 
     if args.do_validation:
         args.val_metric = datasets.load_metric(args.val_metric_name)
@@ -543,5 +515,5 @@ if __name__ == "__main__":
             args.val_dataset_script, args.lang_pair, split="validation"
         )
 
-    main(args, lang_meta2pack)
+    main(args, backtranslation_pack)
     print()
