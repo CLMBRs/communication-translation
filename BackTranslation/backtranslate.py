@@ -336,7 +336,7 @@ def main(args, backtranslation_pack):
             checkpoint_average_stats['step'] = step
             checkpoint_average_stats['mode'] = "train"
             for key, value in checkpoint_stats.items():
-                checkpoint_average_stats[key] = np.mean(value)
+                checkpoint_average_stats[key] = round(np.mean(value), 4)
             logger.info(
                 statbar_string(checkpoint_average_stats)
             )
