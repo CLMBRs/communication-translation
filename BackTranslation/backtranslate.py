@@ -145,7 +145,7 @@ def get_translation_score(
         if args.val_metric_name == "bleu":
             # "bleu" -> tokenized sentences
             reference_batch = [
-                [tokenizer.tokenize(s)] for s in reference_batch_str
+                s.split(' ') for s in reference_batch_str
             ]
         else:
             # "sacrebleu" -> untokenized sentences, sacrebleu's default tokenizers are used
@@ -250,7 +250,7 @@ def main(args, backtranslation_pack):
         # we might want to randomly decide the order, because we don't want the model
         # to learn the pattern that we do, e.g., English first and then Japanese second.
 
-        if step % args.print_every == 0 and args.print_translation:
+        if (step + 1) % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source in random.sample([0, 1], 2):
@@ -297,7 +297,7 @@ def main(args, backtranslation_pack):
             translation = tokenizer.batch_decode(
                 translated_tokens, skip_special_tokens=True
             )
-            if step % args.print_every == 0 and args.print_translation:
+            if (step + 1) % args.print_every == 0 and args.print_translation:
                 translation_results[target_id] = list(
                     zip(source_string_batch, translation)
                 )
@@ -324,14 +324,14 @@ def main(args, backtranslation_pack):
                 output["loss"].detach().cpu().item()
             )
 
-        if args.do_validation and step % args.validate_every == 0:
+        if args.do_validation and (step + 1) % args.validate_every == 0:
             best_score, patience_count = evaluate(
                 args, backtranslation_pack, best_score, patience_count, step
             )
             if patience_count > args.patience:
                 break
 
-        if step % args.print_every == 0:
+        if (step + 1) % args.print_every == 0:
             checkpoint_average_stats = {}
             checkpoint_average_stats['step'] = step
             checkpoint_average_stats['mode'] = "train"
@@ -480,6 +480,7 @@ if __name__ == "__main__":
     assert args.lang1_id in LANG_ID_2_LANGUAGE_CODES and args.lang2_id in LANG_ID_2_LANGUAGE_CODES
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
+    logger.info(f"Source language code: {args.lang1_code}, target language code: {args.lang2_code}")
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
