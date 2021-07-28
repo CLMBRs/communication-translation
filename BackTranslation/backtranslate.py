@@ -28,6 +28,7 @@ TOKENIZER_MAP = {
     'ja': 'ja-mecab',
 }
 
+
 def set_seed(args):
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -57,9 +58,7 @@ def get_next_batch(dataloader, data_iter):
     return data
 
 
-def write_validation_splits(
-    args, source_id, target_id
-):
+def write_validation_splits(args, source_id, target_id):
     reference_dataset = args.val_dataset
     dataloader = torch.utils.data.DataLoader(
         reference_dataset, batch_size=args.batch_size
@@ -87,7 +86,7 @@ def write_validation_splits(
 
 def save_model(args, backtranslation_pack, saved_model_name):
     source_meta, target_meta = backtranslation_pack.metas
-    source2target_model, target2source_model = backtranslation_pack.models    
+    source2target_model, target2source_model = backtranslation_pack.models
     source_id, _, _ = list(source_meta)
     target_id, _, _ = list(target_meta)
 
@@ -101,26 +100,18 @@ def save_model(args, backtranslation_pack, saved_model_name):
         torch.save(
             source2target_model.state_dict(),
             os.path.join(
-                args.output_dir, f"{source_id}2{target_id}",
-                saved_model_name
+                args.output_dir, f"{source_id}2{target_id}", saved_model_name
             )
         )
         torch.save(
             target2source_model.state_dict(),
             os.path.join(
-                args.output_dir, f"{target_id}2{source_id}",
-                saved_model_name
+                args.output_dir, f"{target_id}2{source_id}", saved_model_name
             )
         )
 
 
-def get_translation_score(
-    args,
-    model,
-    tokenizer,
-    source_meta,
-    target_meta
-):
+def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     val_metric = args.val_metric
     reference_dataset = args.val_dataset
     cumulative_score = 0
@@ -173,7 +164,8 @@ def get_translation_score(
 
         if target_id in TOKENIZER_MAP:
             score = sacrebleu.corpus_bleu(
-                translation_str, [reference_batch_str], tokenize=TOKENIZER_MAP[target_id]
+                translation_str, [reference_batch_str],
+                tokenize=TOKENIZER_MAP[target_id]
             ).score
         else:
             score = sacrebleu.corpus_bleu(
@@ -192,7 +184,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
     source_meta, target_meta = backtranslation_pack.metas
     source_id, _, _ = list(source_meta)
     target_id, _, _ = list(target_meta)
-    
+
     source2target_model.eval()
     target2source_model.eval()
 
@@ -205,7 +197,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
 
     mean_score = round(mean([source2target_score, target2source_score]), 4)
     stats = {
-        'step': step,
+        'step': step + 1,
         'mode': 'validation',
         f'{target_id} bleu': round(source2target_score, 4),
         f'{source_id} bleu': round(target2source_score, 4),
@@ -243,21 +235,24 @@ def main(args, backtranslation_pack):
     patience_count = 0
 
     for step in range(args.num_steps):
-        # we might want to randomly decide the order, because we don't want the model
-        # to learn the pattern that we do, e.g., English first and then Japanese second.
+        # we might want to randomly decide the order, because we don't want the
+        # model to learn the pattern that we do, e.g., English first and then
+        # Japanese second.
 
         if (step + 1) % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source in random.sample([0, 1], 2):
             target = np.abs(1 - source)
-            
+
             source_dataloader = backtranslation_pack.dataloaders[source]
             source_data_iter = backtranslation_pack.iterators[source]
             tokenizer = backtranslation_pack.tokenizer
             source2target_model = backtranslation_pack.models[source]
             target2source_model = backtranslation_pack.models[target]
-            target_vocab_constraint = backtranslation_pack.vocab_constraints[target]
+            target_vocab_constraint = (
+                backtranslation_pack.vocab_constraints[target]
+            )
             target2source_optimizer = backtranslation_pack.optimizers[target]
             source_meta = backtranslation_pack.metas[source]
             target_meta = backtranslation_pack.metas[target]
@@ -268,7 +263,8 @@ def main(args, backtranslation_pack):
             if step == 0:
                 write_validation_splits(args, source_id, target_id)
 
-            # 1. we use source2target_model to generate synthetic text in target language
+            # 1. we use source2target_model to generate synthetic text in target
+            # language
             source2target_model.eval()
             # get a batched string input
             source_string_batch = get_next_batch(
@@ -329,13 +325,11 @@ def main(args, backtranslation_pack):
 
         if (step + 1) % args.print_every == 0:
             checkpoint_average_stats = {}
-            checkpoint_average_stats['step'] = step
+            checkpoint_average_stats['step'] = step + 1
             checkpoint_average_stats['mode'] = "train"
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = round(np.mean(value), 4)
-            logger.info(
-                statbar_string(checkpoint_average_stats)
-            )
+            logger.info(statbar_string(checkpoint_average_stats))
             checkpoint_stats = defaultdict(list)
             if args.print_translation:
                 logger.info(
@@ -476,7 +470,9 @@ if __name__ == "__main__":
     assert args.lang1_id in LANG_ID_2_LANGUAGE_CODES and args.lang2_id in LANG_ID_2_LANGUAGE_CODES
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
-    logger.info(f"Source language code: {args.lang1_code}, target language code: {args.lang2_code}")
+    logger.info(
+        f"Source language code: {args.lang1_code}, target language code: {args.lang2_code}"
+    )
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
