@@ -112,7 +112,6 @@ def save_model(args, backtranslation_pack, saved_model_name):
 
 
 def get_translation_score(args, model, tokenizer, source_meta, target_meta):
-    val_metric = args.val_metric
     reference_dataset = args.val_dataset
     cumulative_score = 0
     total_translations = 0
@@ -278,6 +277,8 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
+            if step >= args.num_constrained_steps:
+                target_vocab_constraint = None
             translated_tokens = source2target_model.generate(
                 **source_batch,
                 decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
@@ -371,7 +372,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
-    # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
     parser.add_argument(
         '--threshold',
@@ -393,7 +393,6 @@ if __name__ == "__main__":
         "This number will be capped by the batch size. "
         "Sentences will be randomly sampled from the *current* batch"
     )
-    parser.add_argument('--val_metric_name', type=str, default="bleu")
 
     args = parser.parse_args()
     args_dict = vars(args)
@@ -526,7 +525,6 @@ if __name__ == "__main__":
     )
 
     if args.do_validation:
-        args.val_metric = datasets.load_metric(args.val_metric_name)
         args.val_dataset = load_dataset(
             args.val_dataset_script, args.lang_pair, split="validation"
         )
