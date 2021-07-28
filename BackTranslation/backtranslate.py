@@ -9,19 +9,24 @@ from math import ceil, isinf
 from statistics import mean
 
 import datasets
+import sacrebleu
 import torch
 import yaml
 import numpy as np
 from datasets import load_dataset
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.util import vocab_constraint_from_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import translation2string
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.util import vocab_constraint_from_file
 
+TOKENIZER_MAP = {
+    'zh': 'zh',
+    'ja': 'ja-mecab',
+}
 
 def set_seed(args):
     random.seed(args.seed)
@@ -124,6 +129,12 @@ def get_translation_score(
 
     source_id, source_code, source_max_len = list(source_meta)
     target_id, target_code, target_max_len = list(target_meta)
+
+    TOKENIZER_MAP = {
+        'zh': 'zh',
+        'ja': 'ja-mecab',
+    }
+
     dataloader = torch.utils.data.DataLoader(
         reference_dataset, batch_size=args.batch_size
     )
@@ -142,15 +153,6 @@ def get_translation_score(
         source_string_batch = translation_batch[source_id]
         reference_batch_str = translation_batch[target_id]
 
-        if args.val_metric_name == "bleu":
-            # "bleu" -> tokenized sentences
-            reference_batch = [
-                s.split(' ') for s in reference_batch_str
-            ]
-        else:
-            # "sacrebleu" -> untokenized sentences, sacrebleu's default tokenizers are used
-            reference_batch = [[s] for s in reference_batch_str]
-
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
             src_lang=source_code,
@@ -164,28 +166,22 @@ def get_translation_score(
             decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
             max_length=target_max_len
         )
-        if args.val_metric_name == "bleu":
-            translations = [
-                tokenizer.convert_ids_to_tokens(s, skip_special_tokens=True)
-                for s in translated_ids
-            ]
-        else:
-            assert args.val_metric_name == "sacrebleu"
-            translations = tokenizer.batch_decode(
-                translated_ids, skip_special_tokens=True
-            )
         translation_str = tokenizer.batch_decode(
             translated_ids, skip_special_tokens=True
         )
         translation_lines += [line for line in translation_str]
-        
-        results = val_metric.compute(
-            predictions=translations, references=reference_batch
-        )
 
-        score = results['score' if args.val_metric_name == "sacrebleu" else 'bleu']
-        cumulative_score += score * len(reference_batch)
-        total_translations += len(reference_batch)
+        if target_id in TOKENIZER_MAP:
+            score = sacrebleu.corpus_bleu(
+                translation_str, [reference_batch_str], tokenize=TOKENIZER_MAP[target_id]
+            ).score
+        else:
+            score = sacrebleu.corpus_bleu(
+                translation_str, [reference_batch_str]
+            ).score
+
+        cumulative_score += score * len(reference_batch_str)
+        total_translations += len(reference_batch_str)
 
     return cumulative_score / total_translations, translation_lines
 
