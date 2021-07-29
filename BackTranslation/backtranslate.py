@@ -277,14 +277,19 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
-            if step >= args.num_constrained_steps:
-                target_vocab_constraint = None
-            translated_tokens = source2target_model.generate(
-                **source_batch,
-                decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-                max_length=target_max_len,
-                lang_mask=target_vocab_constraint
-            )
+            if hasattr(args, 'num_constrained_steps') and step < args.num_constrained_steps:
+                translated_tokens = source2target_model.generate(
+                    **source_batch,
+                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    max_length=target_max_len,
+                    lang_mask=target_vocab_constraint
+                )
+            else:
+                translated_tokens = source2target_model.generate(
+                    **source_batch,
+                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    max_length=target_max_len,
+                )
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
