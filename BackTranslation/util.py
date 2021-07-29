@@ -25,5 +25,4 @@ def translation2string(translation_dict, num_printed_translation):
             prt_msg += f"source {i}: {source}\n"
             prt_msg += f"translated {i}: {translated}\n"
             prt_msg += "\n"
-        prt_msg += "\n"
     return prt_msg

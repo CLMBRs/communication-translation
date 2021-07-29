@@ -9,18 +9,24 @@ from math import ceil, isinf
 from statistics import mean
 
 import datasets
+import sacrebleu
 import torch
 import yaml
 import numpy as np
 from datasets import load_dataset
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.util import vocab_constraint_from_file
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import translation2string
+from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.util import vocab_constraint_from_file
+
+TOKENIZER_MAP = {
+    'zh': 'zh',
+    'ja': 'ja-mecab',
+}
 
 
 def set_seed(args):
@@ -52,9 +58,7 @@ def get_next_batch(dataloader, data_iter):
     return data
 
 
-def write_validation_splits(
-    args, source_id, target_id
-):
+def write_validation_splits(args, source_id, target_id):
     reference_dataset = args.val_dataset
     dataloader = torch.utils.data.DataLoader(
         reference_dataset, batch_size=args.batch_size
@@ -82,7 +86,7 @@ def write_validation_splits(
 
 def save_model(args, backtranslation_pack, saved_model_name):
     source_meta, target_meta = backtranslation_pack.metas
-    source2target_model, target2source_model = backtranslation_pack.models    
+    source2target_model, target2source_model = backtranslation_pack.models
     source_id, _, _ = list(source_meta)
     target_id, _, _ = list(target_meta)
 
@@ -96,27 +100,18 @@ def save_model(args, backtranslation_pack, saved_model_name):
         torch.save(
             source2target_model.state_dict(),
             os.path.join(
-                args.output_dir, f"{source_id}2{target_id}",
-                saved_model_name
+                args.output_dir, f"{source_id}2{target_id}", saved_model_name
             )
         )
         torch.save(
             target2source_model.state_dict(),
             os.path.join(
-                args.output_dir, f"{target_id}2{source_id}",
-                saved_model_name
+                args.output_dir, f"{target_id}2{source_id}", saved_model_name
             )
         )
 
 
-def get_translation_score(
-    args,
-    model,
-    tokenizer,
-    source_meta,
-    target_meta
-):
-    val_metric = args.val_metric
+def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     reference_dataset = args.val_dataset
     cumulative_score = 0
     total_translations = 0
@@ -124,6 +119,12 @@ def get_translation_score(
 
     source_id, source_code, source_max_len = list(source_meta)
     target_id, target_code, target_max_len = list(target_meta)
+
+    TOKENIZER_MAP = {
+        'zh': 'zh',
+        'ja': 'ja-mecab',
+    }
+
     dataloader = torch.utils.data.DataLoader(
         reference_dataset, batch_size=args.batch_size
     )
@@ -142,15 +143,6 @@ def get_translation_score(
         source_string_batch = translation_batch[source_id]
         reference_batch_str = translation_batch[target_id]
 
-        if args.val_metric_name == "bleu":
-            # "bleu" -> tokenized sentences
-            reference_batch = [
-                [tokenizer.tokenize(s)] for s in reference_batch_str
-            ]
-        else:
-            # "sacrebleu" -> untokenized sentences, sacrebleu's default tokenizers are used
-            reference_batch = [[s] for s in reference_batch_str]
-
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
             src_lang=source_code,
@@ -164,28 +156,23 @@ def get_translation_score(
             decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
             max_length=target_max_len
         )
-        if args.val_metric_name == "bleu":
-            translations = [
-                tokenizer.convert_ids_to_tokens(s, skip_special_tokens=True)
-                for s in translated_ids
-            ]
-        else:
-            assert args.val_metric_name == "sacrebleu"
-            translations = tokenizer.batch_decode(
-                translated_ids, skip_special_tokens=True
-            )
         translation_str = tokenizer.batch_decode(
             translated_ids, skip_special_tokens=True
         )
         translation_lines += [line for line in translation_str]
-        
-        results = val_metric.compute(
-            predictions=translations, references=reference_batch
-        )
 
-        score = results['score' if args.val_metric_name == "sacrebleu" else 'bleu']
-        cumulative_score += score * len(reference_batch)
-        total_translations += len(reference_batch)
+        if target_id in TOKENIZER_MAP:
+            score = sacrebleu.corpus_bleu(
+                translation_str, [reference_batch_str],
+                tokenize=TOKENIZER_MAP[target_id]
+            ).score
+        else:
+            score = sacrebleu.corpus_bleu(
+                translation_str, [reference_batch_str]
+            ).score
+
+        cumulative_score += score * len(reference_batch_str)
+        total_translations += len(reference_batch_str)
 
     return cumulative_score / total_translations, translation_lines
 
@@ -196,7 +183,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
     source_meta, target_meta = backtranslation_pack.metas
     source_id, _, _ = list(source_meta)
     target_id, _, _ = list(target_meta)
-    
+
     source2target_model.eval()
     target2source_model.eval()
 
@@ -209,7 +196,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
 
     mean_score = round(mean([source2target_score, target2source_score]), 4)
     stats = {
-        'step': step,
+        'step': step + 1,
         'mode': 'validation',
         f'{target_id} bleu': round(source2target_score, 4),
         f'{source_id} bleu': round(target2source_score, 4),
@@ -247,21 +234,24 @@ def main(args, backtranslation_pack):
     patience_count = 0
 
     for step in range(args.num_steps):
-        # we might want to randomly decide the order, because we don't want the model
-        # to learn the pattern that we do, e.g., English first and then Japanese second.
+        # we might want to randomly decide the order, because we don't want the
+        # model to learn the pattern that we do, e.g., English first and then
+        # Japanese second.
 
-        if step % args.print_every == 0 and args.print_translation:
+        if (step + 1) % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
         for source in random.sample([0, 1], 2):
             target = np.abs(1 - source)
-            
+
             source_dataloader = backtranslation_pack.dataloaders[source]
             source_data_iter = backtranslation_pack.iterators[source]
             tokenizer = backtranslation_pack.tokenizer
             source2target_model = backtranslation_pack.models[source]
             target2source_model = backtranslation_pack.models[target]
-            target_vocab_constraint = backtranslation_pack.vocab_constraints[target]
+            target_vocab_constraint = (
+                backtranslation_pack.vocab_constraints[target]
+            )
             target2source_optimizer = backtranslation_pack.optimizers[target]
             source_meta = backtranslation_pack.metas[source]
             target_meta = backtranslation_pack.metas[target]
@@ -272,7 +262,8 @@ def main(args, backtranslation_pack):
             if step == 0:
                 write_validation_splits(args, source_id, target_id)
 
-            # 1. we use source2target_model to generate synthetic text in target language
+            # 1. we use source2target_model to generate synthetic text in target
+            # language
             source2target_model.eval()
             # get a batched string input
             source_string_batch = get_next_batch(
@@ -286,18 +277,25 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
-            translated_tokens = source2target_model.generate(
-                **source_batch,
-                decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-                max_length=target_max_len,
-                lang_mask=target_vocab_constraint
-            )
+            if hasattr(args, 'num_constrained_steps') and step < args.num_constrained_steps:
+                translated_tokens = source2target_model.generate(
+                    **source_batch,
+                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    max_length=target_max_len,
+                    lang_mask=target_vocab_constraint
+                )
+            else:
+                translated_tokens = source2target_model.generate(
+                    **source_batch,
+                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    max_length=target_max_len,
+                )
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
                 translated_tokens, skip_special_tokens=True
             )
-            if step % args.print_every == 0 and args.print_translation:
+            if (step + 1) % args.print_every == 0 and args.print_translation:
                 translation_results[target_id] = list(
                     zip(source_string_batch, translation)
                 )
@@ -324,22 +322,20 @@ def main(args, backtranslation_pack):
                 output["loss"].detach().cpu().item()
             )
 
-        if args.do_validation and step % args.validate_every == 0:
+        if args.do_validation and (step + 1) % args.validate_every == 0:
             best_score, patience_count = evaluate(
                 args, backtranslation_pack, best_score, patience_count, step
             )
             if patience_count > args.patience:
                 break
 
-        if step % args.print_every == 0:
+        if (step + 1) % args.print_every == 0:
             checkpoint_average_stats = {}
-            checkpoint_average_stats['step'] = step
+            checkpoint_average_stats['step'] = step + 1
             checkpoint_average_stats['mode'] = "train"
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = round(np.mean(value), 4)
-            logger.info(
-                statbar_string(checkpoint_average_stats)
-            )
+            logger.info(statbar_string(checkpoint_average_stats))
             checkpoint_stats = defaultdict(list)
             if args.print_translation:
                 logger.info(
@@ -381,7 +377,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
-    # parser.add_argument('--source_dir', type=str, default="./Data/BackTranslate")
     parser.add_argument('--config', type=str)
     parser.add_argument(
         '--threshold',
@@ -403,7 +398,6 @@ if __name__ == "__main__":
         "This number will be capped by the batch size. "
         "Sentences will be randomly sampled from the *current* batch"
     )
-    parser.add_argument('--val_metric_name', type=str, default="bleu")
 
     args = parser.parse_args()
     args_dict = vars(args)
@@ -480,6 +474,9 @@ if __name__ == "__main__":
     assert args.lang1_id in LANG_ID_2_LANGUAGE_CODES and args.lang2_id in LANG_ID_2_LANGUAGE_CODES
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
+    logger.info(
+        f"Source language code: {args.lang1_code}, target language code: {args.lang2_code}"
+    )
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
@@ -533,7 +530,6 @@ if __name__ == "__main__":
     )
 
     if args.do_validation:
-        args.val_metric = datasets.load_metric(args.val_metric_name)
         args.val_dataset = load_dataset(
             args.val_dataset_script, args.lang_pair, split="validation"
         )
