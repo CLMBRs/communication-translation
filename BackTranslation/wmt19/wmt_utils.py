@@ -28,19 +28,16 @@ import xml.etree.cElementTree as ElementTree
 from abc import ABC, abstractmethod
 
 import datasets
-import logging
 
 
-logger = logging.getLogger(__name__)
+logger = datasets.logging.get_logger(__name__)
 
 
 _DESCRIPTION = """\
 Translate dataset based on the data from statmt.org.
-
 Versions exists for the different years using a combination of multiple data
 sources. The base `wmt_translate` allows you to create your own config to choose
 your own data/language pair by creating a custom `datasets.translate.wmt.WmtConfig`.
-
 ```
 config = datasets.wmt.WmtConfig(
     version="0.0.1",
@@ -52,7 +49,6 @@ config = datasets.wmt.WmtConfig(
 )
 builder = datasets.builder("wmt_translate", config=config)
 ```
-
 """
 
 
@@ -64,7 +60,6 @@ class SubDataset:
 
     def __init__(self, name, target, sources, url, path, manual_dl_files=None):
         """Sub-dataset of WMT.
-
         Args:
           name: `string`, a unique dataset identifier.
           target: `string`, the target language code.
@@ -632,7 +627,6 @@ class WmtConfig(datasets.BuilderConfig):
 
     def __init__(self, url=None, citation=None, description=None, language_pair=(None, None), subsets=None, **kwargs):
         """BuilderConfig for WMT.
-
         Args:
           url: The reference URL for the dataset.
           citation: The paper citation for the dataset.

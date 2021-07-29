@@ -75,5 +75,6 @@ class Wmt19(Wmt):
                 "rapid_2016_ltfi",
                 "rapid_2019",
             ],
+            # + CWMT_SUBSET_NAMES,  # (Leo): url stored here is not valid. We are using WMT for valid/test, so...
             datasets.Split.VALIDATION: ["euelections_dev2019", "newsdev2019", "newstest2018"],
         }

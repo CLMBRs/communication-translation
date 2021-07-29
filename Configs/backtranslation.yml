@@ -18,6 +18,7 @@ validation_set_size: 50
 num_steps: 1000
 # script to load validation datasets
 val_dataset_script: BackTranslation/wmt19/wmt19.py
+lang_pair: zh-en
 patience: 5
 # dir to save model
 models_shared: true
@@ -35,5 +36,4 @@ lang2_id: zh
 lang2_max_len: 128
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
-lang_pair: zh-en
 # backtranslation language
