@@ -11,6 +11,7 @@ from statistics import mean
 import datasets
 import sacrebleu
 import torch
+import transformers
 import yaml
 import numpy as np
 from datasets import load_dataset
@@ -241,6 +242,7 @@ def main(args, backtranslation_pack):
         if (step + 1) % args.print_every == 0 and args.print_translation:
             translation_results = {args.lang1_id: [], args.lang2_id: []}
 
+        mini_step = 0
         for source in random.sample([0, 1], 2):
             target = np.abs(1 - source)
 
@@ -253,6 +255,7 @@ def main(args, backtranslation_pack):
                 backtranslation_pack.vocab_constraints[target]
             )
             target2source_optimizer = backtranslation_pack.optimizers[target]
+            target2source_scheduler = backtranslation_pack.schedulers[target]
             source_meta = backtranslation_pack.metas[source]
             target_meta = backtranslation_pack.metas[target]
 
@@ -277,17 +280,21 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
-            if hasattr(args, 'num_constrained_steps') and step < args.num_constrained_steps:
+            if hasattr(
+                args, 'num_constrained_steps'
+            ) and step < args.num_constrained_steps:
                 translated_tokens = source2target_model.generate(
                     **source_batch,
-                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    decoder_start_token_id=tokenizer.
+                    lang_code_to_id[target_code],
                     max_length=target_max_len,
                     lang_mask=target_vocab_constraint
                 )
             else:
                 translated_tokens = source2target_model.generate(
                     **source_batch,
-                    decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                    decoder_start_token_id=tokenizer.
+                    lang_code_to_id[target_code],
                     max_length=target_max_len,
                 )
 
@@ -318,6 +325,12 @@ def main(args, backtranslation_pack):
             target2source_optimizer.zero_grad()
             output.loss.backward()
             target2source_optimizer.step()
+            # Make sure if the model optimizer/scheuler are shared that
+            # we only step once per "main" step rather than once per
+            # language
+            if (not args.models_shared) or (mini_step == 1):
+                target2source_scheduler.step()
+            mini_step += 1
             checkpoint_stats["loss"].append(
                 output["loss"].detach().cpu().item()
             )
@@ -326,13 +339,14 @@ def main(args, backtranslation_pack):
             best_score, patience_count = evaluate(
                 args, backtranslation_pack, best_score, patience_count, step
             )
-            if patience_count > args.patience:
+            if hasattr(args, 'patience') and patience_count > args.patience:
                 break
 
         if (step + 1) % args.print_every == 0:
             checkpoint_average_stats = {}
             checkpoint_average_stats['step'] = step + 1
             checkpoint_average_stats['mode'] = "train"
+            checkpoint_average_stats['lr'] = round(target2source_scheduler.get_last_lr()[0], 8)
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = round(np.mean(value), 4)
             logger.info(statbar_string(checkpoint_average_stats))
@@ -351,13 +365,8 @@ LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "max_length"])
 
 BackTranslationPack = namedtuple(
     "BackTranslationPack", [
-        "dataloaders",
-        "iterators",
-        "tokenizer",
-        "models",
-        "metas",
-        "vocab_constraints",
-        "optimizers",
+        "dataloaders", "iterators", "tokenizer", "models", "metas",
+        "vocab_constraints", "optimizers", "schedulers"
     ]
 )
 
@@ -502,8 +511,16 @@ if __name__ == "__main__":
             lang1_to_lang2_model.parameters(), lr=args.lr
         )
 
-    # lang1_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang1_vocab_constrain_file)
-    # lang2_mask = vocab_mask_from_file(tokenizer=tokenizer, file=args.lang2_vocab_constrain_file)
+    if hasattr(args, 'schedule') and args.schedule == 'linear':
+        lang1_to_lang2_scheduler = transformers.get_linear_schedule_with_warmup(
+            lang1_to_lang2_optimizer, args.num_warmup_steps, args.num_steps
+        )
+        if args.models_shared:
+            lang2_to_lang1_scheduler = lang1_to_lang2_scheduler
+        else:
+            lang2_to_lang1_scheduler = transformers.get_linear_schedule_with_warmup(
+                lang2_to_lang1_optimizer, args.num_warmup_steps, args.num_steps
+            )
 
     lang1_meta = LangMeta(
         lang_id=args.lang1_id,
@@ -526,7 +543,8 @@ if __name__ == "__main__":
         models=(lang1_to_lang2_model, lang2_to_lang1_model),
         metas=(lang1_meta, lang2_meta),
         vocab_constraints=(lang1_vocab_constraint, lang2_vocab_constraint),
-        optimizers=(lang1_to_lang2_optimizer, lang2_to_lang1_optimizer)
+        optimizers=(lang1_to_lang2_optimizer, lang2_to_lang1_optimizer),
+        schedulers=(lang1_to_lang2_scheduler, lang2_to_lang1_scheduler)
     )
 
     if args.do_validation:
