@@ -8,7 +8,6 @@ from collections import defaultdict, namedtuple
 from math import ceil, isinf
 from statistics import mean
 
-import datasets
 import sacrebleu
 import torch
 import transformers
@@ -346,7 +345,9 @@ def main(args, backtranslation_pack):
             checkpoint_average_stats = {}
             checkpoint_average_stats['step'] = step + 1
             checkpoint_average_stats['mode'] = "train"
-            checkpoint_average_stats['lr'] = round(target2source_scheduler.get_last_lr()[0], 8)
+            checkpoint_average_stats['lr'] = round(
+                target2source_scheduler.get_last_lr()[0], 8
+            )
             for key, value in checkpoint_stats.items():
                 checkpoint_average_stats[key] = round(np.mean(value), 4)
             logger.info(statbar_string(checkpoint_average_stats))
@@ -387,13 +388,6 @@ if __name__ == "__main__":
 
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
     parser.add_argument('--config', type=str)
-    parser.add_argument(
-        '--threshold',
-        type=float,
-        default=0.01,
-        help="Unigram probability threshold to select vocab constraint for"
-        " generation during backtranslation; the higher, the less vocab selected"
-    )
     parser.add_argument(
         '--print_translation',
         action="store_true",
@@ -452,7 +446,7 @@ if __name__ == "__main__":
     lang1_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang1_vocab_constrain_file,
-        threshold=args.threshold,
+        threshold=args.vocab_constraint_threshold,
         mode='tensor'
     )
     lang1_vocab_constraint = lang1_vocab_constraint.to(device)
@@ -463,7 +457,7 @@ if __name__ == "__main__":
     lang2_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang2_vocab_constrain_file,
-        threshold=args.threshold,
+        threshold=args.vocab_constraint_threshold,
         mode='tensor'
     )
     lang2_vocab_constraint = lang2_vocab_constraint.to(device)
@@ -511,16 +505,27 @@ if __name__ == "__main__":
             lang1_to_lang2_model.parameters(), lr=args.lr
         )
 
-    if hasattr(args, 'schedule') and args.schedule == 'linear':
-        lang1_to_lang2_scheduler = transformers.get_linear_schedule_with_warmup(
-            lang1_to_lang2_optimizer, args.num_warmup_steps, args.num_steps
-        )
-        if args.models_shared:
-            lang2_to_lang1_scheduler = lang1_to_lang2_scheduler
-        else:
-            lang2_to_lang1_scheduler = transformers.get_linear_schedule_with_warmup(
-                lang2_to_lang1_optimizer, args.num_warmup_steps, args.num_steps
-            )
+    if args.schedule == 'linear_w_warmup':
+        scheduler_method = transformers.get_linear_schedule_with_warmup
+        scheduler_args = {
+            'optimizer': lang1_to_lang2_optimizer,
+            'num_warmup_steps': args.num_warmup_steps,
+            'num_training_steps': args.num_steps
+        }
+    else:
+        # Default to constant schedule with warmup
+        scheduler_method = transformers.get_constant_schedule_with_warmup
+        scheduler_args = {
+            'optimizer': lang1_to_lang2_optimizer,
+            'num_warmup_steps': args.num_warmup_steps
+        }
+
+    lang1_to_lang2_scheduler = scheduler_method(**scheduler_args)
+    if args.models_shared:
+        lang2_to_lang1_scheduler = lang1_to_lang2_scheduler
+    else:
+        scheduler_args['optimizer'] = lang2_to_lang1_optimizer
+        lang2_to_lang1_scheduler = scheduler_method(**scheduler_args)
 
     lang1_meta = LangMeta(
         lang_id=args.lang1_id,
