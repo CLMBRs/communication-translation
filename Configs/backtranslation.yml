@@ -12,6 +12,7 @@ print_every: 32
 do_validation: true
 validate_every: 256
 validation_set_size: 16384
+eval_batch_size: 64
 val_metric_name: bleu
 num_constrained_steps: 8192
 vocab_constraint_threshold: 0.85

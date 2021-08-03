@@ -61,11 +61,11 @@ def get_next_batch(dataloader, data_iter):
 def write_validation_splits(args, source_id, target_id):
     reference_dataset = args.val_dataset
     dataloader = torch.utils.data.DataLoader(
-        reference_dataset, batch_size=args.batch_size
+        reference_dataset, batch_size=args.eval_batch_size
     )
     source_lines = []
     target_lines = []
-    num_batch = ceil(args.validation_set_size / args.batch_size)
+    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
     for i, batch in enumerate(dataloader):
         if i == num_batch:
             break
@@ -126,9 +126,9 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     }
 
     dataloader = torch.utils.data.DataLoader(
-        reference_dataset, batch_size=args.batch_size
+        reference_dataset, batch_size=args.eval_batch_size
     )
-    num_batch = ceil(args.validation_set_size / args.batch_size)
+    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
 
     for i, batch in enumerate(
         tqdm(
