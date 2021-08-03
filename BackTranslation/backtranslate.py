@@ -194,15 +194,24 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
         args, target2source_model, tokenizer, target_meta, source_meta
     )
 
-    mean_score = round(mean([source2target_score, target2source_score]), 4)
+    mean_score = round(mean([source2target_score, target2source_score]), 2)
     stats = {
         'step': step + 1,
         'mode': 'validation',
-        f'{target_id} bleu': round(source2target_score, 4),
-        f'{source_id} bleu': round(target2source_score, 4),
+        f'{target_id} bleu': round(source2target_score, 2),
+        f'{source_id} bleu': round(target2source_score, 2),
         'mean bleu': mean_score
     }
     logger.info(statbar_string(stats))
+
+    data_file = os.path.join(args.output_dir, args.output_data_filename)
+    metrics = [
+        step + 1,
+        round(source2target_score, 2),
+        round(target2source_score, 2)
+    ]
+    with open(data_file, 'a') as f:
+        print(", ".join(metrics), file=f)
 
     if mean_score > best_score or isinf(best_score):
         # if we encounter a better model, we restart patience counting
@@ -556,6 +565,12 @@ if __name__ == "__main__":
         args.val_dataset = load_dataset(
             args.val_dataset_script, args.lang_pair, split="validation"
         )
+        data_columns = [
+            "step", f"{args.lang1_id} to {args.lang2_id}",
+            f"{args.lang2_id} to {args.lang1_id}"
+        ]
+        data_file = os.path.join(args.output_dir, args.output_data_filename)
+        with open(data_file, 'w+') as f:
+            print(", ".join(data_columns), file=f)
 
     main(args, backtranslation_pack)
-    print()
