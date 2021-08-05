@@ -19,7 +19,7 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import translation2string
+from BackTranslation.util import translation2string, get_lr_lambda_by_steps
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
 
@@ -514,27 +514,26 @@ if __name__ == "__main__":
             lang1_to_lang2_model.parameters(), lr=args.lr
         )
 
-    if args.schedule == 'linear_w_warmup':
-        scheduler_method = transformers.get_linear_schedule_with_warmup
-        scheduler_args = {
-            'optimizer': lang1_to_lang2_optimizer,
-            'num_warmup_steps': args.num_warmup_steps,
-            'num_training_steps': args.num_steps
-        }
-    else:
-        # Default to constant schedule with warmup
-        scheduler_method = transformers.get_constant_schedule_with_warmup
-        scheduler_args = {
-            'optimizer': lang1_to_lang2_optimizer,
-            'num_warmup_steps': args.num_warmup_steps
-        }
+    # Get the lambda for the learning rate schedule
+    scheduler_lambda = get_lr_lambda_by_steps(
+        args.num_steps,
+        num_warmup_steps=args.num_warmup_steps,
+        warmup=args.warmup_type,
+        decay=args.decay_type,
+        decay_end_percent=args.decay_end_percent
+    )
 
-    lang1_to_lang2_scheduler = scheduler_method(**scheduler_args)
+    # Initialize the scheduler based on the learning rate lambda
+    lang1_to_lang2_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        lang1_to_lang2_optimizer, lr_lambda=scheduler_lambda
+    )
+
     if args.models_shared:
         lang2_to_lang1_scheduler = lang1_to_lang2_scheduler
     else:
-        scheduler_args['optimizer'] = lang2_to_lang1_optimizer
-        lang2_to_lang1_scheduler = scheduler_method(**scheduler_args)
+        lang2_to_lang1_scheduler = torch.optim.lr_scheduler.LambdaLR(
+            lang2_to_lang1_optimizer, lr_lambda=scheduler_lambda
+        )
 
     lang1_meta = LangMeta(
         lang_id=args.lang1_id,

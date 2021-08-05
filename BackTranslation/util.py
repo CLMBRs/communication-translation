@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 from typing import List
 
@@ -26,3 +24,74 @@ def translation2string(translation_dict, num_printed_translation):
             prt_msg += f"translated {i}: {translated}\n"
             prt_msg += "\n"
     return prt_msg
+
+
+def _lr_lambda(
+    total_num_steps,
+    num_warmup_steps=0,
+    warmup='linear',
+    decay='linear',
+    decay_end_percent=0.0,
+    gamma=0.9,
+    gamma_steps=1000
+):
+
+    if warmup == 'flat':
+        warmup_lambda = lambda step: 1.0
+    elif warmup == 'linear':
+        warmup_lambda = lambda step: (step + 1) / (num_warmup_steps)
+    else:
+        raise ValueError(f'Warmup mode {warmup} is not valid')
+
+    if decay == 'linear':
+        total_decay_steps = total_num_steps - num_warmup_steps
+        percent_to_decay = 1.0 - decay_end_percent
+        decay_lambda = lambda step: (
+            (
+                percent_to_decay *
+                (total_num_steps - (step + 1)) / total_decay_steps
+            ) + decay_end_percent
+        )
+    elif decay == 'exponential':
+        decay_lambda = lambda step: (
+            gamma**((step + 1 - num_warmup_steps) / gamma_steps)
+        )
+    elif decay == 'none':
+        decay_lambda = lambda step: 1.0
+    else:
+        raise ValueError(f'Decay mode {decay} is not valid')
+
+    lr_lambda = lambda step: (
+        warmup_lambda(step) if step < num_warmup_steps else decay_lambda(step)
+    )
+    return lr_lambda
+
+
+def get_lr_lambda_by_steps(
+    total_num_steps,
+    num_warmup_steps=0,
+    warmup='linear',
+    decay='linear',
+    decay_end_percent=0.0,
+    gamma=0.9,
+    gamma_steps=1000
+):
+    """
+    Get learning-rate step lambda based on the total nummber of steps and the
+    number of warmup steps
+
+    Warmup can be `flat` or `linear`. Decay can be `linear` or `exponential`.
+    Exponential decay is defined by the `gamma` base and `gamma_steps` period
+    over which the decay applies. For instance, if `gamma` is 0.5 and
+    `gamma_steps` is 1000, the learning rate will decay by half every 1000 steps
+    """
+
+    return _lr_lambda(
+        total_num_steps,
+        num_warmup_steps=num_warmup_steps,
+        warmup=warmup,
+        decay=decay,
+        decay_end_percent=decay_end_percent,
+        gamma=gamma,
+        gamma_steps=gamma_steps
+    )

@@ -4,7 +4,10 @@ model_path: facebook/mbart-large-cc25
 # training config
 num_steps: 8192
 lr: 3.0e-05
-schedule: constant_w_warmup
+num_warmup_steps: 1024
+warmup_type: 'flat'
+decay_type: 'linear'
+decay_end_percent: 0.33
 batch_size: 32
 seed: 42
 n_gpu: 1
