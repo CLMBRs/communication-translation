@@ -211,7 +211,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
         round(target2source_score, 2)
     ]
     with open(data_file, 'a') as f:
-        print(", ".join(metrics), file=f)
+        print(", ".join([str(x) for x in metrics]), file=f)
 
     if mean_score > best_score or isinf(best_score):
         # if we encounter a better model, we restart patience counting
