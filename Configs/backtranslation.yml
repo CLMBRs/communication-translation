@@ -4,17 +4,16 @@ model_path: facebook/mbart-large-cc25
 # training config
 num_steps: 8192
 lr: 3.0e-05
+grad_clip: 1.0
 num_warmup_steps: 1024
-warmup_type: 'flat'
-decay_type: 'linear'
-decay_end_percent: 0.33
+schedule: linear_w_warmup
 batch_size: 32
 seed: 42
 n_gpu: 1
 print_every: 32
 do_validation: true
 validate_every: 256
-validation_set_size: 16384
+validation_set_size: 4096
 eval_batch_size: 64
 val_metric_name: bleu
 num_constrained_steps: 8192
@@ -26,7 +25,7 @@ val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: zh-en
 # dir to save model
 models_shared: true
-output_dir: Output/bt_en+zh/
+output_dir: Output/bt_en+zh_lr3e-5_lwu_ldc/
 
 # data config
 # backtranslation language
@@ -41,5 +40,3 @@ lang2_data_file: zh_500k.txt
 lang2_id: zh
 lang2_max_len: 64
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
-
-
