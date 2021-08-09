@@ -18,6 +18,7 @@ eval_batch_size: 64
 val_metric_name: bleu
 num_constrained_steps: 8192
 vocab_constraint_threshold: 0.85
+secondary_threshold: 1.0
 early_stop_start_time: 2048
 
 # script to load validation datasets

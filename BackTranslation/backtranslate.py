@@ -20,7 +20,7 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import translation2string, get_lr_lambda_by_steps
+from BackTranslation.util import translation2string
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
 
@@ -263,6 +263,9 @@ def main(args, backtranslation_pack):
             target_vocab_constraint = (
                 backtranslation_pack.vocab_constraints[target]
             )
+            target_secondary_constraint = (
+                backtranslation_pack.secondary_constraints[target]
+            )
             target2source_optimizer = backtranslation_pack.optimizers[target]
             target2source_scheduler = backtranslation_pack.schedulers[target]
             source_meta = backtranslation_pack.metas[source]
@@ -289,15 +292,21 @@ def main(args, backtranslation_pack):
                 return_tensors="pt"
             )
             source_batch = source_batch.to(args.device)
-            if hasattr(
-                args, 'num_constrained_steps'
-            ) and step < args.num_constrained_steps:
+            if step < args.num_constrained_steps:
                 translated_tokens = source2target_model.generate(
                     **source_batch,
                     decoder_start_token_id=tokenizer.
                     lang_code_to_id[target_code],
                     max_length=target_max_len,
                     lang_mask=target_vocab_constraint
+                )
+            elif target_secondary_constraint:
+                translated_tokens = source2target_model.generate(
+                    **source_batch,
+                    decoder_start_token_id=tokenizer.
+                    lang_code_to_id[target_code],
+                    max_length=target_max_len,
+                    lang_mask=target_secondary_constraint
                 )
             else:
                 translated_tokens = source2target_model.generate(
@@ -333,7 +342,9 @@ def main(args, backtranslation_pack):
             output = target2source_model(**parallel_batch)
             target2source_optimizer.zero_grad()
             output.loss.backward()
-            nn.utils.clip_grad_norm_(target2source_model.parameters(), args.grad_clip)
+            nn.utils.clip_grad_norm_(
+                target2source_model.parameters(), args.grad_clip
+            )
             target2source_optimizer.step()
             # Make sure if the model optimizer/scheuler are shared that
             # we only step once per "main" step rather than once per
@@ -378,7 +389,7 @@ LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "max_length"])
 BackTranslationPack = namedtuple(
     "BackTranslationPack", [
         "dataloaders", "iterators", "tokenizer", "models", "metas",
-        "vocab_constraints", "optimizers", "schedulers"
+        "vocab_constraints", "secondary_constraints", "optimizers", "schedulers"
     ]
 )
 
@@ -454,6 +465,10 @@ if __name__ == "__main__":
     args.device = device
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_path)
+
+    if not hasattr(args, 'num_constrained_steps'):
+        args.num_constrained_steps = 0
+
     lang1_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang1_vocab_constrain_file,
@@ -462,7 +477,8 @@ if __name__ == "__main__":
     )
     lang1_vocab_constraint = lang1_vocab_constraint.to(device)
     logger.info(
-        f"Total valid {args.lang1_id} tokens: {torch.sum(torch.isfinite(lang1_vocab_constraint))}"
+        f"Total valid {args.lang1_id} tokens:"
+        f" {torch.sum(torch.isfinite(lang1_vocab_constraint))}"
     )
 
     lang2_vocab_constraint = vocab_constraint_from_file(
@@ -473,8 +489,27 @@ if __name__ == "__main__":
     )
     lang2_vocab_constraint = lang2_vocab_constraint.to(device)
     logger.info(
-        f"Total valid {args.lang2_id} tokens: {torch.sum(torch.isfinite(lang2_vocab_constraint))}"
+        f"Total valid {args.lang2_id} tokens:"
+        f" {torch.sum(torch.isfinite(lang2_vocab_constraint))}"
     )
+
+    if hasattr(args, 'secondary_threshold'):
+        lang1_secondary_constraint = vocab_constraint_from_file(
+            tokenizer=tokenizer,
+            file=args.lang1_vocab_constrain_file,
+            threshold=args.secondary_threshold,
+            mode='tensor'
+        )
+        lang1_secondary_constraint = lang1_secondary_constraint.to(device)
+        lang2_secondary_constraint = vocab_constraint_from_file(
+            tokenizer=tokenizer,
+            file=args.lang2_vocab_constrain_file,
+            threshold=args.secondary_threshold,
+            mode='tensor'
+        )
+        lang2_secondary_constraint = lang2_secondary_constraint.to(device)
+    else:
+        lang1_secondary_constraint = lang2_secondary_constraint = None
 
     lang1_to_lang2_model = MBartForConditionalGeneration.from_pretrained(
         args.model_path
@@ -485,18 +520,24 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError("Not yet")
 
-    assert args.lang1_id in LANG_ID_2_LANGUAGE_CODES and args.lang2_id in LANG_ID_2_LANGUAGE_CODES
+    assert (
+        args.lang1_id in LANG_ID_2_LANGUAGE_CODES and
+        args.lang2_id in LANG_ID_2_LANGUAGE_CODES
+    )
     args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
     args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
     logger.info(
-        f"Source language code: {args.lang1_code}, target language code: {args.lang2_code}"
+        f"Source language code: {args.lang1_code},"
+        f" target language code: {args.lang2_code}"
     )
+    
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
     lang2_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang2_data_file)
     )["train"]
+    
     lang1_dataloader = DataLoader(
         lang1_dataset, batch_size=args.batch_size, shuffle=True
     )
@@ -517,12 +558,12 @@ if __name__ == "__main__":
         )
 
     if args.schedule == 'linear_w_warmup':
-         scheduler_method = transformers.get_linear_schedule_with_warmup
-         scheduler_args = {
-             'optimizer': lang1_to_lang2_optimizer,
-             'num_warmup_steps': args.num_warmup_steps,
-             'num_training_steps': args.num_steps
-         }
+        scheduler_method = transformers.get_linear_schedule_with_warmup
+        scheduler_args = {
+            'optimizer': lang1_to_lang2_optimizer,
+            'num_warmup_steps': args.num_warmup_steps,
+            'num_training_steps': args.num_steps
+        }
     else:
         # Default to constant schedule with warmup
         scheduler_method = transformers.get_constant_schedule_with_warmup
@@ -560,7 +601,10 @@ if __name__ == "__main__":
         metas=(lang1_meta, lang2_meta),
         vocab_constraints=(lang1_vocab_constraint, lang2_vocab_constraint),
         optimizers=(lang1_to_lang2_optimizer, lang2_to_lang1_optimizer),
-        schedulers=(lang1_to_lang2_scheduler, lang2_to_lang1_scheduler)
+        schedulers=(lang1_to_lang2_scheduler, lang2_to_lang1_scheduler),
+        secondary_constraints=(
+            lang1_secondary_constraint, lang2_secondary_constraint
+        )
     )
 
     if args.do_validation:
