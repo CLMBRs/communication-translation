@@ -20,7 +20,9 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import translation2string
+from BackTranslation.util import (
+    set_seed, translation2string, statbar_string, LangMeta
+)
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
 
@@ -28,24 +30,6 @@ TOKENIZER_MAP = {
     'zh': 'zh',
     'ja': 'ja-mecab',
 }
-
-
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
-
-
-def statbar_string(stat_dict: dict) -> str:
-    """
-    Return a printable "statbar" string from a dictionary of named statistics
-    """
-    stat_items = []
-    for key, value in stat_dict.items():
-        stat_items.append(f"{key} {value}")
-    return ' | '.join(stat_items)
 
 
 def get_next_batch(dataloader, data_iter):
@@ -383,8 +367,6 @@ def main(args, backtranslation_pack):
 
     save_model(args, backtranslation_pack, saved_model_name="last.pt")
 
-
-LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "max_length"])
 
 BackTranslationPack = namedtuple(
     "BackTranslationPack", [

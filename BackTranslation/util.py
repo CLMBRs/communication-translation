@@ -1,5 +1,30 @@
-import numpy as np
+import random
+from collections import namedtuple
 from typing import List
+
+import torch
+import numpy as np
+
+
+LangMeta = namedtuple("LangMeta", ["lang_id", "lang_code", "max_length"])
+
+
+def set_seed(args):
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.n_gpu > 0:
+        torch.cuda.manual_seed_all(args.seed)
+
+
+def statbar_string(stat_dict: dict) -> str:
+    """
+    Return a printable "statbar" string from a dictionary of named statistics
+    """
+    stat_items = []
+    for key, value in stat_dict.items():
+        stat_items.append(f"{key} {value}")
+    return ' | '.join(stat_items)
 
 
 def checkpoint_stats2string(step, avg_stats_dict, mode="train"):
