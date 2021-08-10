@@ -1,0 +1,15 @@
+# Path to load model for generation
+model_path: backtranslation/path.pt
+seed: 1
+batch_size: 128
+output_dir: Output/translated/
+translation_filename: en.val.zh
+
+# data config
+data_dir: ./Data/
+source_data_file: en.val
+source_id: en
+source_max_len: 64
+
+target_id: zh
+target_max_len: 64
