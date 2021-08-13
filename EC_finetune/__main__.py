@@ -228,14 +228,14 @@ def main():
     logger.info('Configuration:')
     print(args)
 
-    tokenizer = MBartTokenizer.from_pretrained(args.model_string)
+    tokenizer = MBartTokenizer.from_pretrained(args.model_name)
     vocab = tokenizer.get_vocab()
     args.padding_index = vocab['<pad>']
     args.vocab_size = len(vocab)
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
-    if args.model_string == 'rnn':
+    if args.model_name == 'rnn':
         comm_model = nn.GRU(
             input_size=args.hidden_dim,
             hidden_size=args.hidden_dim,
@@ -248,7 +248,7 @@ def main():
         receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
     else:
         comm_model = MBartForConditionalGeneration.from_pretrained(
-            args.model_string
+            args.model_name
         )
         sender = MBartSender(
             comm_model,

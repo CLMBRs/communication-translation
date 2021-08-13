@@ -1,5 +1,5 @@
 # Model:
-model_name: mbart
+model_name: Models/mbart_bt_en+zh_lr25e-6
 image_dim: 2048
 hidden_dim: 512
 bidirectional: false # RNN-specific
@@ -29,7 +29,7 @@ do_eval: true # whether to do eval after training
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 300
+max_global_step: 4096
 lr: 1.0e-5
 batch_size: 16
 grad_clip: 1.0
@@ -45,13 +45,13 @@ num_distractors_train: 7
 num_distractors_valid: 7
 
 # Loading and saving data:
-train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
-valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
-train_images: ./Data/Coco/captioning/train_images
-valid_images: ./Data/Coco/captioning/valid_images
+# train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
+# valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
+train_images: ./Data/ec_finetuning/images_train
+valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
 # good practice: set the output_dir name the same as the parameter file name
-output_dir: Output/mbart_captions
+output_dir: Output/mbart_bt_en+zh_lr25e-6_ec_distractor7_lr1e-5_num_games30_maxstep_4096
 save_output_txt: true
 
 # Other (we may choose to delete these later):
