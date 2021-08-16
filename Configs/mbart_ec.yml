@@ -27,7 +27,7 @@ mode: emergent_communication
 do_train: true # control whether we train
 do_eval: true # whether to do eval after training
 n_gpu: 1
-cpu: false
+cpu: true
 num_games: 30 # Upper bound of the num of epochs
 max_global_step: 4096
 lr: 1.0e-5
