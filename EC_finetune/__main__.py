@@ -199,7 +199,7 @@ def main():
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file))
+        args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
 
     # set random seed
     set_seed(args)

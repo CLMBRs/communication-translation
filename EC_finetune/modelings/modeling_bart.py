@@ -2203,24 +2203,16 @@ class BartForConditionalGeneration(PretrainedBartModel):
         pad_token_embed = self.model.shared(
             torch.tensor(pad_token_id, device=generated_token_ids.device)
         )
-        pad_token_logits = torch.tensor(
-            torch.arange(0, self.embed_tokens_size) == pad_token_id,
-            dtype=torch.float,
-            device=generated_token_ids.device
-        )
+        pad_token_logits = (torch.arange(0, self.embed_tokens_size) == pad_token_id).float().clone().detach()
+        pad_token_logits = pad_token_logits.to(generated_token_ids.device)
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             generated_token_ids, max_length
         )
 
-        generated_logits = torch.tensor(
-            torch.arange(
-                0, self.embed_tokens_size, device=generated_token_ids.device
-            ).unsqueeze(0) == generated_token_ids,
-            dtype=torch.float,
-            device=generated_token_ids.device
-        )
+        generated_logits = (torch.arange(0, self.embed_tokens_size).unsqueeze(0) == generated_token_ids).float().clone().detach()
+        generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
         # generated_embeddings = generated_logits @ self.embed_tokens.weight
 
