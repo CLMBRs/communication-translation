@@ -24,6 +24,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
+from ipdb import set_trace as bp
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -505,7 +506,7 @@ class BartGumbelEncoder(nn.Module):
         # check attention mask and invert
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
-        inputs_embeds = input_embeds if input_embeds else self.embed_tokens(input_ids)
+        inputs_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
         inputs_embeds = inputs_embeds * self.embed_scale
         embed_pos = self.embed_positions(input_ids)
         x = inputs_embeds + embed_pos
@@ -1102,7 +1103,6 @@ class BartModel(PretrainedBartModel):
             decoder_padding_mask, causal_mask = None, None
 
         assert decoder_input_ids is not None
-
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
