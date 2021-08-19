@@ -902,6 +902,8 @@ class Attention(nn.Module):
             )
 
         src_len = k.size(1)
+        # if key_padding_mask is not None and key_padding_mask.shape != (bsz, src_len):
+        #     bp()
         assert key_padding_mask is None or key_padding_mask.shape == (
             bsz, src_len
         )
@@ -2211,7 +2213,15 @@ class BartForConditionalGeneration(PretrainedBartModel):
             generated_token_ids, max_length
         )
 
-        generated_logits = (torch.arange(0, self.embed_tokens_size).unsqueeze(0) == generated_token_ids).float().clone().detach()
+        # bp()
+        # generated_logits = torch.tensor(
+        #     torch.arange(
+        #         0, self.embed_tokens_size, device=generated_token_ids.device
+        #     ).unsqueeze(0) == generated_token_ids,
+        #     dtype=torch.float,
+        #     device=generated_token_ids.device
+        # )
+        generated_logits = (torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0) == generated_token_ids).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
         # generated_embeddings = generated_logits @ self.embed_tokens.weight

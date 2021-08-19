@@ -2,7 +2,7 @@
 #SBATCH --output=slurm_logs/slurm-%A-%a.out
 #SBATCH --error=slurm_logs/slurm-%A-%a.err
 #SBATCH --partition=gpu
-#SBATCH --job-name=ec
+#SBATCH --job-name=ec-noBT
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=2
 #SBATCH --mem=164g
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=8
 ##SBATCH --signal=B:USR1@60 #Signal is sent to batch script itself
 ##SBATCH --open-mode=append
-#SBATCH --time=12:00:00
+#SBATCH --time=36:00:00
 #SBATCH --array=0
 
 trap_handler () {
@@ -37,7 +37,9 @@ SAVE_ROOT=${PROJ_DIR}/Output
 mkdir -p $SAVE_ROOT
 pwd
 
-SAVE=${SAVE_ROOT}/mbart_bt_en+zh_lr25e-6_ec_distractor7_lr1e-5_num_games30_maxstep_4096
+SAVE=${SAVE_ROOT}/mbart_BTen+zh_lr8.0e-6_7distractors
+# SAVE=${SAVE_ROOT}/mbart_noBT_lr1e-5_7distractors
 mkdir -p ${SAVE}
 cp $0 ${SAVE}/run.sh
+cp Configs/mbart_ec.yml ${SAVE}/
 ./RunScripts/run_ec.sh mbart_ec.yml
