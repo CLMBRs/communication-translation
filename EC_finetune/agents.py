@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
+from ipdb import set_trace as bp
 
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
@@ -70,7 +71,7 @@ class CommunicationAgent(Module):
         Args:
             batch: a dictionary of Tensors and other data. Must obligatorily
                 include `sender_image`, the embedding of the image from which to
-                generate the message. The rest of the batch is passed to the 
+                generate the message. The rest of the batch is passed to the
                 sender as kwargs
         """
 
@@ -152,10 +153,11 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # Create the padding mask
         lengths = message_dict['message_lengths'].tolist()
+        # bp()
         batch_size = len(lengths)
-        padding_mask = np.ones((batch_size, self.max_seq_length))
+        padding_mask = np.ones((batch_size, min(max(lengths), self.max_seq_length)))
         for seq in range(batch_size):
-            padding_mask[seq][lengths[seq]:self.max_seq_length] = 0
+            padding_mask[seq][lengths[seq]:min(max(lengths), self.max_seq_length)] = 0
         padding_mask = torch.tensor(padding_mask).to(
             message_dict['message_ids'].device
         )
@@ -206,7 +208,7 @@ class ImageCaptionGrounder(CommunicationAgent):
         Returns:
             a dictionary of results with the following keys:
                 `loss` (Tensor): the combination of the mean cross-entropy loss
-                    for generating the caption and the cross-entropy for 
+                    for generating the caption and the cross-entropy for
                     selecting the correct image
                 `caption generation loss` (float): the value of the loss for
                     caption generation

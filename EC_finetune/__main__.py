@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import os
+import csv
 import random
 import sys
 from collections import defaultdict
@@ -22,7 +23,7 @@ from EC_finetune.receivers import MBartReceiver, RnnReceiver
 from EC_finetune.dataloader import (
     CaptionTrainingDataset, XLImageIdentificationDataset
 )
-
+CSV_HEADERS = ["epoch", "global step", "mode", "loss", "accuracy", "mean_length"]
 
 def set_seed(args):
     random.seed(args.seed)
@@ -95,8 +96,6 @@ def save(args, model, logger):
 
     logger.info("Saving model to %s", args.output_dir)
 
-    # Save the general part of the model
-    torch.save(model.state_dict(), args.output_dir + '/model.pt')
     # Good practice: save your training arguments together
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
@@ -111,13 +110,17 @@ def save(args, model, logger):
             if hasattr(model.sender.sender, "module") else model.sender.sender
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
+    else:
+        # Save the general part of the model
+        torch.save(model.state_dict(), args.output_dir + '/model.pt')
 
 
-def train(args, model, dataloader, valid_dataloader, params, logger):
+def train(args, model, dataloader, valid_dataloader, params, logger, csv_file):
     optimizer = torch.optim.Adam(params, lr=args.lr)
     global_step = 0
     best_loss = np.inf
     checkpoint_stats = defaultdict(list)
+    gradient_count = 0
 
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
@@ -135,9 +138,12 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             loss = train_return_dict['loss']
             optimizer.zero_grad()
             loss.backward()
+            gradient_count += 1
             nn.utils.clip_grad_norm_(params, args.grad_clip)
-            optimizer.step()
-            global_step += 1
+            if gradient_count >= args.gradient_accumulation_steps:
+                optimizer.step()
+                gradient_count = 0
+                global_step += 1
 
             train_return_dict['loss'] = train_return_dict['loss'].item()
             for key, value in train_return_dict.items():
@@ -151,6 +157,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                 checkpoint_average_stats['mode'] = 'train'
                 for key, value in checkpoint_stats.items():
                     checkpoint_average_stats[key] = round(mean(value), 4)
+                csv_file.writerow(checkpoint_average_stats)
                 logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
 
@@ -159,6 +166,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     results, output_ids, printout = evaluate(
                         args, model, valid_dataloader, epoch, global_step
                     )
+                    csv_file.writerow(results)
                     # Output evaluation statistics
                     logger.info(printout)
                     cur_acc = float(results['accuracy'])
@@ -199,11 +207,17 @@ def main():
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file))
+        args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
 
     # set random seed
     set_seed(args)
 
+    # set csv output file
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+    csv_file = open(f"{args.output_dir}/log.out", mode='w')
+    csv_file = csv.DictWriter(csv_file, fieldnames=CSV_HEADERS)
+    csv_file.writeheader()
     logging.info('Entering main run script')
 
     # Setup CUDA, GPU
@@ -228,14 +242,15 @@ def main():
     logger.info('Configuration:')
     print(args)
 
-    tokenizer = MBartTokenizer.from_pretrained(args.model_string)
+    tokenizer = MBartTokenizer.from_pretrained(args.model_name)
+    tokenizer.save_pretrained(args.output_dir)
     vocab = tokenizer.get_vocab()
     args.padding_index = vocab['<pad>']
     args.vocab_size = len(vocab)
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
-    if args.model_string == 'rnn':
+    if args.model_name == 'rnn':
         comm_model = nn.GRU(
             input_size=args.hidden_dim,
             hidden_size=args.hidden_dim,
@@ -248,7 +263,7 @@ def main():
         receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
     else:
         comm_model = MBartForConditionalGeneration.from_pretrained(
-            args.model_string
+            args.model_name
         )
         sender = MBartSender(
             comm_model,
@@ -313,7 +328,7 @@ def main():
     if args.do_train:
         train(
             args, model, training_dataloader, valid_dataloader,
-            model.parameters(), logger
+            model.parameters(), logger, csv_file
         )
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'

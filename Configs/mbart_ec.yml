@@ -1,5 +1,6 @@
 # Model:
-model_name: mbart
+model_name: Models/mbart_bt_en+zh_lr25e-6
+# model_name: Models/mbart-large-cc25
 image_dim: 2048
 hidden_dim: 512
 bidirectional: false # RNN-specific
@@ -14,7 +15,7 @@ no_share_bhd: false
 
 # Generation
 decode_how: beam
-beam_width: 12
+beam_width: 5
 temperature: 1.0
 temp: 1.0
 hard: false
@@ -29,13 +30,16 @@ do_eval: true # whether to do eval after training
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 300
-lr: 1.0e-5
-batch_size: 16
+max_global_step: 8192
+# lr: 1.0e-5
+lr: 8.0e-6
+# lr: 5.0e-6
+batch_size: 8
+gradient_accumulation_steps: 2
 grad_clip: 1.0
 no_terminal: false
 no_write: false
-valid_every: 50
+valid_every: 512
 print_every: 10
 target_acc: 85.0
 stats_to_print: ['loss', 'accuracy', 'caption generation loss', 'image selection loss', 'mean_length']
@@ -45,13 +49,15 @@ num_distractors_train: 7
 num_distractors_valid: 7
 
 # Loading and saving data:
-train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
-valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
-train_images: ./Data/Coco/captioning/train_images
-valid_images: ./Data/Coco/captioning/valid_images
+# train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
+# valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
+train_images: ./Data/ec_finetuning/images_train
+valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
 # good practice: set the output_dir name the same as the parameter file name
-output_dir: Output/mbart_captions
+# output_dir: Output/mbart_bt_en+zh_lr25e-6_ec_distractor7_lr1e-5_num_games30_maxstep_4096
+# output_dir: Output/mbart_noBT_lr2e-5_7distractors
+output_dir: Output/mbart_BTen+zh_lr8.0e-6_7distractors
 save_output_txt: true
 
 # Other (we may choose to delete these later):

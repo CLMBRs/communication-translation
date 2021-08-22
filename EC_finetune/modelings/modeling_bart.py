@@ -24,6 +24,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
+from ipdb import set_trace as bp
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -505,7 +506,7 @@ class BartGumbelEncoder(nn.Module):
         # check attention mask and invert
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
-        inputs_embeds = input_embeds if input_embeds else self.embed_tokens(input_ids)
+        inputs_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
         inputs_embeds = inputs_embeds * self.embed_scale
         embed_pos = self.embed_positions(input_ids)
         x = inputs_embeds + embed_pos
@@ -901,6 +902,8 @@ class Attention(nn.Module):
             )
 
         src_len = k.size(1)
+        # if key_padding_mask is not None and key_padding_mask.shape != (bsz, src_len):
+        #     bp()
         assert key_padding_mask is None or key_padding_mask.shape == (
             bsz, src_len
         )
@@ -1102,7 +1105,6 @@ class BartModel(PretrainedBartModel):
             decoder_padding_mask, causal_mask = None, None
 
         assert decoder_input_ids is not None
-
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
@@ -2203,24 +2205,24 @@ class BartForConditionalGeneration(PretrainedBartModel):
         pad_token_embed = self.model.shared(
             torch.tensor(pad_token_id, device=generated_token_ids.device)
         )
-        pad_token_logits = torch.tensor(
-            torch.arange(0, self.embed_tokens_size) == pad_token_id,
-            dtype=torch.float,
-            device=generated_token_ids.device
-        )
+        pad_token_logits = (torch.arange(0, self.embed_tokens_size) == pad_token_id).float().clone().detach()
+        pad_token_logits = pad_token_logits.to(generated_token_ids.device)
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             generated_token_ids, max_length
         )
 
-        generated_logits = torch.tensor(
-            torch.arange(
-                0, self.embed_tokens_size, device=generated_token_ids.device
-            ).unsqueeze(0) == generated_token_ids,
-            dtype=torch.float,
-            device=generated_token_ids.device
-        )
+        # bp()
+        # generated_logits = torch.tensor(
+        #     torch.arange(
+        #         0, self.embed_tokens_size, device=generated_token_ids.device
+        #     ).unsqueeze(0) == generated_token_ids,
+        #     dtype=torch.float,
+        #     device=generated_token_ids.device
+        # )
+        generated_logits = (torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0) == generated_token_ids).float().clone().detach()
+        generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
         # generated_embeddings = generated_logits @ self.embed_tokens.weight
 

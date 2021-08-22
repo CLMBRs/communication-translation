@@ -23,6 +23,12 @@ Data/cc/si.txt
 Data/cc/vi.txt
 Data/cc/zh-Hans.txt
 Data/cc/*.txt.xz
+Data/captioning/
+Data/coco
+Data/ec_finetuning/
+slurm_logs/
+
+Models/
 
 
 Output/

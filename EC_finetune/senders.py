@@ -153,7 +153,7 @@ class MBartSender(Sender):
 
             # Get the sender model output and return
             output = self.sender.gumbel_generate(
-                input_images=image_hidden,
+                input_embeds=image_hidden,
                 num_beams=1,
                 max_length=self.seq_len,
                 **kwargs
