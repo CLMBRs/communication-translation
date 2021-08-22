@@ -114,6 +114,7 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
         reference_dataset, batch_size=args.eval_batch_size
     )
     num_batch = ceil(args.validation_set_size / args.eval_batch_size)
+    num_batch = min(num_batch, len(dataloader) - 1)
 
     for i, batch in enumerate(
         tqdm(
@@ -284,7 +285,7 @@ def main(args, backtranslation_pack):
                     max_length=target_max_len,
                     lang_mask=target_vocab_constraint
                 )
-            elif target_secondary_constraint:
+            elif target_secondary_constraint is not None:
                 translated_tokens = source2target_model.generate(
                     **source_batch,
                     decoder_start_token_id=tokenizer.
@@ -482,12 +483,20 @@ if __name__ == "__main__":
             threshold=args.secondary_threshold,
             mode='tensor'
         )
+        logger.info(
+            f"Total secondary {args.lang1_id} tokens:"
+            f" {torch.sum(torch.isfinite(lang1_secondary_constraint))}"
+        )
         lang1_secondary_constraint = lang1_secondary_constraint.to(device)
         lang2_secondary_constraint = vocab_constraint_from_file(
             tokenizer=tokenizer,
             file=args.lang2_vocab_constrain_file,
             threshold=args.secondary_threshold,
             mode='tensor'
+        )
+        logger.info(
+            f"Total secondary {args.lang2_id} tokens:"
+            f" {torch.sum(torch.isfinite(lang2_secondary_constraint))}"
         )
         lang2_secondary_constraint = lang2_secondary_constraint.to(device)
     else:
