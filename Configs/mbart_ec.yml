@@ -1,6 +1,6 @@
 # Model:
-model_name: Models/mbart_bt_en+zh_lr25e-6
-# model_name: Models/mbart-large-cc25
+# model_name: Models/mbart_bt_en+zh_lr25e-6
+model_name: Models/mbart-large-cc25
 image_dim: 2048
 hidden_dim: 512
 bidirectional: false # RNN-specific
@@ -25,17 +25,15 @@ TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 # Train and eval:
 seed: 42
 mode: emergent_communication
-do_train: true # control whether we train
+do_train: true # true # control whether we train
 do_eval: true # whether to do eval after training
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
 max_global_step: 8192
-# lr: 1.0e-5
-lr: 8.0e-6
-# lr: 5.0e-6
+lr: 1.0e-5
 batch_size: 8
-gradient_accumulation_steps: 2
+gradient_accumulation_steps: 1
 grad_clip: 1.0
 no_terminal: false
 no_write: false
@@ -55,9 +53,7 @@ train_images: ./Data/ec_finetuning/images_train
 valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
 # good practice: set the output_dir name the same as the parameter file name
-# output_dir: Output/mbart_bt_en+zh_lr25e-6_ec_distractor7_lr1e-5_num_games30_maxstep_4096
-# output_dir: Output/mbart_noBT_lr2e-5_7distractors
-output_dir: Output/mbart_BTen+zh_lr8.0e-6_7distractors
+output_dir: Output/accGrad1_mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
 save_output_txt: true
 
 # Other (we may choose to delete these later):

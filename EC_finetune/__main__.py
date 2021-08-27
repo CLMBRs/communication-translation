@@ -15,6 +15,7 @@ import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
+from ipdb import set_trace as bp
 
 from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
@@ -36,9 +37,11 @@ def set_seed(args):
 def ids_to_texts(output_ids, tokenizer):
     text = []
     # concatnate batch-wise ids
-    output_ids = np.concatenate(np.array(output_ids), axis=0)
-    for i in output_ids:
-        text.append(tokenizer.decode(i) + '\n')
+    # output_ids = np.concatenate(np.array(output_ids), axis=0)  # Sometimes give ValueError: could not broadcast input array from shape (8,64) into shape (8,)
+    for batch in output_ids:
+        for i in batch:
+            # bp()
+            text.append(tokenizer.decode(i) + '\n')
     return text
 
 
@@ -99,6 +102,8 @@ def save(args, model, logger):
     # Good practice: save your training arguments together
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+    # Save the general part of the model
+    torch.save(model.state_dict(), args.output_dir + '/model.pt')
 
     # For pretrained models, provide extra saving strategy
     if args.save_pretrain_seperately:
@@ -110,17 +115,16 @@ def save(args, model, logger):
             if hasattr(model.sender.sender, "module") else model.sender.sender
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
-    else:
-        # Save the general part of the model
-        torch.save(model.state_dict(), args.output_dir + '/model.pt')
 
 
-def train(args, model, dataloader, valid_dataloader, params, logger, csv_file):
+def train(args, model, dataloader, valid_dataloader, params, logger):
     optimizer = torch.optim.Adam(params, lr=args.lr)
     global_step = 0
     best_loss = np.inf
     checkpoint_stats = defaultdict(list)
     gradient_count = 0
+    train_csv_data = []
+    val_csv_data = []
 
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
@@ -157,7 +161,12 @@ def train(args, model, dataloader, valid_dataloader, params, logger, csv_file):
                 checkpoint_average_stats['mode'] = 'train'
                 for key, value in checkpoint_stats.items():
                     checkpoint_average_stats[key] = round(mean(value), 4)
-                csv_file.writerow(checkpoint_average_stats)
+                # bp()
+                with open(f"{args.output_dir}/log.out", 'a') as f:
+                    csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+                    csv_file.writerow(checkpoint_average_stats)
+                train_csv_data.append(checkpoint_stats)
+
                 logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
 
@@ -166,7 +175,10 @@ def train(args, model, dataloader, valid_dataloader, params, logger, csv_file):
                     results, output_ids, printout = evaluate(
                         args, model, valid_dataloader, epoch, global_step
                     )
-                    csv_file.writerow(results)
+                    val_csv_data.append(results)
+                    with open(f"{args.output_dir}/log.out", 'a') as f:
+                        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+                        csv_file.writerow(results)
                     # Output evaluation statistics
                     logger.info(printout)
                     cur_acc = float(results['accuracy'])
@@ -183,6 +195,15 @@ def train(args, model, dataloader, valid_dataloader, params, logger, csv_file):
 
             if global_step >= args.max_global_step:
                 return global_step
+    print(f"Length of train data logs: {len(train_csv_data)}")
+    print(f"Length of val data logs: {len(val_csv_data)}")
+    # with open(f"{args.output_dir}/log.out", 'w') as f:
+    #     csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+    #     csv_file.writeheader()
+    #     for data in train_csv_data:
+    #         csv_file.writerow(data)
+    #     for data in val_csv_data:
+    #         csv_file.writerow(data)
 
 
 def main():
@@ -215,9 +236,10 @@ def main():
     # set csv output file
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-    csv_file = open(f"{args.output_dir}/log.out", mode='w')
-    csv_file = csv.DictWriter(csv_file, fieldnames=CSV_HEADERS)
-    csv_file.writeheader()
+    with open(f"{args.output_dir}/log.out", 'w') as f:
+        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+        csv_file.writeheader()
+    # bp()
     logging.info('Entering main run script')
 
     # Setup CUDA, GPU
@@ -328,11 +350,13 @@ def main():
     if args.do_train:
         train(
             args, model, training_dataloader, valid_dataloader,
-            model.parameters(), logger, csv_file
+            model.parameters(), logger
         )
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
+        # logger.info("Evaluate the following checkpoint at: %s", args.output_dir)
+        # model.from_pretrained(args.output_dir)
         model.load_state_dict(torch.load(checkpoint))
         model.to(args.device)
         model.eval()

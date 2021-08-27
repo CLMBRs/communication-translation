@@ -37,8 +37,8 @@ SAVE_ROOT=${PROJ_DIR}/Output
 mkdir -p $SAVE_ROOT
 pwd
 
-SAVE=${SAVE_ROOT}/mbart_BTen+zh_lr8.0e-6_7distractors
-# SAVE=${SAVE_ROOT}/mbart_noBT_lr1e-5_7distractors
+# SAVE=${SAVE_ROOT}/mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
+SAVE=${SAVE_ROOT}/accGrad1_mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
 mkdir -p ${SAVE}
 cp $0 ${SAVE}/run.sh
 cp Configs/mbart_ec.yml ${SAVE}/
