@@ -1,0 +1,41 @@
+# Path to load model for generation
+model_path: facebook/mbart-large-cc25
+
+# training config
+num_steps: 8192
+lr: 2.5e-05
+grad_clip: 1.0
+num_warmup_steps: 1024
+schedule: constant_w_warmup
+batch_size: 32
+seed: 42
+n_gpu: 1
+print_every: 64
+do_validation: true
+validate_every: 256
+validation_set_size: 4096
+eval_batch_size: 64
+val_metric_name: bleu
+num_constrained_steps: 2048
+vocab_constraint_threshold: 0.85
+secondary_threshold: 0.98
+early_stop_start_time: 8192
+
+# script to load validation datasets
+val_dataset_script: BackTranslation/wmt19/wmt19.py
+lang_pair: de-en
+models_shared: true
+output_dir: Output/bt_en-de_baseline/
+
+# data config
+data_dir: ./Data/cc
+output_data_filename: bt_en+de.csv
+lang1_data_file: en_500k.txt
+lang1_id: en
+lang1_max_len: 64
+lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+
+lang2_data_file: de_500k.txt
+lang2_id: de
+lang2_max_len: 64
+lang2_vocab_constrain_file: ./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
