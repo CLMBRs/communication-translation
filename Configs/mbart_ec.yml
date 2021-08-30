@@ -23,7 +23,7 @@ max_seq_length: 64
 TransferH: false #switch to hard gumbel after the model reaches target accuracy.
 
 # Train and eval:
-seed: 42
+seed: 44
 mode: emergent_communication
 do_train: true # true # control whether we train
 do_eval: true # whether to do eval after training
@@ -33,7 +33,7 @@ num_games: 30 # Upper bound of the num of epochs
 max_global_step: 8192
 lr: 1.0e-5
 batch_size: 8
-gradient_accumulation_steps: 1
+gradient_accumulation_steps: 2
 grad_clip: 1.0
 no_terminal: false
 no_write: false
@@ -53,7 +53,7 @@ train_images: ./Data/ec_finetuning/images_train
 valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
 # good practice: set the output_dir name the same as the parameter file name
-output_dir: Output/accGrad1_mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
+output_dir: Output/accGrad2_mbart_noBT_lr1.0e-5_7distractors_maxstep8192_seed44
 save_output_txt: true
 
 # Other (we may choose to delete these later):

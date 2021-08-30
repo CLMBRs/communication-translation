@@ -38,7 +38,8 @@ mkdir -p $SAVE_ROOT
 pwd
 
 # SAVE=${SAVE_ROOT}/mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
-SAVE=${SAVE_ROOT}/accGrad1_mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
+dir_name=accGrad2_mbart_noBT_lr1.0e-5_7distractors_maxstep8192_seed44
+SAVE=${SAVE_ROOT}/${dir_name}
 mkdir -p ${SAVE}
 cp $0 ${SAVE}/run.sh
 cp Configs/mbart_ec.yml ${SAVE}/
