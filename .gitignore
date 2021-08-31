@@ -29,8 +29,3 @@ Data/ec_finetuning/
 slurm_logs/
 
 Models/
-
-
-Output/
-UMT_data/
-UMT_datasentence_level/
