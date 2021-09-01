@@ -8,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
-from ipdb import set_trace as bp
 
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
@@ -153,7 +152,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # Create the padding mask
         lengths = message_dict['message_lengths'].tolist()
-        # bp()
         batch_size = len(lengths)
         padding_mask = np.ones((batch_size, min(max(lengths), self.max_seq_length)))
         for seq in range(batch_size):

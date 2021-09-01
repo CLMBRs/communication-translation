@@ -24,7 +24,6 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
-from ipdb import set_trace as bp
 
 from transformers.activations import ACT2FN
 from transformers.file_utils import (
@@ -1835,7 +1834,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             if beam_scorer.is_done:
                 break
-        # bp()
         decoded = beam_scorer.finalize(
             input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id
         )
