@@ -77,19 +77,16 @@ def save_model(args, backtranslation_pack, saved_model_name):
 
     # Save the general part of the model
     if args.models_shared:
-        torch.save(
-            source2target_model.state_dict(),
+        source2target_model.save_pretrained(
             os.path.join(args.output_dir, saved_model_name)
         )
     else:
-        torch.save(
-            source2target_model.state_dict(),
+        source2target_model.save_pretrained(
             os.path.join(
                 args.output_dir, f"{source_id}2{target_id}", saved_model_name
             )
         )
-        torch.save(
-            target2source_model.state_dict(),
+        target2source_model.save_pretrained(
             os.path.join(
                 args.output_dir, f"{target_id}2{source_id}", saved_model_name
             )
@@ -204,7 +201,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
         # and save the model
         patience_count = 0
         best_score = mean_score
-        save_model(args, backtranslation_pack, saved_model_name="best.pt")
+        save_model(args, backtranslation_pack, saved_model_name="best")
         source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
         target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
         source_file = os.path.join(args.output_dir, source_filename)
@@ -366,7 +363,7 @@ def main(args, backtranslation_pack):
                     )
                 )
 
-    save_model(args, backtranslation_pack, saved_model_name="last.pt")
+    save_model(args, backtranslation_pack, saved_model_name="last")
 
 
 BackTranslationPack = namedtuple(
