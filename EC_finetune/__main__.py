@@ -129,6 +129,29 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
         for batch in epoch_iterator:
+            if global_step % args.valid_every == 0 and gradient_count == 0:
+                with torch.no_grad():
+                    results, output_ids, printout = evaluate(
+                        args, model, valid_dataloader, epoch, global_step
+                    )
+                    val_csv_data.append(results)
+                    with open(f"{args.output_dir}/log.out", 'a') as f:
+                        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+                        csv_file.writerow(results)
+                    # Output evaluation statistics
+                    logger.info(printout)
+                    cur_acc = float(results['accuracy'])
+                    cur_loss = float(results['loss'])
+                    if cur_loss < best_loss:
+                        best_loss = cur_loss
+                        save(args, model, logger)
+                        print(
+                            f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
+                            f" Saved to Path: {args.output_dir}"
+                        )
+                        if cur_acc > args.target_acc and args.TransferH:
+                            args.hard = True
+
             model.train()
             # Move data to the GPU
             batch['sender_image'] = batch['sender_image'].to(args.device)
@@ -154,7 +177,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                 if key in args.stats_to_print:
                     checkpoint_stats[key].append(value)
 
-            if global_step % args.print_every == 0:
+            if global_step % args.print_every == 0 and gradient_count == 0:
                 checkpoint_average_stats = {}
                 checkpoint_average_stats['epoch'] = epoch
                 checkpoint_average_stats['global step'] = global_step
@@ -169,29 +192,6 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
                 logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
-
-            if global_step % args.valid_every == 0:
-                with torch.no_grad():
-                    results, output_ids, printout = evaluate(
-                        args, model, valid_dataloader, epoch, global_step
-                    )
-                    val_csv_data.append(results)
-                    with open(f"{args.output_dir}/log.out", 'a') as f:
-                        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
-                        csv_file.writerow(results)
-                    # Output evaluation statistics
-                    logger.info(printout)
-                    cur_acc = float(results['accuracy'])
-                    cur_loss = float(results['loss'])
-                    if cur_loss < best_loss:
-                        best_loss = cur_loss
-                        save(args, model, logger)
-                        print(
-                            f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
-                            f" Saved to Path: {args.output_dir}"
-                        )
-                        if cur_acc > args.target_acc and args.TransferH:
-                            args.hard = True
 
             if global_step >= args.max_global_step:
                 return global_step
