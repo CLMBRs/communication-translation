@@ -112,11 +112,21 @@ def main():
         f" target language code: {args.target_code}"
     )
 
-    source_dataset = load_dataset(
-        "text", data_files=os.path.join(args.data_dir, args.source_data_file)
-    )
+    if args.dataset_script:
+        source_dataset = load_dataset(
+            args.dataset_script, args.lang_pair, split=args.dataset_split
+        )
+    elif args.source_data_file:
+        source_dataset = load_dataset(
+            "text", data_files=os.path.join(args.data_dir, args.source_data_file)
+        )
+    else:
+        raise ValueError(
+            "Configuration must include either `dataset_script` or"
+            " `source_data_file` with which to load the source data"
+        )
     source_dataloader = DataLoader(
-        source_dataset, batch_size=args.batch_size, shuffle=True
+        source_dataset, batch_size=args.batch_size, shuffle=False
     )
 
     args.translation_file = os.path.join(
