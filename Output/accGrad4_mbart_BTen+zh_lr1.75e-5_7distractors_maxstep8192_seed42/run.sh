@@ -38,7 +38,7 @@ mkdir -p $SAVE_ROOT
 pwd
 
 # SAVE=${SAVE_ROOT}/mbart_BTen+zh_lr1.0e-5_7distractors_maxstep8192_again
-dir_name=accGrad4_mbart_BTen+zh_lr2.0e-5_7distractors_maxstep8192_seed42
+dir_name=accGrad4_mbart_BTen+zh_lr1.75e-5_7distractors_maxstep8192_seed42
 SAVE=${SAVE_ROOT}/${dir_name}
 mkdir -p ${SAVE}
 cp $0 ${SAVE}/run.sh
