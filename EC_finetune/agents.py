@@ -42,7 +42,13 @@ class CommunicationAgent(Module):
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
             self.beholder1 = self.beholder
-            self.beholder2 = self.beholder1.clone()
+            self.beholder2 = Beholder(
+                image_dim=args.image_dim,
+                hidden_dim=args.hidden_dim,
+                dropout=args.dropout,
+                unit_norm=args.unit_norm,
+                two_ffwd=args.two_ffwd
+            )
         else:
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
