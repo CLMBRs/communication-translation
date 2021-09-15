@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --job-name=ec-noBT
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --mem=164g
 #SBATCH --gres=gpu:v100:1
 #SBATCH --cpus-per-task=8
