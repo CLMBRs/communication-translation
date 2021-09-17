@@ -159,9 +159,13 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # Create the padding mask
         lengths = message_dict['message_lengths'].tolist()
         batch_size = len(lengths)
-        padding_mask = np.ones((batch_size, min(max(lengths), self.max_seq_length)))
+        padding_mask = np.ones(
+            (batch_size, min(max(lengths), self.max_seq_length))
+        )
         for seq in range(batch_size):
-            padding_mask[seq][lengths[seq]:min(max(lengths), self.max_seq_length)] = 0
+            padding_mask[seq][
+                lengths[seq]:min(max(lengths), self.max_seq_length)
+            ] = 0
         padding_mask = torch.tensor(padding_mask).to(
             message_dict['message_ids'].device
         )

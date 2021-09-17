@@ -24,8 +24,14 @@ from EC_finetune.dataloader import (
     CaptionTrainingDataset, XLImageIdentificationDataset
 )
 
-EC_CSV_HEADERS = ["mode", "epoch", "global step", "loss", "accuracy", "mean_length"]
-CAPTIONING_CSV_HEADERS = ["mode", "epoch", "global step", "loss", "caption generation loss", "image selection loss", "accuracy"]
+EC_CSV_HEADERS = [
+    "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
+]
+CAPTIONING_CSV_HEADERS = [
+    "mode", "epoch", "global step", "loss", "caption generation loss",
+    "image selection loss", "accuracy"
+]
+
 
 def set_seed(args):
     random.seed(args.seed)
@@ -38,10 +44,11 @@ def set_seed(args):
 def ids_to_texts(output_ids, tokenizer):
     text = []
     # concatnate batch-wise ids
-    # output_ids = np.concatenate(np.array(output_ids), axis=0)  # Sometimes give ValueError: could not broadcast input array from shape (8,64) into shape (8,)
+    # Sometimes give ValueError: could not broadcast input array from shape
+    # (8,64) into shape (8,)
+    # output_ids = np.concatenate(np.array(output_ids), axis=0)
     for batch in output_ids:
         for i in batch:
-            # bp()
             text.append(tokenizer.decode(i) + '\n')
     return text
 
@@ -137,7 +144,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     )
                     val_csv_data.append(results)
                     with open(f"{args.output_dir}/log.csv", 'a') as f:
-                        csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
+                        csv_file = csv.DictWriter(
+                            f, fieldnames=args.csv_headers
+                        )
                         csv_file.writerow(results)
                     # Output evaluation statistics
                     logger.info(printout)
@@ -231,7 +240,10 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    args.csv_headers = CAPTIONING_CSV_HEADERS if args.mode == 'image_grounding' else EC_CSV_HEADERS
+    args.csv_headers = (
+        CAPTIONING_CSV_HEADERS if args.mode == 'image_grounding'
+        else EC_CSV_HEADERS
+    )
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
@@ -351,8 +363,6 @@ def main():
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
-        # logger.info("Evaluate the following checkpoint at: %s", args.output_dir)
-        # model.from_pretrained(args.output_dir)
         model.load_state_dict(torch.load(checkpoint))
         model.to(args.device)
         model.eval()
