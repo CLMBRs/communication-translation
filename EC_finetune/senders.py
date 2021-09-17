@@ -110,7 +110,7 @@ class MBartSender(Sender):
         batch_size = image_hidden.size(0)
         assert len(image_hidden.shape) == 2
         # (batch_size, max_sequence_length, image_hidden_dim)
-        image_hidden = image_hidden.unsqueeze(1).repeat(1, self.seq_len, 1)
+        image_hidden = image_hidden.unsqueeze(1)
 
         # Embed the image hidden states to the sender's embedding dim
         # (batch_size, max_sequence_length, embedding_dim)
