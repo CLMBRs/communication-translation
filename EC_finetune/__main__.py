@@ -15,7 +15,6 @@ import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
-from ipdb import set_trace as bp
 
 from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
@@ -24,7 +23,9 @@ from EC_finetune.receivers import MBartReceiver, RnnReceiver
 from EC_finetune.dataloader import (
     CaptionTrainingDataset, XLImageIdentificationDataset
 )
-CSV_HEADERS = ["epoch", "global step", "mode", "loss", "accuracy", "mean_length"]
+
+EC_CSV_HEADERS = ["mode", "epoch", "global step", "loss", "accuracy", "mean_length"]
+CAPTIONING_CSV_HEADERS = ["mode", "epoch", "global step", "loss", "caption generation loss", "image selection loss", "accuracy"]
 
 def set_seed(args):
     random.seed(args.seed)
@@ -135,8 +136,8 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                         args, model, valid_dataloader, epoch, global_step
                     )
                     val_csv_data.append(results)
-                    with open(f"{args.output_dir}/log.out", 'a') as f:
-                        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+                    with open(f"{args.output_dir}/log.csv", 'a') as f:
+                        csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
                         csv_file.writerow(results)
                     # Output evaluation statistics
                     logger.info(printout)
@@ -184,9 +185,8 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                 checkpoint_average_stats['mode'] = 'train'
                 for key, value in checkpoint_stats.items():
                     checkpoint_average_stats[key] = round(mean(value), 4)
-                # bp()
-                with open(f"{args.output_dir}/log.out", 'a') as f:
-                    csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+                with open(f"{args.output_dir}/log.csv", 'a') as f:
+                    csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
                     csv_file.writerow(checkpoint_average_stats)
                 train_csv_data.append(checkpoint_stats)
 
@@ -195,15 +195,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             if global_step >= args.max_global_step:
                 return global_step
+
     print(f"Length of train data logs: {len(train_csv_data)}")
     print(f"Length of val data logs: {len(val_csv_data)}")
-    # with open(f"{args.output_dir}/log.out", 'w') as f:
-    #     csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
-    #     csv_file.writeheader()
-    #     for data in train_csv_data:
-    #         csv_file.writerow(data)
-    #     for data in val_csv_data:
-    #         csv_file.writerow(data)
 
 
 def main():
@@ -236,10 +230,12 @@ def main():
     # set csv output file
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
-    with open(f"{args.output_dir}/log.out", 'w') as f:
-        csv_file = csv.DictWriter(f, fieldnames=CSV_HEADERS)
+
+    args.csv_headers = CAPTIONING_CSV_HEADERS if args.mode == 'image_grounding' else EC_CSV_HEADERS
+    with open(f"{args.output_dir}/log.csv", 'w') as f:
+        csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
-    # bp()
+
     logging.info('Entering main run script')
 
     # Setup CUDA, GPU
