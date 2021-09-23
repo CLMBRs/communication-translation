@@ -1,15 +1,16 @@
 # Path to load model for generation
-model_path: backtranslation/path.pt
+model_path: Output/bt_en-zh_baseline/best.pt
 seed: 1
+n_gpu: 1
 batch_size: 128
 output_dir: Output/translated/
-translation_filename: en.val.zh
+translation_filename: zh-en.en.test.zh
 
 # data config
-data_dir: ./Data/
-source_data_file: en.val
+dataset_script: Backtranslation/wmt19/wmt19.py
+lang_pair: zh-en
+dataset_split: test
 source_id: en
 source_max_len: 64
-
 target_id: zh
 target_max_len: 64

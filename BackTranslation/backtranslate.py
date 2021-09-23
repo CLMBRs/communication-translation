@@ -70,6 +70,7 @@ def write_validation_splits(args, source_id, target_id):
 
 
 def save_model(args, backtranslation_pack, saved_model_name):
+    tokenizer = backtranslation_pack.tokenizer
     source_meta, target_meta = backtranslation_pack.metas
     source2target_model, target2source_model = backtranslation_pack.models
     source_id, _, _ = list(source_meta)
@@ -80,18 +81,21 @@ def save_model(args, backtranslation_pack, saved_model_name):
         source2target_model.save_pretrained(
             os.path.join(args.output_dir, saved_model_name)
         )
+        tokenizer.save_pretrained(
+            os.path.join(args.output_dir, saved_model_name)
+        )
     else:
-        source2target_model.save_pretrained(
-            os.path.join(
-                args.output_dir, f"{source_id}2{target_id}", saved_model_name
-            )
+        s2t_path = os.path.join(
+            args.output_dir, f"{source_id}2{target_id}", saved_model_name
         )
-        target2source_model.save_pretrained(
-            os.path.join(
-                args.output_dir, f"{target_id}2{source_id}", saved_model_name
-            )
+        t2s_path = os.path.join(
+            args.output_dir, f"{target_id}2{source_id}", saved_model_name
         )
-
+        source2target_model.save_pretrained(s2t_path)
+        tokenizer.save_pretrained(s2t_path)
+        target2source_model.save_pretrained(t2s_path)
+        tokenizer.save_pretrained(t2s_path)
+        
 
 def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     reference_dataset = args.val_dataset
@@ -111,7 +115,7 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
         reference_dataset, batch_size=args.eval_batch_size
     )
     num_batch = ceil(args.validation_set_size / args.eval_batch_size)
-    num_batch = min(num_batch, len(dataloader) - 1)
+    num_batch = min(num_batch, len(dataloader))
 
     for i, batch in enumerate(
         tqdm(
@@ -137,6 +141,7 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
         translated_ids = model.generate(
             **source_batch,
             decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+            num_beams=args.num_beams,
             max_length=target_max_len
         )
         translation_str = tokenizer.batch_decode(
@@ -196,11 +201,14 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
     with open(data_file, 'a') as f:
         print(", ".join([str(x) for x in metrics]), file=f)
 
-    if mean_score > best_score or isinf(best_score):
+    if mean_score > best_score:
         # if we encounter a better model, we restart patience counting
         # and save the model
         patience_count = 0
         best_score = mean_score
+        logger.info(
+            f"New best mean score {mean_score} at step {step + 1}, saving"
+        )
         save_model(args, backtranslation_pack, saved_model_name="best")
         source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
         target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
@@ -222,7 +230,7 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
 
 def main(args, backtranslation_pack):
     checkpoint_stats = defaultdict(list)
-    best_score = float("-inf")
+    best_score = 0.0
     patience_count = 0
 
     for step in range(args.num_steps):

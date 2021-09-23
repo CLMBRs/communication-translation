@@ -47,7 +47,7 @@ class MBartForConditionalGeneration(BartForConditionalGeneration):
         "model.encoder.embed_positions.weight",
         "model.decoder.embed_positions.weight",
     ]
-    _keys_to_ignore_on_save = [
-        "model.encoder.embed_positions.weight",
-        "model.decoder.embed_positions.weight",
-    ]
+    #_keys_to_ignore_on_save = [
+    #    "model.encoder.embed_positions.weight",
+    #    "model.decoder.embed_positions.weight",
+    #]

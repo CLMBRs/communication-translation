@@ -5,10 +5,10 @@ import sys
 from argparse import Namespace
 
 import torch
-import tqdm
 import yaml
 from datasets import load_dataset
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
@@ -36,7 +36,9 @@ def translate(
     for batch in tqdm(
         dataloader, desc=f"translate:{args.source_id}->{args.target_id}"
     ):
-        source_string_batch = batch['text']
+        translation_batch = batch["translation"]
+        source_string_batch = translation_batch[args.source_id]
+
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
             src_lang=args.source_code,
@@ -45,9 +47,11 @@ def translate(
             return_tensors="pt"
         )
         source_batch = source_batch.to(args.device)
+
         translated_ids = model.generate(
             **source_batch,
             decoder_start_token_id=tokenizer.lang_code_to_id[args.target_code],
+            num_beams=args.num_beams,
             max_length=args.target_max_len
         )
         translation_str = tokenizer.batch_decode(
@@ -96,10 +100,11 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    tokenizer = MBartTokenizer.from_pretrained(args.model_path)
+    tokenizer = MBartTokenizer.from_pretrained(args.model_path, local_files_only=True)
 
-    model = MBartForConditionalGeneration.from_pretrained(args.model_path)
+    model = MBartForConditionalGeneration.from_pretrained(args.model_path, local_files_only=True)
     model.to(args.device)
+    model.eval()
 
     assert (
         args.source_id in LANG_ID_2_LANGUAGE_CODES and
