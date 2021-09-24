@@ -11,6 +11,7 @@ from statistics import mean
 import numpy as np
 import torch
 import torch.nn as nn
+import transformers
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -126,13 +127,29 @@ def save(args, model, logger):
 
 
 def train(args, model, dataloader, valid_dataloader, params, logger):
-    optimizer = torch.optim.Adam(params, lr=args.lr)
     global_step = 0
     best_loss = np.inf
     checkpoint_stats = defaultdict(list)
     gradient_count = 0
     train_csv_data = []
     val_csv_data = []
+
+    optimizer = torch.optim.Adam(params, lr=args.lr)
+    if args.schedule == 'linear_w_warmup':
+        scheduler_method = transformers.get_linear_schedule_with_warmup
+        scheduler_args = {
+            'optimizer': optimizer,
+            'num_warmup_steps': args.num_warmup_steps,
+            'num_training_steps': args.max_global_step
+        }
+    else:
+        # Default to constant schedule with warmup
+        scheduler_method = transformers.get_constant_schedule_with_warmup
+        scheduler_args = {
+            'optimizer': optimizer,
+            'num_warmup_steps': args.num_warmup_steps
+        }
+    scheduler = scheduler_method(**scheduler_args)
 
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
@@ -179,6 +196,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             nn.utils.clip_grad_norm_(params, args.grad_clip)
             if gradient_count >= args.gradient_accumulation_steps:
                 optimizer.step()
+                scheduler.step()
                 gradient_count = 0
                 global_step += 1
 
