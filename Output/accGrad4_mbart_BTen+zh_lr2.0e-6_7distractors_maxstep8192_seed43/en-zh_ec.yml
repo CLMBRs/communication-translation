@@ -27,7 +27,7 @@ n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
 max_global_step: 8192
-lr: 1.0e-6
+lr: 2.0e-6
 batch_size: 8
 gradient_accumulation_steps: 1
 grad_clip: 1.0
@@ -46,7 +46,7 @@ num_distractors_valid: 7
 train_images: ./Data/ec_finetuning/images_train
 valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
-output_dir: Output/accGrad4_mbart_BTen+zh_lr1.0e-6_7distractors_maxstep8192_seed43
+output_dir: Output/accGrad4_mbart_BTen+zh_lr2.0e-6_7distractors_maxstep8192_seed43
 save_output_txt: true
 
 # Other (we may choose to delete these later):
