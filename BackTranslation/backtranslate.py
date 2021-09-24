@@ -95,7 +95,7 @@ def save_model(args, backtranslation_pack, saved_model_name):
         tokenizer.save_pretrained(s2t_path)
         target2source_model.save_pretrained(t2s_path)
         tokenizer.save_pretrained(t2s_path)
-        
+
 
 def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     reference_dataset = args.val_dataset
@@ -120,15 +120,18 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     for i, batch in enumerate(
         tqdm(
             dataloader,
-            total=num_batch,
             desc=f"val-{args.val_metric_name}:{source_id}->{target_id}"
         )
     ):
         if i == num_batch:
             break
         translation_batch = batch["translation"]
-        source_string_batch = translation_batch[source_id]
-        reference_batch_str = translation_batch[target_id]
+        source_string_batch = [
+            x for x in translation_batch[source_id] if x != ''
+        ]
+        reference_string_batch = [
+            x for x in translation_batch[target_id] if x != ''
+        ]
 
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
@@ -151,16 +154,16 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
 
         if target_id in TOKENIZER_MAP:
             score = sacrebleu.corpus_bleu(
-                translation_str, [reference_batch_str],
+                translation_str, [reference_string_batch],
                 tokenize=TOKENIZER_MAP[target_id]
             ).score
         else:
             score = sacrebleu.corpus_bleu(
-                translation_str, [reference_batch_str]
+                translation_str, [reference_string_batch]
             ).score
 
-        cumulative_score += score * len(reference_batch_str)
-        total_translations += len(reference_batch_str)
+        cumulative_score += score * len(reference_string_batch)
+        total_translations += len(reference_string_batch)
 
     return cumulative_score / total_translations, translation_lines
 
@@ -526,14 +529,14 @@ if __name__ == "__main__":
         f"Source language code: {args.lang1_code},"
         f" target language code: {args.lang2_code}"
     )
-    
+
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
     lang2_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang2_data_file)
     )["train"]
-    
+
     lang1_dataloader = DataLoader(
         lang1_dataset, batch_size=args.batch_size, shuffle=True
     )
