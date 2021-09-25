@@ -81,7 +81,7 @@ class CommunicationAgent(Module):
         """
 
         # Embed the Sender's image using the Beholder
-        image_embedding = self.beholder1(batch['sender_image'])
+        image_embedding = self.beholder1(batch['image'])
         # Generate the Sender's message/caption about the image
         return self.sender(image_embedding, **batch)
 
@@ -102,7 +102,7 @@ class CommunicationAgent(Module):
                 choose between. `(batch_size, num_image_choices, image_dim)`
         Returns: a Tensor of logits over the image choices for the batch
         """
-        num_image_choices = receiver_images.size(1)
+        num_image_choices = receiver_images.size(0)
 
         # Embed the Receiver's candidate images using the Beholder
         # (batch_size, num_image_choices, hidden_dim)
@@ -114,6 +114,9 @@ class CommunicationAgent(Module):
         # (batch_size, num_image_choices, hidden_dim)
         receiver_hidden = receiver_hidden.unsqueeze(1).repeat(
             1, num_image_choices, 1
+        )
+        receiver_image_embeddings = receiver_image_embeddings.unsqueeze(0).repeat(
+            num_image_choices, 1, 1
         )
 
         # Get the Mean Squared Error between the final receiver representation
@@ -158,7 +161,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # Create the padding mask
         lengths = message_dict['message_lengths'].tolist()
-        batch_size = len(lengths)
+        batch_size = batch['image'].size(0)
         padding_mask = np.ones(
             (batch_size, min(max(lengths), self.max_seq_length))
         )
@@ -175,12 +178,14 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # Get the logits for the image choice candidates based on the sender's
         # message
         image_candidate_logits = self.choose_image_from_message(
-            message_dict, batch['receiver_images']
+            message_dict, batch['image']
         )
 
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
+        target_image = torch.LongTensor(range(batch_size)).to(
+            batch['image'].device
+        )
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
@@ -227,6 +232,8 @@ class ImageCaptionGrounder(CommunicationAgent):
                 `message` (Tensor): the batch of generated messages as indices
         """
 
+        batch_size = batch['image'].size(0)
+
         # Get the message dictionary (ids, logits) from the sender
         # based on the input image and calculate loss with the gold caption.
         # Adding the caption ids as `decoder_input_ids` puts the caption
@@ -246,11 +253,13 @@ class ImageCaptionGrounder(CommunicationAgent):
             'attention_mask': batch['caption_mask']
         }
         image_candidate_logits = self.choose_image_from_message(
-            caption, batch['receiver_images']
+            caption, batch['image']
         )
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
+        target_image = torch.LongTensor(range(batch_size)).to(
+            batch['image'].device
+        )
         image_selection_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
