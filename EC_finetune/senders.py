@@ -51,7 +51,8 @@ class MBartSender(Sender):
         input_dim: int,
         seq_len: int = None,
         temperature: float = None,
-        hard: bool = None
+        hard: bool = None,
+        beam_width: int = 1
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -73,6 +74,7 @@ class MBartSender(Sender):
         self.sender.temp = temperature
         self.sender.hard = hard
         self.seq_len = seq_len
+        self.beam_width = beam_width
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
 
@@ -154,7 +156,7 @@ class MBartSender(Sender):
             # Get the sender model output and return
             output = self.sender.gumbel_generate(
                 input_embeds=image_hidden,
-                num_beams=1,
+                num_beams=self.beam_width,
                 max_length=self.seq_len,
                 **kwargs
             )

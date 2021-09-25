@@ -318,7 +318,8 @@ def main():
             args.hidden_dim,
             seq_len=args.max_seq_length,
             temperature=args.temp,
-            hard=args.hard
+            hard=args.hard,
+            beam_width=args.beam_width
         )
         receiver = MBartReceiver(
             comm_model,
