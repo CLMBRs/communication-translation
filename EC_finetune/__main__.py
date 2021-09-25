@@ -73,7 +73,9 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         model.eval()
 
         # Move data to the GPU
-        batch['image'] = batch['image'].to(args.device)
+        batch['sender_image'] = batch['sender_image'].to(args.device)
+        batch['receiver_images'] = batch['receiver_images'].to(args.device)
+        batch['target'] = batch['target'].to(args.device)
         if args.mode == 'image_grounding':
             batch['caption_ids'] = batch['caption_ids'].to(args.device)
             batch['caption_mask'] = batch['caption_mask'].to(args.device)
@@ -179,7 +181,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             model.train()
             # Move data to the GPU
-            batch['image'] = batch['image'].to(args.device)
+            batch['sender_image'] = batch['sender_image'].to(args.device)
+            batch['receiver_images'] = batch['receiver_images'].to(args.device)
+            batch['target'] = batch['target'].to(args.device)
             if args.mode == 'image_grounding':
                 batch['caption_ids'] = batch['caption_ids'].to(args.device)
                 batch['caption_mask'] = batch['caption_mask'].to(args.device)

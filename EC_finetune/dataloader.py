@@ -12,22 +12,44 @@ class ImageIdentificationDataset(Dataset):
     """
     PyTorch Dataset subclass for image-identification games in which a "sender"
     agent takes in an image and communicates it, and a "receiver" identifies the
-    correct image from among a selection of distractors. In practice, the
-    distractors are the remainder of the batch
+    correct image from among a selection of distractors
     Args:
         images: A numpy array of image data
+        num_distractors: Number of distractor images to show to the "receiver"
+            alongside the target image
     """
-    def __init__(self, images: ndarray) -> Dataset:
+    def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
         super().__init__()
         self.images = images
         self.img_index = list(range(len(images)))
+        self.num_distractors = num_distractors
 
     def __len__(self) -> int:
         return len(self.images)
 
     def __getitem__(self, index: int) -> dict:
+        # Randomly sample the distractor images out of the remainder of the
+        # dataset
+        distractor_candidates = (
+            self.img_index[:index] + self.img_index[index + 1:]
+        )
+        distractor_images = (
+            random.sample(distractor_candidates, k=self.num_distractors)
+        )
+        receiver_images = distractor_images + [index]
+        random.shuffle(receiver_images)
+        which = receiver_images.index(index)
+
+        # Get the actual image embedding data to be returned
+        sender_image = self.images[index]
+        receiver_images = torch.index_select(
+            self.images, 0, torch.tensor(receiver_images)
+        )
+
         return {
-            'image': self.images[index],
+            'sender_image': sender_image,
+            'receiver_images': receiver_images,
+            'target': which
         }
 
 
@@ -41,11 +63,13 @@ class XLImageIdentificationDataset(ImageIdentificationDataset):
 
     Args:
         images: A numpy array of image data
+        num_distractors: Number of distractor images to show to the "receiver"
+            alongside the target image
     """
     def __init__(
-        self, images: ndarray, args, tokenizer
+        self, images: ndarray, num_distractors: int, args, tokenizer
     ) -> Dataset:
-        super().__init__(images)
+        super().__init__(images, num_distractors)
         lang_code2id = dict(
             zip(
                 tokenizer.additional_special_tokens,
@@ -67,6 +91,8 @@ class XLImageIdentificationDataset(ImageIdentificationDataset):
             self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
 
     def __getitem__(self, index: int) -> dict:
+        # Randomly sample the distractor images out of the remainder of the
+        # dataset
         ret = super().__getitem__(index)
 
         # choose a language to generate sentence for
@@ -89,6 +115,8 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         captions: a double-list of strings, where the first dimension
             correponds to the images, and the second dimension corresponds to
             the different captions for each image
+        num_distractors: the number of distractor images to show alongside the
+            target image
         tokenizer: the tokenizer for the model
         args: a namespace of additional arguments
     """
@@ -96,12 +124,13 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         self,
         images: ndarray,
         captions: List[List[str]],
+        num_distractors: int,
         tokenizer,
         args,
         max_length: int = 256
     ) -> Dataset:
         # Initialize using the ImageIdentificationDataset constructor
-        super().__init__(images)
+        super().__init__(images, num_distractors)
         self.captions = captions
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -140,7 +169,8 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
     def __getitem__(self, index: int) -> dict:
         # Get the image and caption-option index from the lookup table
         image_index, secondary_index = self.caption_lookup[index]
-        # Use the supertype's __getitem__ to get the image
+        # Use the supertype's __getitem__ to get the image, distractors, and
+        # correct image index
         super_ret = super().__getitem__(image_index)
         caption = self.captions[image_index][secondary_index]
         caption = self.tokenizer(
@@ -150,9 +180,11 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
             truncation=True
         )
         ret = {
-            'image': super_ret['image'],
+            'sender_image': super_ret['sender_image'],
             'caption_ids': LongTensor(caption['input_ids']),
             'caption_mask': LongTensor(caption['attention_mask']),
+            'receiver_images': super_ret['receiver_images'],
+            'target': super_ret['target'],
             'lang_id': self.lang_id
         }
         if self.has_vocab_constraint:
