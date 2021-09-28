@@ -50,6 +50,7 @@ class MBartSender(Sender):
         model: MBartForConditionalGeneration,
         input_dim: int,
         seq_len: int = None,
+        recurrent_unroll: bool = False,
         temperature: float = None,
         hard: bool = None,
         beam_width: int = 1
@@ -71,12 +72,18 @@ class MBartSender(Sender):
         self.decoder = model.model.decoder
         self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
+        self.recurrent_unroll = recurrent_unroll
         self.sender.temp = temperature
         self.sender.hard = hard
         self.seq_len = seq_len
         self.beam_width = beam_width
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
+
+        if self.recurrent_unroll:
+            self.lstm = nn.LSTM(
+                self.embedding_dim, self.embedding_dim, batch_first=True
+            )
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -111,12 +118,22 @@ class MBartSender(Sender):
         # (batch_size, image_hidden_dim)
         batch_size = image_hidden.size(0)
         assert len(image_hidden.shape) == 2
-        # (batch_size, max_sequence_length, image_hidden_dim)
+        # (batch_size, 1, image_hidden_dim)
         image_hidden = image_hidden.unsqueeze(1)
 
         # Embed the image hidden states to the sender's embedding dim
-        # (batch_size, max_sequence_length, embedding_dim)
+        # (batch_size, 1, embedding_dim)
         image_hidden = self.projection(image_hidden)
+
+        if self.recurrent_unroll:
+            unrolled_hidden = []
+            h = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
+            c = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
+            for i in range(int(self.seq_len / 2)):
+                next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
+                unrolled_hidden.append(next_hidden)
+                image_hidden = next_hidden
+            image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:

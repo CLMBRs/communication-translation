@@ -317,6 +317,7 @@ def main():
             comm_model,
             args.hidden_dim,
             seq_len=args.max_seq_length,
+            recurrent_unroll=args.recurrent_image_unroll,
             temperature=args.temp,
             hard=args.hard,
             beam_width=args.beam_width
@@ -324,6 +325,7 @@ def main():
         receiver = MBartReceiver(
             comm_model,
             args.hidden_dim,
+            recurrent_aggregation=args.recurrent_hidden_aggregation,
             dropout=args.dropout,
             unit_norm=args.unit_norm
         )
@@ -355,6 +357,10 @@ def main():
         valid_set = XLImageIdentificationDataset(
             valid_images, args.num_distractors_valid, args, tokenizer
         )
+
+    if args.load_entire_agent:
+        state_dict = torch.load(args.model_name + "/model.pt")
+        model.load_state_dict(state_dict)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)

@@ -60,15 +60,23 @@ class MBartReceiver(Receiver):
         self,
         model: MBartForConditionalGeneration,
         output_dim: int,
+        recurrent_aggregation: bool = False,
         dropout: float = 0.0,
         unit_norm: bool = False
     ):
         super().__init__()
         self.embedding = model.model.shared
         self.encoder = model.model.encoder
+        self.recurrent_aggregation = recurrent_aggregation
         self.dropout = nn.Dropout(p=dropout) if dropout else None
-        self.hidden_to_output = nn.Linear(1024, output_dim)
         self.unit_norm = unit_norm
+
+        if self.recurrent_aggregation:
+            self.hidden_to_output = nn.LSTM(
+                1024, output_dim, batch_first=True
+            )
+        else:
+            self.hidden_to_output = nn.Linear(1024, output_dim)
 
     def forward(
         self,
@@ -103,12 +111,19 @@ class MBartReceiver(Receiver):
             input_embeds=message_embedding,
             attention_mask=attention_mask
         )
-        pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
-        if self.unit_norm:
-            norm = torch.norm(pooled_hidden, p=2, dim=1, keepdim=True)
-            norm = norm.detach() + 1e-9
-            pooled_hidden = pooled_hidden / norm
-        output = self.hidden_to_output(pooled_hidden)
+        hidden = hidden.last_hidden_state
+        
+        if self.recurrent_aggregation:
+            _, (output, _) = self.hidden_to_output(hidden)
+            output = output.squeeze()
+        else:
+            pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
+            if self.unit_norm:
+                norm = torch.norm(pooled_hidden, p=2, dim=1, keepdim=True)
+                norm = norm.detach() + 1e-9
+                pooled_hidden = pooled_hidden / norm
+            output = self.hidden_to_output(pooled_hidden)
+        
         return output
 
 
