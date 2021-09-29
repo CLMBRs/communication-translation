@@ -320,6 +320,7 @@ def main():
             recurrent_unroll=args.recurrent_image_unroll,
             temperature=args.temp,
             hard=args.hard,
+            repetition_penalty=args.repetition_penalty,
             beam_width=args.beam_width
         )
         receiver = MBartReceiver(

@@ -53,6 +53,7 @@ class MBartSender(Sender):
         recurrent_unroll: bool = False,
         temperature: float = None,
         hard: bool = None,
+        repetition_penalty: float = 1.0,
         beam_width: int = 1
     ):
         """
@@ -76,6 +77,7 @@ class MBartSender(Sender):
         self.sender.temp = temperature
         self.sender.hard = hard
         self.seq_len = seq_len
+        self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
@@ -175,6 +177,7 @@ class MBartSender(Sender):
                 input_embeds=image_hidden,
                 num_beams=self.beam_width,
                 max_length=self.seq_len,
+                repetition_penalty=self.repetition_penalty,
                 **kwargs
             )
             return {

@@ -12,7 +12,7 @@ dropout: 0.1
 fix_bhd: false
 fix_spk: false
 no_share_bhd: true
-recurrent_image_unroll: true
+recurrent_image_unroll: false
 recurrent_hidden_aggregation: true
 
 # Generation
@@ -22,6 +22,7 @@ temperature: 1.0
 temp: 1.0
 hard: false
 max_seq_length: 64
+repetition_penalty: 1.5
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
 
 # Train and eval:
