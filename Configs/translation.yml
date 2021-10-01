@@ -1,15 +1,16 @@
 # Path to load model for generation
-model_path: Output/bt_en-zh_baseline/best.pt
+model_path: Output/bt_en-zh_captions_ec
 seed: 1
 n_gpu: 1
-batch_size: 128
-output_dir: Output/translated/
+batch_size: 64
+num_beams: 5
+output_dir: Output/translated/en-zh_captions_ec
 translation_filename: zh-en.en.test.zh
 
 # data config
 dataset_script: Backtranslation/wmt19/wmt19.py
 lang_pair: zh-en
-dataset_split: test
+dataset_split: validation
 source_id: en
 source_max_len: 64
 target_id: zh

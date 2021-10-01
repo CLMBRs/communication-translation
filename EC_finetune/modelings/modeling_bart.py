@@ -2095,6 +2095,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 eos_token_id=eos_token_id,
                 **model_kwargs,
             )
+        else:
+            raise NotImplementedError("Only greedy gumbel generation is implemented so far (num_beams must be 1)")
 
     def _prepare_gumbel_decoder_input_ids_for_generation(
         self,
