@@ -259,8 +259,8 @@ def main():
         os.makedirs(args.output_dir)
 
     args.csv_headers = (
-        CAPTIONING_CSV_HEADERS if args.mode == 'image_grounding'
-        else EC_CSV_HEADERS
+        CAPTIONING_CSV_HEADERS
+        if args.mode == 'image_grounding' else EC_CSV_HEADERS
     )
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
@@ -318,7 +318,7 @@ def main():
             args.hidden_dim,
             seq_len=args.max_seq_length,
             recurrent_unroll=args.recurrent_image_unroll,
-            temperature=args.temp,
+            temperature=args.temperature,
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
             beam_width=args.beam_width
@@ -361,6 +361,18 @@ def main():
 
     if args.load_entire_agent:
         state_dict = torch.load(args.model_name + "/model.pt")
+        state_dict = {
+            (k, v)
+            for k, v in state_dict if (
+                not (
+                    k.startswith("sender.sender") or
+                    k.startswith("sender.decoder") or
+                    k.startswith("receiver.encoder") or
+                    k.startswith("receiver.embedding")
+                )
+            )
+        }
+        print(state_dict.keys())
         model.load_state_dict(state_dict)
 
     # Move the model to gpu if the configuration calls for it
