@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/bt_en-zh_baseline/best
+model_name: Output/en-zh_pipeline/bt_init/last
 load_entire_agent: false
 image_dim: 2048
 hidden_dim: 512
@@ -12,17 +12,16 @@ dropout: 0.1
 fix_bhd: false
 fix_spk: false
 no_share_bhd: true
-recurrent_image_unroll: false
+recurrent_image_unroll: true
 recurrent_hidden_aggregation: true
 
 # Generation
 decode_how: beam
-beam_width: 5
+beam_width: 1
 temperature: 1.0
-temp: 1.0
-hard: false
+hard: true
 max_seq_length: 64
-repetition_penalty: 1.5
+repetition_penalty: 2.0
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
 
 # Train and eval:
@@ -57,7 +56,7 @@ valid_captions: ./Data/captioning/en_captions_val.jsonl
 train_images: ./Data/captioning/images_train
 valid_images: ./Data/captioning/images_val
 save_pretrain_seperately: true
-output_dir: Output/bt_en-zh_captions
+output_dir: Output/en-zh_pipeline/last
 save_output_txt: true
 
 # Other (we may choose to delete these later):

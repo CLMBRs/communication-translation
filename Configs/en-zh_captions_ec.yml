@@ -12,7 +12,7 @@ dropout: 0.1
 fix_bhd: false
 fix_spk: false
 no_share_bhd: true
-recurrent_image_unroll: true
+recurrent_image_unroll: false
 recurrent_hidden_aggregation: true
 
 # Generation
@@ -20,15 +20,16 @@ decode_how: beam
 beam_width: 1
 temperature: 1.0
 temp: 1.0
-hard: false
+hard: true
+repetition_penalty: 2.0
 max_seq_length: 64
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
 
 # Train and eval:
 seed: 1
 mode: emergent_communication
-do_train: true # control whether we train
-do_eval: true # whether to do eval after training
+do_train: true
+do_eval: true
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs

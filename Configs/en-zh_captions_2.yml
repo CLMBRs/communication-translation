@@ -1,5 +1,6 @@
 # Model:
-model_name: Models/bt_en-zh_captions
+model_name: Output/en-zh_pipeline_2/bt_init/last
+load_entire_agent: false
 image_dim: 2048
 hidden_dim: 512
 bidirectional: false # RNN-specific
@@ -10,49 +11,52 @@ unit_norm: false
 dropout: 0.1
 fix_bhd: false
 fix_spk: false
-no_share_bhd: false
+no_share_bhd: true
+recurrent_image_unroll: true
+recurrent_hidden_aggregation: true
 
 # Generation
 decode_how: beam
-beam_width: 5
+beam_width: 1
 temperature: 1.0
-temp: 1.0
-hard: false
+hard: true
 max_seq_length: 64
-TransferH: false #switch to hard gumbel after the model reaches target accuracy.
+repetition_penalty: 1.0
+TransferH: false # switch to hard gumbel after the model reaches target accuracy
 
 # Train and eval:
-seed: 43
-mode: emergent_communication
-do_train: true # true # control whether we train
-do_eval: true # whether to do eval after training
+seed: 1
+mode: image_grounding
+do_train: true
+do_eval: true
 n_gpu: 1
 cpu: false
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 8192
-lr: 5.0e-6
-batch_size: 8
-gradient_accumulation_steps: 4
+max_global_step: 2048
+lr: 1.0e-5
+schedule: constant_w_warmup
+num_warmup_steps: 0
+gradient_accumulation_steps: 1
+batch_size: 16
 grad_clip: 1.0
 no_terminal: false
 no_write: false
 valid_every: 512
-print_every: 10
+print_every: 32
 target_acc: 85.0
-stats_to_print: ['loss', 'accuracy', 'caption generation loss', 'image selection loss', 'mean_length']
+stats_to_print: ['loss', 'accuracy', 'caption generation loss', 'image selection loss']
 
 # Number of image distractors
-num_distractors_train: 7
-num_distractors_valid: 7
+num_distractors_train: 15
+num_distractors_valid: 15
 
 # Loading and saving data:
-# train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
-# valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
-train_images: ./Data/ec_finetuning/images_train
-valid_images: ./Data/ec_finetuning/images_val
+train_captions: ./Data/captioning/en_captions_train.jsonl
+valid_captions: ./Data/captioning/en_captions_val.jsonl
+train_images: ./Data/captioning/images_train
+valid_images: ./Data/captioning/images_val
 save_pretrain_seperately: true
-# good practice: set the output_dir name the same as the parameter file name
-output_dir: Output/accGrad4_mbart_BTen+zh-captions_lr5.0e-6_7distractors_maxstep8192_seed43
+output_dir: Output/en-zh_pipeline_2/last
 save_output_txt: true
 
 # Other (we may choose to delete these later):
