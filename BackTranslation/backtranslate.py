@@ -401,6 +401,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--backtranslated_dir', type=str, default="Output/")
     parser.add_argument('--config', type=str)
+    parser.add_argument('--seed_override', type=int)
     parser.add_argument(
         '--print_translation',
         action="store_true",
@@ -445,6 +446,8 @@ if __name__ == "__main__":
         )
 
     # set random seed
+    if args.seed_override:
+        args.seed = args.seed_override
     set_seed(args)
 
     # Start the clock for the beginning of the main function

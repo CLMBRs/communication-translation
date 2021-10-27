@@ -154,31 +154,6 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
     for epoch in range(args.num_games):
         epoch_iterator = tqdm(dataloader, desc="Iteration")
         for batch in epoch_iterator:
-            if global_step % args.valid_every == 0 and gradient_count == 0:
-                with torch.no_grad():
-                    results, output_ids, printout = evaluate(
-                        args, model, valid_dataloader, epoch, global_step
-                    )
-                    val_csv_data.append(results)
-                    with open(f"{args.output_dir}/log.csv", 'a') as f:
-                        csv_file = csv.DictWriter(
-                            f, fieldnames=args.csv_headers
-                        )
-                        csv_file.writerow(results)
-                    # Output evaluation statistics
-                    logger.info(printout)
-                    cur_acc = float(results['accuracy'])
-                    cur_loss = float(results['loss'])
-                    if cur_loss < best_loss:
-                        best_loss = cur_loss
-                        save(args, model, logger)
-                        print(
-                            f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
-                            f" Saved to Path: {args.output_dir}"
-                        )
-                        if cur_acc > args.target_acc and args.TransferH:
-                            args.hard = True
-
             model.train()
             # Move data to the GPU
             batch['sender_image'] = batch['sender_image'].to(args.device)
@@ -220,6 +195,31 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                 logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
 
+            if global_step % args.valid_every == 0 and gradient_count == 0:
+                with torch.no_grad():
+                    results, output_ids, printout = evaluate(
+                        args, model, valid_dataloader, epoch, global_step
+                    )
+                    val_csv_data.append(results)
+                    with open(f"{args.output_dir}/log.csv", 'a') as f:
+                        csv_file = csv.DictWriter(
+                            f, fieldnames=args.csv_headers
+                        )
+                        csv_file.writerow(results)
+                    # Output evaluation statistics
+                    logger.info(printout)
+                    cur_acc = float(results['accuracy'])
+                    cur_loss = float(results['loss'])
+                    if cur_loss < best_loss:
+                        best_loss = cur_loss
+                        save(args, model, logger)
+                        print(
+                            f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
+                            f" Saved to Path: {args.output_dir}"
+                        )
+                        if cur_acc > args.target_acc and args.TransferH:
+                            args.hard = True
+
             if global_step >= args.max_global_step:
                 return global_step
 
@@ -246,12 +246,15 @@ def main():
     # which is read into a dictionary)
     parser = argparse.ArgumentParser(description='Image caption training')
     parser.add_argument('--config', type=str)
+    parser.add_argument('--seed_override', type=int)
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
 
     # set random seed
+    if args.seed_override:
+        args.seed = args.seed_override
     set_seed(args)
 
     # set csv output file
@@ -362,8 +365,8 @@ def main():
     if args.load_entire_agent:
         state_dict = torch.load(args.model_name + "/model.pt")
         state_dict = {
-            (k, v)
-            for k, v in state_dict if (
+            k:v
+            for k, v in state_dict.items() if (
                 not (
                     k.startswith("sender.sender") or
                     k.startswith("sender.decoder") or
@@ -372,8 +375,7 @@ def main():
                 )
             )
         }
-        print(state_dict.keys())
-        model.load_state_dict(state_dict)
+        model.load_state_dict(state_dict, strict=False)
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
