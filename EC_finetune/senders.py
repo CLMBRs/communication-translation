@@ -117,7 +117,7 @@ class MBartSender(Sender):
                     `(batch_size, max_seq_length, vocab_size)`
                 `message_lengths`: the length for each output. `(batch_size)`
         """
-
+        device = self.embedding.weight.device
         # Ensure the batch is the correct shape
         # (batch_size, image_hidden_dim)
         batch_size = image_hidden.size(0)
@@ -156,7 +156,7 @@ class MBartSender(Sender):
             logits = F.linear(
                 output.last_hidden_state,
                 self.embedding.weight,
-                bias=self.output_bias
+                bias=self.output_bias.to(device)
             )
             return {
                 'message_ids': torch.argmax(logits, dim=2, keepdim=False),
