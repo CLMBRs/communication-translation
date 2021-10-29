@@ -27,6 +27,7 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 # Train and eval:
 seed: 1
 mode: emergent_communication
+language_model_loss: true
 do_train: true
 do_eval: true
 n_gpu: 1

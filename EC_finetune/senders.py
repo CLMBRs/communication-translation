@@ -69,13 +69,15 @@ class MBartSender(Sender):
             hard: whether generation should produce one-hot logits
         """
         super().__init__()
-        self.sender = model
+        self.top = model
         self.decoder = model.model.decoder
+        self.embedding = model.model.shared
+        self.output_bias = model.final_logits_bias
         self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
         self.recurrent_unroll = recurrent_unroll
-        self.sender.temp = temperature
-        self.sender.hard = hard
+        self.top.temp = temperature
+        self.top.hard = hard
         self.seq_len = seq_len
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
@@ -140,9 +142,9 @@ class MBartSender(Sender):
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:
             decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
-                config=self.sender.config,
+                config=self.top.config,
                 input_ids=decoder_input_ids,
-                causal_mask_dtype=self.sender.model.shared.weight.dtype
+                causal_mask_dtype=self.embedding.weight.dtype
             )
             output = self.decoder(
                 input_ids=decoder_input_ids,
@@ -153,8 +155,8 @@ class MBartSender(Sender):
             )
             logits = F.linear(
                 output.last_hidden_state,
-                self.sender.model.shared.weight,
-                bias=self.sender.final_logits_bias
+                self.embedding.weight,
+                bias=self.output_bias
             )
             return {
                 'message_ids': torch.argmax(logits, dim=2, keepdim=False),
@@ -173,7 +175,7 @@ class MBartSender(Sender):
                     kwargs['lang_mask'].to(image_hidden.device)
 
             # Get the sender model output and return
-            output = self.sender.gumbel_generate(
+            output = self.top.gumbel_generate(
                 input_embeds=image_hidden,
                 num_beams=self.beam_width,
                 max_length=self.seq_len,

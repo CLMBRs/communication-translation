@@ -594,13 +594,13 @@ class DecoderLayer(nn.Module):
         decoder_padding_mask=None,
         output_attentions=False,
     ):
-        residual = x
         if layer_state is None:
             layer_state = {}
+
+        # Self Attention
+        residual = x
         if self.normalize_before:
             x = self.self_attn_layer_norm(x)
-        # Self Attention
-
         x, self_attn_weights = self.self_attn(
             query=x,
             key=x,
@@ -614,22 +614,25 @@ class DecoderLayer(nn.Module):
         if not self.normalize_before:
             x = self.self_attn_layer_norm(x)
 
-        # Cross-Attention Block
-        residual = x
-        assert self.encoder_attn.cache_key != self.self_attn.cache_key
-        if self.normalize_before:
-            x = self.encoder_attn_layer_norm(x)
-        x, cross_attn_weights = self.encoder_attn(
-            query=x,
-            key=encoder_hidden_states,
-            key_padding_mask=encoder_attn_mask,
-            layer_state=layer_state,  # mutates layer state
-            output_attentions=output_attentions,
-        )
-        x = F.dropout(x, p=self.dropout, training=self.training)
-        x = residual + x
-        if not self.normalize_before:
-            x = self.encoder_attn_layer_norm(x)
+        if encoder_hidden_states is not None:
+            # Cross-Attention Block
+            residual = x
+            assert self.encoder_attn.cache_key != self.self_attn.cache_key
+            if self.normalize_before:
+                x = self.encoder_attn_layer_norm(x)
+            x, cross_attn_weights = self.encoder_attn(
+                query=x,
+                key=encoder_hidden_states,
+                key_padding_mask=encoder_attn_mask,
+                layer_state=layer_state,  # mutates layer state
+                output_attentions=output_attentions,
+            )
+            x = F.dropout(x, p=self.dropout, training=self.training)
+            x = residual + x
+            if not self.normalize_before:
+                x = self.encoder_attn_layer_norm(x)
+        else:
+            cross_attn_weights = None
 
         # Fully Connected
         residual = x
@@ -642,6 +645,7 @@ class DecoderLayer(nn.Module):
         x = residual + x
         if not self.normalize_before:
             x = self.final_layer_norm(x)
+
         return (
             x,
             self_attn_weights,
@@ -698,6 +702,7 @@ class BartDecoder(nn.Module):
         encoder_padding_mask,
         decoder_padding_mask,
         decoder_causal_mask,
+        input_embeds=None,
         past_key_values=None,
         use_cache=False,
         output_attentions=False,
@@ -714,6 +719,8 @@ class BartDecoder(nn.Module):
             encoder_hidden_states: output from the encoder, used for
                 encoder-side attention
             encoder_padding_mask: for ignoring pad tokens
+            input_embeds: optionally directly input embeddings to use rather
+                IDs (such as when using the output of gumbel generation)
             past_key_values (dict or None): dictionary used for storing state during generation
 
         Returns:
@@ -736,19 +743,20 @@ class BartDecoder(nn.Module):
             input_ids = input_ids[:, -1:]
             positions = positions[:, -1:]
 
-        x = self.embed_tokens(input_ids) * self.embed_scale
+        x = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
+        x = x * self.embed_scale
         if self.do_blenderbot_90_layernorm:
             x = self.layernorm_embedding(x)
             x += positions
         else:
             x += positions
             x = self.layernorm_embedding(x)
-
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         # Convert to Bart output format: (BS, seq_len, model_dim) ->  (seq_len, BS, model_dim)
         x = x.transpose(0, 1)
-        encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
+        if encoder_hidden_states is not None:
+            encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -781,7 +789,8 @@ class BartDecoder(nn.Module):
 
             if output_attentions:
                 all_self_attns += (layer_self_attn, )
-                all_cross_attentions += (layer_cross_attn, )
+                if layer_cross_attn is not None:
+                    all_cross_attentions += (layer_cross_attn, )
 
         if self.layer_norm:  # if config.add_final_layer_norm (mBART)
             x = self.layer_norm(x)
@@ -793,7 +802,8 @@ class BartDecoder(nn.Module):
                 for hidden_state in all_hidden_states
             )
         x = x.transpose(0, 1)
-        encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
+        if encoder_hidden_states is not None:
+            encoder_hidden_states = encoder_hidden_states.transpose(0, 1)
 
         next_cache = next_decoder_cache if use_cache else None
         if not return_dict:

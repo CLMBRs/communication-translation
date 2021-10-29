@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from copy import deepcopy
 from statistics import mean
 
 import numpy as np
@@ -11,6 +12,7 @@ from torch.nn import Module
 
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
+from EC_finetune.modelings.modeling_bart import invert_mask
 
 
 class CommunicationAgent(Module):
@@ -55,6 +57,7 @@ class CommunicationAgent(Module):
 
         self.sender = sender
         self.receiver = receiver
+        self.tokenizer = args.tokenizer
 
         self.image_dim = args.image_dim
         self.hidden_dim = args.hidden_dim
@@ -126,12 +129,31 @@ class CommunicationAgent(Module):
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
         return image_candidate_logits
 
+    @staticmethod
+    def get_causal_mask(max_length, dtype):
+        mask = (np.triu(np.ones((max_length, max_length))) == 1).transpose()
+        mask = torch.tensor(mask, dtype=dtype)
+        mask = mask.masked_fill(mask == 0, float('-inf'))
+        mask = mask.masked_fill(mask == 1, float(0.0))
+        return mask
+
     @abstractmethod
     def forward(self, batch):
         raise NotImplementedError
 
 
 class ECImageIdentificationAgent(CommunicationAgent):
+    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
+        super().__init__(sender, receiver, args)
+        self.language_model_loss = args.language_model_loss
+        if self.language_model_loss:
+            self.lm_lambda = 1.0 if not (
+                hasattr(args, 'lm_lambda') and args.lm_lambda
+            ) else args.lm_lambda
+            self.language_model = deepcopy(self.sender.decoder)
+            for param in self.language_model.parameters():
+                param.requires_grad = False
+
     def forward(self, batch: dict) -> dict:
         """
         Train a model to convert the target image of a batch to a message using
@@ -159,18 +181,51 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # Create the padding mask
         lengths = message_dict['message_lengths'].tolist()
         batch_size = len(lengths)
-        padding_mask = np.ones(
-            (batch_size, min(max(lengths), self.max_seq_length))
-        )
+        max_length = min(max(lengths), self.max_seq_length)
+        device = message_dict['message_ids'].device
+       
+        padding_mask = np.ones((batch_size, max_length))
         for seq in range(batch_size):
-            padding_mask[seq][
-                lengths[seq]:min(max(lengths), self.max_seq_length)
-            ] = 0
-        padding_mask = torch.tensor(padding_mask).to(
-            message_dict['message_ids'].device
-        )
-        message_dict['attention_mask'] = padding_mask
+            padding_mask[seq][lengths[seq]:max_length] = 0
+        padding_mask = torch.tensor(padding_mask)
+        message_dict['attention_mask'] = padding_mask.to(device)
         del message_dict['message_lengths']
+        
+        # TODO: Add commments and documentation!!
+        if self.language_model_loss:
+            lm_ids = message_dict['message_ids'][:,:-1]
+            lm_logits = message_dict['message_logits'][:,:-1]
+            lm_input = torch.matmul(
+                lm_logits, self.sender.embedding.weight
+            )
+            lm_targets = message_dict['message_ids'][:,1:]
+            max_length = lm_targets.size(1)
+            causal_mask = self.get_causal_mask(
+                max_length, self.sender.embedding.weight.dtype
+            )
+            causal_mask = causal_mask.to(device)
+            lm_padding_mask = invert_mask(padding_mask[:,:-1].bool()).to(device)
+            lm_output = self.language_model(
+                input_ids=lm_ids,
+                input_embeds=lm_input,
+                encoder_hidden_states=None,
+                encoder_padding_mask=None,
+                decoder_padding_mask=lm_padding_mask,
+                decoder_causal_mask=causal_mask
+            )
+            lm_logits = F.linear(
+                lm_output.last_hidden_state,
+                self.sender.embedding.weight,
+                bias=self.sender.output_bias.to(device)
+            )
+            lm_loss = F.cross_entropy(
+                lm_logits.transpose(1, 2),
+                lm_targets.to(device),
+                ignore_index=self.padding_index
+            )
+            lm_loss *= self.lm_lambda
+        else:
+            lm_loss = None
 
         # Get the logits for the image choice candidates based on the sender's
         # message
@@ -184,6 +239,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
+        if lm_loss:
+            communication_loss += lm_loss
 
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)

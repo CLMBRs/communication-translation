@@ -112,7 +112,12 @@ def save(args, model, logger):
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
     # Save the general part of the model
-    torch.save(model.state_dict(), args.output_dir + '/model.pt')
+    state_dict = {
+        k: v
+        for k, v in model.state_dict().items()
+        if not k.startswith("language_model")
+    }
+    torch.save(state_dict, args.output_dir + '/model.pt')
 
     # For pretrained models, provide extra saving strategy
     if args.save_pretrain_seperately:
@@ -294,6 +299,7 @@ def main():
     print(args)
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_name)
+    args.tokenizer = tokenizer
     tokenizer.save_pretrained(args.output_dir)
     vocab = tokenizer.get_vocab()
     args.padding_index = vocab['<pad>']
@@ -365,11 +371,13 @@ def main():
     if args.load_entire_agent:
         state_dict = torch.load(args.model_name + "/model.pt")
         state_dict = {
-            k:v
+            k: v
             for k, v in state_dict.items() if (
                 not (
-                    k.startswith("sender.sender") or
+                    k.startswith("sender.top") or
                     k.startswith("sender.decoder") or
+                    k.startswith("sender.embedding") or
+                    k.startswith("sender.output_bias") or
                     k.startswith("receiver.encoder") or
                     k.startswith("receiver.embedding")
                 )
