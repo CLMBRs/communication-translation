@@ -126,7 +126,7 @@ def save(args, model, logger):
         # reloaded using `from_pretrained()`
         model_to_save = (
             model.sender.sender.module
-            if hasattr(model.sender.sender, "module") else model.sender.sender
+            if hasattr(model.sender.top, "module") else model.sender.top
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
@@ -411,7 +411,7 @@ def main():
     if args.do_eval:
         checkpoint = args.output_dir + '/model.pt'
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
-        model.load_state_dict(torch.load(checkpoint))
+        model.load_state_dict(torch.load(checkpoint), strict=False)
         model.to(args.device)
         model.eval()
         results, output_ids, printout = evaluate(args, model, valid_dataloader)
