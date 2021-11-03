@@ -4,6 +4,7 @@ from copy import deepcopy
 from statistics import mean
 
 import numpy as np
+from numpy.core import einsumfunc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -152,9 +153,24 @@ class CommunicationAgent(Module):
     def lang_id_logit_to_end(input_logits, lengths):
         device = input_logits.device
         hidden_size = input_logits.size(2)
+        seq_length = input_logits.size(1) + 1
+        
+        # Since the longest sequence has no padding, add an extra pad position
+        # to the end of dimension 1
         buff = torch.zeros((input_logits.size(0), 1, hidden_size), device=device)
         input_logits = torch.cat((input_logits, buff), dim=1)
-        first_pad_indices = lengths.view(-1,1,1).repeat(1,1,hidden_size)
+        
+        # For scatter to be compatible with the backward pass, the `index`
+        # argument needs to be the same size as the source. This block should
+        # create the proper index to send the first element to the back of the
+        # sequence (and sends the replaced element to the front)
+        first_pad_indices = lengths.view(-1,1,1).repeat(1,seq_length,hidden_size)
+        first_pad_indices[:, 1:, :] = torch.arange(1,seq_length).view(1, -1, 1)
+        for idx, length in enumerate(lengths.tolist()):
+            first_pad_indices[idx, length] = 0
+        
+        # Use `torch.scatter` to do the swap. Drop the first token which is now
+        # just padding
         new_logits = torch.scatter(
             input_logits, 1, first_pad_indices, input_logits
         )[:,1:]
