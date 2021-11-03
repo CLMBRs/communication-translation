@@ -137,6 +137,29 @@ class CommunicationAgent(Module):
         mask = mask.masked_fill(mask == 1, float(0.0))
         return mask
 
+    @staticmethod
+    def lang_id_to_end(input_ids, lengths):
+        device = input_ids.device
+        buff = torch.zeros((input_ids.size(0), 1), device=device)
+        input_ids = torch.cat((input_ids, buff), dim=1)
+        first_pad_indices = lengths.unsqueeze(-1)
+        new_ids = torch.scatter(
+            input_ids, 1, first_pad_indices, input_ids
+        )[:,1:]
+        return new_ids
+
+    @staticmethod
+    def lang_id_logit_to_end(input_logits, lengths):
+        device = input_logits.device
+        hidden_size = input_logits.size(2)
+        buff = torch.zeros((input_logits.size(0), 1, hidden_size), device=device)
+        input_logits = torch.cat((input_logits, buff), dim=1)
+        first_pad_indices = lengths.view(-1,1,1).repeat(1,1,hidden_size)
+        new_logits = torch.scatter(
+            input_logits, 1, first_pad_indices, input_logits
+        )[:,1:]
+        return new_logits
+
     @abstractmethod
     def forward(self, batch):
         raise NotImplementedError
@@ -189,8 +212,15 @@ class ECImageIdentificationAgent(CommunicationAgent):
             padding_mask[seq][lengths[seq]:max_length] = 0
         padding_mask = torch.tensor(padding_mask)
         message_dict['attention_mask'] = padding_mask.to(device)
-        del message_dict['message_lengths']
-        
+
+        # Move the language id to the end of each sequence
+        message_dict['message_ids'] = self.lang_id_to_end(
+            message_dict['message_ids'], message_dict['message_lengths']
+        )
+        message_dict['message_logits'] = self.lang_id_logit_to_end(
+            message_dict['message_logits'], message_dict['message_lengths']
+        )
+
         # TODO: Add commments and documentation!!
         if self.language_model_loss:
             lm_ids = message_dict['message_ids'][:,:-1]
@@ -300,7 +330,8 @@ class ImageCaptionGrounder(CommunicationAgent):
         # caption (NOT the sender's message)
         caption = {
             'message_ids': batch['caption_ids'],
-            'attention_mask': batch['caption_mask']
+            'attention_mask': batch['caption_mask'],
+            'message_lengths': batch['caption_mask'].float().sum(dim=1).long()
         }
         image_candidate_logits = self.choose_image_from_message(
             caption, batch['receiver_images']

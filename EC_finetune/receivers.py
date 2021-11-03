@@ -82,6 +82,7 @@ class MBartReceiver(Receiver):
         self,
         message_ids: Tensor,
         attention_mask: Tensor,
+        message_lengths: Tensor,
         message_logits: Tensor = None
     ) -> Tensor:
         """
@@ -117,13 +118,13 @@ class MBartReceiver(Receiver):
             _, (output, _) = self.hidden_to_output(hidden)
             output = output.squeeze()
         else:
-            pooled_hidden = torch.mean(hidden.last_hidden_state, dim=1)
-            if self.unit_norm:
-                norm = torch.norm(pooled_hidden, p=2, dim=1, keepdim=True)
-                norm = norm.detach() + 1e-9
-                pooled_hidden = pooled_hidden / norm
-            output = self.hidden_to_output(pooled_hidden)
-        
+            hidden_size = hidden.size(2)
+            message_lengths = message_lengths - 1
+            length_indices = message_lengths.view(-1,1,1).repeat(1,1,hidden_size)
+            classification_token = torch.gather(
+                input=hidden, dim=1, index=length_indices
+            ).squeeze()
+            output = self.hidden_to_output(classification_token)
         return output
 
 

@@ -2304,6 +2304,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # increase cur_len
             cur_len = cur_len + 1
+        
         generated_sentence_len = (~(generated_token_ids == pad_token_id)).sum(
             dim=1
         )
