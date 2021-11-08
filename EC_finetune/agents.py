@@ -244,7 +244,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
             lm_input = torch.matmul(
                 lm_logits, self.sender.embedding.weight
             )
-            lm_targets = message_dict['message_ids'][:,1:]
+            lm_targets = message_dict['message_ids'][:,1:].long()
             max_length = lm_targets.size(1)
             causal_mask = self.get_causal_mask(
                 max_length, self.sender.embedding.weight.dtype
