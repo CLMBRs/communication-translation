@@ -72,9 +72,7 @@ class MBartReceiver(Receiver):
         self.unit_norm = unit_norm
 
         if self.recurrent_aggregation:
-            self.hidden_to_output = nn.LSTM(
-                1024, output_dim, batch_first=True
-            )
+            self.hidden_to_output = nn.LSTM(1024, output_dim, batch_first=True)
         else:
             self.hidden_to_output = nn.Linear(1024, output_dim)
 
@@ -113,14 +111,15 @@ class MBartReceiver(Receiver):
             attention_mask=attention_mask
         )
         hidden = hidden.last_hidden_state
-        
+
         if self.recurrent_aggregation:
             _, (output, _) = self.hidden_to_output(hidden)
             output = output.squeeze()
         else:
             hidden_size = hidden.size(2)
             message_lengths = message_lengths - 1
-            length_indices = message_lengths.view(-1,1,1).repeat(1,1,hidden_size)
+            length_indices = message_lengths.view(-1, 1,
+                                                  1).repeat(1, 1, hidden_size)
             classification_token = torch.gather(
                 input=hidden, dim=1, index=length_indices
             ).squeeze()

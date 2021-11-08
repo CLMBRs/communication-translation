@@ -131,8 +131,12 @@ class MBartSender(Sender):
 
         if self.recurrent_unroll:
             unrolled_hidden = []
-            h = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
-            c = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
+            h = torch.zeros_like(image_hidden).transpose(0, 1).to(
+                image_hidden.device
+            )
+            c = torch.zeros_like(image_hidden).transpose(0, 1).to(
+                image_hidden.device
+            )
             for i in range(int(self.seq_len / 2)):
                 next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
                 unrolled_hidden.append(next_hidden)

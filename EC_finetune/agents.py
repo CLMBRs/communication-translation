@@ -146,7 +146,7 @@ class CommunicationAgent(Module):
         first_pad_indices = lengths.unsqueeze(-1)
         new_ids = torch.scatter(
             input_ids, 1, first_pad_indices, input_ids
-        )[:,1:]
+        )[:, 1:]
         return new_ids
 
     @staticmethod
@@ -154,26 +154,29 @@ class CommunicationAgent(Module):
         device = input_logits.device
         hidden_size = input_logits.size(2)
         seq_length = input_logits.size(1) + 1
-        
+
         # Since the longest sequence has no padding, add an extra pad position
         # to the end of dimension 1
-        buff = torch.zeros((input_logits.size(0), 1, hidden_size), device=device)
+        buff = torch.zeros(
+            (input_logits.size(0), 1, hidden_size), device=device
+        )
         input_logits = torch.cat((input_logits, buff), dim=1)
-        
+
         # For scatter to be compatible with the backward pass, the `index`
         # argument needs to be the same size as the source. This block should
         # create the proper index to send the first element to the back of the
         # sequence (and sends the replaced element to the front)
-        first_pad_indices = lengths.view(-1,1,1).repeat(1,seq_length,hidden_size)
-        first_pad_indices[:, 1:, :] = torch.arange(1,seq_length).view(1, -1, 1)
+        first_pad_indices = lengths.view(-1, 1, 1)
+        first_pad_indices = first_pad_indices.repeat(1, seq_length, hidden_size)
+        first_pad_indices[:, 1:, :] = torch.arange(1, seq_length).view(1, -1, 1)
         for idx, length in enumerate(lengths.tolist()):
             first_pad_indices[idx, length] = 0
-        
+
         # Use `torch.scatter` to do the swap. Drop the first token which is now
         # just padding
         new_logits = torch.scatter(
             input_logits, 1, first_pad_indices, input_logits
-        )[:,1:]
+        )[:, 1:]
         return new_logits
 
     @abstractmethod
@@ -222,7 +225,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         batch_size = len(lengths)
         max_length = min(max(lengths), self.max_seq_length)
         device = message_dict['message_ids'].device
-       
+
         padding_mask = np.ones((batch_size, max_length))
         for seq in range(batch_size):
             padding_mask[seq][lengths[seq]:max_length] = 0
@@ -239,18 +242,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # TODO: Add commments and documentation!!
         if self.language_model_loss:
-            lm_ids = message_dict['message_ids'][:,:-1]
-            lm_logits = message_dict['message_logits'][:,:-1]
-            lm_input = torch.matmul(
-                lm_logits, self.sender.embedding.weight
-            )
-            lm_targets = message_dict['message_ids'][:,1:].long()
+            lm_ids = message_dict['message_ids'][:, :-1]
+            lm_logits = message_dict['message_logits'][:, :-1]
+            lm_input = torch.matmul(lm_logits, self.sender.embedding.weight)
+            lm_targets = message_dict['message_ids'][:, 1:].long()
             max_length = lm_targets.size(1)
             causal_mask = self.get_causal_mask(
                 max_length, self.sender.embedding.weight.dtype
             )
             causal_mask = causal_mask.to(device)
-            lm_padding_mask = invert_mask(padding_mask[:,:-1].bool()).to(device)
+            lm_padding_mask = invert_mask(
+                padding_mask[:, :-1].bool()
+            ).to(device)
             lm_output = self.language_model(
                 input_ids=lm_ids,
                 input_embeds=lm_input,
