@@ -116,14 +116,15 @@ class MBartReceiver(Receiver):
             _, (output, _) = self.hidden_to_output(hidden)
             output = output.squeeze()
         else:
-            hidden_size = hidden.size(2)
-            message_lengths = message_lengths - 1
-            length_indices = message_lengths.view(-1, 1,
-                                                  1).repeat(1, 1, hidden_size)
-            classification_token = torch.gather(
-                input=hidden, dim=1, index=length_indices
-            ).squeeze()
-            output = self.hidden_to_output(classification_token)
+            # hidden_size = hidden.size(2)
+            # message_lengths = message_lengths - 1
+            # length_indices = message_lengths.view(-1, 1, 1).repeat(1, 1, hidden_size)
+            # classification_token = torch.gather(
+            #     input=hidden, dim=1, index=length_indices
+            # ).squeeze()
+
+            # Use the initial CLS token as the sentence representation
+            output = self.hidden_to_output(hidden[:, 0, :])
         return output
 
 

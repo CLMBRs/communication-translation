@@ -303,6 +303,7 @@ def main():
     tokenizer.save_pretrained(args.output_dir)
     vocab = tokenizer.get_vocab()
     args.padding_index = vocab['<pad>']
+    args.cls_index = vocab['<s>']
     args.vocab_size = len(vocab)
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a

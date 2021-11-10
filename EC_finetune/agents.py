@@ -66,6 +66,7 @@ class CommunicationAgent(Module):
         self.beam_width = args.beam_width
         self.no_share_bhd = args.no_share_bhd
         self.padding_index = args.padding_index
+        self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
 
     def image_to_message(self, batch: dict) -> dict:
@@ -179,6 +180,39 @@ class CommunicationAgent(Module):
         )[:, 1:]
         return new_logits
 
+    @staticmethod
+    def prepend_non_pad_to_mask(padding_mask):
+        device = padding_mask.device
+        batch_size = padding_mask.size(0)
+
+        # Prepend an additional non-pad position to the padding mask
+        non_pads = torch.ones((batch_size, 1), device=device)
+        padding_mask = torch.cat((non_pads, padding_mask), dim=1)
+        return padding_mask
+
+    @staticmethod
+    def prepend_cls(input_ids, cls_id):
+        device = input_ids.device
+        batch_size = input_ids.size(0)
+
+        # Prepend the token acting as CLS to the beginning of the sequence
+        cls_tokens = torch.full((batch_size, 1), cls_id, device=device)
+        input_ids = torch.cat((cls_tokens, input_ids), dim=1)
+        return input_ids
+
+    @staticmethod
+    def prepend_cls_logit(input_logits, cls_id):
+        device = input_logits.device
+        batch_size = input_logits.size(0)
+        hidden_size = input_logits.size(2)
+        
+        # Form a one-hot representation of the CLS token and prepend it to the
+        # beginning of the sequence of logits
+        cls_onehot = (torch.arange(0, hidden_size) == cls_id).float()
+        cls_onehot = cls_onehot.view(1, 1, -1).repeat(batch_size, 1, 1)
+        cls_onehot = cls_onehot.to(device)
+        return torch.cat((cls_onehot, input_logits), dim=1)
+
     @abstractmethod
     def forward(self, batch):
         raise NotImplementedError
@@ -240,6 +274,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
             message_dict['message_logits'], message_dict['message_lengths']
         )
 
+        # Prepend the CLS id to the beginning of the sequence, and adjust the
+        # padding mask properly
+        message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
+            message_dict['attention_mask']
+        )
+        message_dict['message_ids'] = self.prepend_cls(
+            message_dict['message_ids'], self.cls_index
+        )
+        message_dict['message_logits'] = self.prepend_cls_logit(
+            message_dict['message_logits'], self.cls_index
+        )
+
         # TODO: Add commments and documentation!!
         if self.language_model_loss:
             lm_ids = message_dict['message_ids'][:, :-1]
@@ -252,7 +298,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
             )
             causal_mask = causal_mask.to(device)
             lm_padding_mask = invert_mask(
-                padding_mask[:, :-1].bool()
+                message_dict['attention_mask'][:, :-1].bool()
             ).to(device)
             lm_output = self.language_model(
                 input_ids=lm_ids,
@@ -352,6 +398,16 @@ class ImageCaptionGrounder(CommunicationAgent):
             'attention_mask': batch['caption_mask'],
             'message_lengths': batch['caption_mask'].float().sum(dim=1).long()
         }
+
+        # Prepend the CLS id to the beginning of the sequence, and adjust the
+        # padding mask properly
+        caption['attention_mask'] = self.prepend_non_pad_to_mask(
+            caption['attention_mask']
+        )
+        caption['message_ids'] = self.prepend_cls(
+            caption['message_ids'], self.cls_index
+        )
+
         image_candidate_logits = self.choose_image_from_message(
             caption, batch['receiver_images']
         )
