@@ -6,6 +6,7 @@ import csv
 import random
 import sys
 from collections import defaultdict
+from copy import deepcopy
 from statistics import mean
 
 import numpy as np
@@ -306,6 +307,8 @@ def main():
     args.cls_index = vocab['<s>']
     args.vocab_size = len(vocab)
 
+    language_model = None
+
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
     if args.model_name == 'rnn':
@@ -320,6 +323,32 @@ def main():
         )
         receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
     else:
+        # If language modeling loss is to be used, get a copy of the original
+        # facebook weights, deepcopy the decoder and embeddings, and delete the
+        # rest
+        if args.language_model_loss:
+            tmp_language_model = MBartForConditionalGeneration.from_pretrained(
+                "facebook/mbart-large-cc25"
+            )
+
+            decoder = deepcopy(tmp_language_model.model.decoder)
+            embedding = deepcopy(tmp_language_model.model.shared)
+            bias = deepcopy(tmp_language_model.final_logits_bias)
+
+            del tmp_language_model
+
+            for param in decoder.parameters():
+                param.requires_grad = False
+            for param in embedding.parameters():
+                param.requires_grad = False
+            bias.requires_grad = False
+
+            language_model = {
+                'decoder': decoder.to(device),
+                'embedding': embedding.to(device),
+                'bias': bias.to(device)
+            }
+
         comm_model = MBartForConditionalGeneration.from_pretrained(
             args.model_name
         )
@@ -361,7 +390,9 @@ def main():
             max_length=args.max_seq_length
         )
     else:
-        model = ECImageIdentificationAgent(sender, receiver, args)
+        model = ECImageIdentificationAgent(
+            sender, receiver, args, language_model=language_model
+        )
         training_set = XLImageIdentificationDataset(
             train_images, args.num_distractors_train, args, tokenizer
         )

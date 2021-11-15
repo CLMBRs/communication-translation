@@ -219,16 +219,24 @@ class CommunicationAgent(Module):
 
 
 class ECImageIdentificationAgent(CommunicationAgent):
-    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
+    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace, language_model = None):
         super().__init__(sender, receiver, args)
         self.language_model_loss = args.language_model_loss
+        
         if self.language_model_loss:
             self.lm_lambda = 1.0 if not (
                 hasattr(args, 'lm_lambda') and args.lm_lambda
             ) else args.lm_lambda
-            self.language_model = deepcopy(self.sender.decoder)
-            for param in self.language_model.parameters():
-                param.requires_grad = False
+            
+            if language_model is not None:
+                self.language_model = language_model['decoder']
+                self.lm_embedding = language_model['embedding']
+                self.lm_bias = language_model['bias']
+            else:
+                raise ValueError(
+                    "A language model must be provided if"
+                    " `language_model_loss` is True"
+                )
 
     def forward(self, batch: dict) -> dict:
         """
@@ -290,11 +298,11 @@ class ECImageIdentificationAgent(CommunicationAgent):
         if self.language_model_loss:
             lm_ids = message_dict['message_ids'][:, :-1]
             lm_logits = message_dict['message_logits'][:, :-1]
-            lm_input = torch.matmul(lm_logits, self.sender.embedding.weight)
+            lm_input = torch.matmul(lm_logits, self.lm_embedding.weight)
             lm_targets = message_dict['message_ids'][:, 1:].long()
             max_length = lm_targets.size(1)
             causal_mask = self.get_causal_mask(
-                max_length, self.sender.embedding.weight.dtype
+                max_length, self.lm_embedding.weight.dtype
             )
             causal_mask = causal_mask.to(device)
             lm_padding_mask = invert_mask(
@@ -310,8 +318,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
             )
             lm_logits = F.linear(
                 lm_output.last_hidden_state,
-                self.sender.embedding.weight,
-                bias=self.sender.output_bias.to(device)
+                self.lm_embedding.weight,
+                bias=self.lm_bias.to(device)
             )
             lm_loss = F.cross_entropy(
                 lm_logits.transpose(1, 2),
