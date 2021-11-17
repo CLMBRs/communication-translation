@@ -29,6 +29,9 @@ from EC_finetune.dataloader import (
 EC_CSV_HEADERS = [
     "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
 ]
+EC_LM_CSV_HEADERS = [
+    "mode", "epoch", "global step", "loss", "lm loss", "communication loss", "accuracy", "mean_length"
+]
 CAPTIONING_CSV_HEADERS = [
     "mode", "epoch", "global step", "loss", "caption generation loss",
     "image selection loss", "accuracy"
@@ -267,10 +270,13 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    args.csv_headers = (
-        CAPTIONING_CSV_HEADERS
-        if args.mode == 'image_grounding' else EC_CSV_HEADERS
-    )
+    if args.mode == 'image_grounding':
+        args.csv_headers = CAPTIONING_CSV_HEADERS
+    elif args.language_model_loss:
+        args.csv_headers = EC_LM_CSV_HEADERS
+    else:
+        args.csv_headers = EC_CSV_HEADERS
+
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
@@ -330,23 +336,18 @@ def main():
             tmp_language_model = MBartForConditionalGeneration.from_pretrained(
                 "facebook/mbart-large-cc25"
             )
-
-            decoder = deepcopy(tmp_language_model.model.decoder)
+            lm = deepcopy(tmp_language_model)
             embedding = deepcopy(tmp_language_model.model.shared)
-            bias = deepcopy(tmp_language_model.final_logits_bias)
-
             del tmp_language_model
 
-            for param in decoder.parameters():
+            for param in lm.parameters():
                 param.requires_grad = False
             for param in embedding.parameters():
                 param.requires_grad = False
-            bias.requires_grad = False
 
             language_model = {
-                'decoder': decoder.to(device),
-                'embedding': embedding.to(device),
-                'bias': bias.to(device)
+                'language_model': lm.to(device),
+                'embedding': embedding.to(device)
             }
 
         comm_model = MBartForConditionalGeneration.from_pretrained(

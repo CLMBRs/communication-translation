@@ -1079,8 +1079,10 @@ class BartModel(PretrainedBartModel):
     def forward(
         self,
         input_ids,
+        encoder_input_embeds=None,
         attention_mask=None,
         decoder_input_ids=None,
+        decoder_input_embeds=None,
         decoder_attention_mask=None,
         encoder_outputs: Optional[Tuple] = None,
         past_key_values=None,
@@ -1117,6 +1119,7 @@ class BartModel(PretrainedBartModel):
         if encoder_outputs is None:
             encoder_outputs = self.encoder(
                 input_ids=input_ids,
+                input_embeds=encoder_input_embeds,
                 attention_mask=attention_mask,
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
@@ -1138,6 +1141,7 @@ class BartModel(PretrainedBartModel):
             encoder_outputs[0],
             attention_mask,
             decoder_padding_mask,
+            input_embeds=decoder_input_embeds,
             decoder_causal_mask=causal_mask,
             past_key_values=past_key_values,
             use_cache=use_cache,
@@ -1223,8 +1227,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
     def forward(
         self,
         input_ids,
+        encoder_input_embeds=None,
         attention_mask=None,
         decoder_input_ids=None,
+        decoder_input_embeds=None,
         decoder_attention_mask=None,
         encoder_outputs=None,
         past_key_values=None,
@@ -1271,8 +1277,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
         outputs = self.model(
             input_ids,
+            encoder_input_embeds=encoder_input_embeds,
             attention_mask=attention_mask,
             decoder_input_ids=decoder_input_ids,
+            decoder_input_embeds=decoder_input_embeds,
             encoder_outputs=encoder_outputs,
             decoder_attention_mask=decoder_attention_mask,
             past_key_values=past_key_values,
