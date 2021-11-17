@@ -23,7 +23,7 @@ import torch
 import torch.utils.checkpoint
 import torch.nn.functional as F
 from torch import nn
-from torch.nn import CrossEntropyLoss, MSELoss
+from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
 
 from transformers import BeamScorer
 from transformers.activations import ACT2FN
@@ -182,7 +182,8 @@ class MBartAttention(nn.Module):
         # if key_value_states are provided this layer is used as a cross-attention layer
         # for the decoder
         is_cross_attention = key_value_states is not None
-        bsz, tgt_len, embed_dim = hidden_states.size()
+
+        bsz, tgt_len, _ = hidden_states.size()
 
         # get query proj
         query_states = self.q_proj(hidden_states) * self.scaling
@@ -268,7 +269,10 @@ class MBartAttention(nn.Module):
 
         attn_output = attn_output.view(bsz, self.num_heads, tgt_len, self.head_dim)
         attn_output = attn_output.transpose(1, 2)
-        attn_output = attn_output.reshape(bsz, tgt_len, embed_dim)
+
+        # Use the `embed_dim` from the config (stored in the class) rather than `hidden_state` because `attn_output` can be
+        # partitioned aross GPUs when using tensor-parallelism.
+        attn_output = attn_output.reshape(bsz, tgt_len, self.embed_dim)
 
         attn_output = self.out_proj(attn_output)
 
@@ -519,11 +523,9 @@ MBART_START_DOCSTRING = r"""
     This model inherits from :class:`~transformers.PreTrainedModel`. Check the superclass documentation for the generic
     methods the library implements for all its model (such as downloading or saving, resizing the input embeddings,
     pruning heads etc.)
-
     This model is also a PyTorch `torch.nn.Module <https://pytorch.org/docs/stable/nn.html#torch.nn.Module>`__
     subclass. Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to
     general usage and behavior.
-
     Parameters:
         config (:class:`~transformers.MBartConfig`):
             Model configuration class with all the parameters of the model. Initializing with a config file does not
@@ -533,34 +535,25 @@ MBART_START_DOCSTRING = r"""
 
 MBART_GENERATION_EXAMPLE = r"""
     Summarization example::
-
         >>> from transformers import MBartTokenizer, MBartForConditionalGeneration, MBartConfig
-
         >>> model = MBartForConditionalGeneration.from_pretrained('facebook/mbart-large-cc25')
         >>> tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
-
         >>> ARTICLE_TO_SUMMARIZE = "Meine Freunde sind cool, aber sie essen zu viel Kuchen."
         >>> inputs = tokenizer([ARTICLE_TO_SUMMARIZE], max_length=1024, return_tensors='pt')
-
         >>> # Generate Summary
         >>> summary_ids = model.generate(inputs['input_ids'], num_beams=4, max_length=5, early_stopping=True)
         >>> print([tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids])
-
     Mask filling example::
-
         >>> from transformers import MBartTokenizer, MBartForConditionalGeneration
         >>> tokenizer = MBartTokenizer.from_pretrained('facebook/mbart-large-cc25')
         >>> # de_DE is the language symbol id <LID> for German
         >>> TXT = "</s> Meine Freunde sind <mask> nett aber sie essen zu viel Kuchen. </s> de_DE"
-
         >>> model = MBartForConditionalGeneration.from_pretrained('facebook/mbart-large-cc25')
         >>> input_ids = tokenizer([TXT], add_special_tokens=False, return_tensors='pt')['input_ids']
         >>> logits = model(input_ids).logits
-
         >>> masked_index = (input_ids[0] == tokenizer.mask_token_id).nonzero().item()
         >>> probs = logits[0, masked_index].softmax(dim=0)
         >>> values, predictions = probs.topk(5)
-
         >>> tokenizer.decode(predictions).split()
 """
 
@@ -569,33 +562,25 @@ MBART_INPUTS_DOCSTRING = r"""
         input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
             Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you provide
             it.
-
             Indices can be obtained using :class:`~transformers.MBartTokenizer`. See
             :meth:`transformers.PreTrainedTokenizer.encode` and :meth:`transformers.PreTrainedTokenizer.__call__` for
             details.
-
             `What are input IDs? <../glossary.html#input-ids>`__
         attention_mask (:obj:`torch.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
             Mask to avoid performing attention on padding token indices. Mask values selected in ``[0, 1]``:
-
             - 1 for tokens that are **not masked**,
             - 0 for tokens that are **masked**.
-
             `What are attention masks? <../glossary.html#attention-mask>`__
         decoder_input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, target_sequence_length)`, `optional`):
             Indices of decoder input sequence tokens in the vocabulary.
-
             Indices can be obtained using :class:`~transformers.MBartTokenizer`. See
             :meth:`transformers.PreTrainedTokenizer.encode` and :meth:`transformers.PreTrainedTokenizer.__call__` for
             details.
-
             `What are decoder input IDs? <../glossary.html#decoder-input-ids>`__
-
             MBart uses a specific language id token as the starting token for :obj:`decoder_input_ids` generation that
             varies according to source and target language, *e.g.* 25004 for `en_XX`, and 25003 for `de_DE`. If
             :obj:`past_key_values` is used, optionally only the last :obj:`decoder_input_ids` have to be input (see
             :obj:`past_key_values`).
-
             For translation and summarization training, :obj:`decoder_input_ids` should be provided. If no
             :obj:`decoder_input_ids` is provided, the model will create this tensor by shifting the :obj:`input_ids` to
             the right for denoising pre-training following the paper.
@@ -604,23 +589,17 @@ MBART_INPUTS_DOCSTRING = r"""
             also be used by default.
         head_mask (:obj:`torch.Tensor` of shape :obj:`(encoder_layers, encoder_attention_heads)`, `optional`):
             Mask to nullify selected heads of the attention modules in the encoder. Mask values selected in ``[0, 1]``:
-
             - 1 indicates the head is **not masked**,
             - 0 indicates the head is **masked**.
-
         decoder_head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
             Mask to nullify selected heads of the attention modules in the decoder. Mask values selected in ``[0, 1]``:
-
             - 1 indicates the head is **not masked**,
             - 0 indicates the head is **masked**.
-
         cross_attn_head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
             Mask to nullify selected heads of the cross-attention modules in the decoder. Mask values selected in ``[0,
             1]``:
-
             - 1 indicates the head is **not masked**,
             - 0 indicates the head is **masked**.
-
         encoder_outputs (:obj:`tuple(tuple(torch.FloatTensor)`, `optional`):
             Tuple consists of (:obj:`last_hidden_state`, `optional`: :obj:`hidden_states`, `optional`:
             :obj:`attentions`) :obj:`last_hidden_state` of shape :obj:`(batch_size, sequence_length, hidden_size)`,
@@ -630,10 +609,8 @@ MBART_INPUTS_DOCSTRING = r"""
             Tuple of :obj:`tuple(torch.FloatTensor)` of length :obj:`config.n_layers`, with each tuple having 2 tensors
             of shape :obj:`(batch_size, num_heads, sequence_length, embed_size_per_head)`) and 2 additional tensors of
             shape :obj:`(batch_size, num_heads, encoder_sequence_length, embed_size_per_head)`.
-
             Contains pre-computed hidden-states (key and values in the self-attention blocks and in the cross-attention
             blocks) that can be used (see :obj:`past_key_values` input) to speed up sequential decoding.
-
             If :obj:`past_key_values` are used, the user can optionally input only the last :obj:`decoder_input_ids`
             (those that don't have their past key value states given to this model) of shape :obj:`(batch_size, 1)`
             instead of all :obj:`decoder_input_ids`` of shape :obj:`(batch_size, sequence_length)`.
@@ -646,7 +623,6 @@ MBART_INPUTS_DOCSTRING = r"""
             representation. If :obj:`past_key_values` is used, optionally only the last :obj:`decoder_inputs_embeds`
             have to be input (see :obj:`past_key_values`). This is useful if you want more control over how to convert
             :obj:`decoder_input_ids` indices into associated vectors than the model's internal embedding lookup matrix.
-
             If :obj:`decoder_input_ids` and :obj:`decoder_inputs_embeds` are both unset, :obj:`decoder_inputs_embeds`
             takes the value of :obj:`inputs_embeds`.
         use_cache (:obj:`bool`, `optional`):
@@ -667,7 +643,6 @@ class MBartEncoder(MBartPreTrainedModel):
     """
     Transformer encoder consisting of *config.encoder_layers* self attention layers. Each layer is a
     :class:`MBartEncoderLayer`.
-
     Args:
         config: MBartConfig
         embed_tokens (nn.Embedding): output embedding
@@ -715,25 +690,19 @@ class MBartEncoder(MBartPreTrainedModel):
             input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
                 Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you
                 provide it.
-
                 Indices can be obtained using :class:`~transformers.MBartTokenizer`. See
                 :meth:`transformers.PreTrainedTokenizer.encode` and :meth:`transformers.PreTrainedTokenizer.__call__`
                 for details.
-
                 `What are input IDs? <../glossary.html#input-ids>`__
             attention_mask (:obj:`torch.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
                 Mask to avoid performing attention on padding token indices. Mask values selected in ``[0, 1]``:
-
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
-
                 `What are attention masks? <../glossary.html#attention-mask>`__
             head_mask (:obj:`torch.Tensor` of shape :obj:`(encoder_layers, encoder_attention_heads)`, `optional`):
                 Mask to nullify selected heads of the attention modules. Mask values selected in ``[0, 1]``:
-
                 - 1 indicates the head is **not masked**,
                 - 0 indicates the head is **masked**.
-
             inputs_embeds (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`):
                 Optionally, instead of passing :obj:`input_ids` you can choose to directly pass an embedded
                 representation. This is useful if you want more control over how to convert :obj:`input_ids` indices
@@ -836,7 +805,6 @@ class MBartEncoder(MBartPreTrainedModel):
 class MBartDecoder(MBartPreTrainedModel):
     """
     Transformer decoder consisting of *config.decoder_layers* layers. Each layer is a :class:`MBartDecoderLayer`
-
     Args:
         config: MBartConfig
         embed_tokens (nn.Embedding): output embedding
@@ -911,18 +879,14 @@ class MBartDecoder(MBartPreTrainedModel):
             input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
                 Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you
                 provide it.
-
                 Indices can be obtained using :class:`~transformers.MBartTokenizer`. See
                 :meth:`transformers.PreTrainedTokenizer.encode` and :meth:`transformers.PreTrainedTokenizer.__call__`
                 for details.
-
                 `What are input IDs? <../glossary.html#input-ids>`__
             attention_mask (:obj:`torch.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
                 Mask to avoid performing attention on padding token indices. Mask values selected in ``[0, 1]``:
-
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
-
                 `What are attention masks? <../glossary.html#attention-mask>`__
             encoder_hidden_states (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, encoder_sequence_length, hidden_size)`, `optional`):
                 Sequence of hidden-states at the output of the last layer of the encoder. Used in the cross-attention
@@ -930,33 +894,25 @@ class MBartDecoder(MBartPreTrainedModel):
             encoder_attention_mask (:obj:`torch.LongTensor` of shape :obj:`(batch_size, encoder_sequence_length)`, `optional`):
                 Mask to avoid performing cross-attention on padding tokens indices of encoder input_ids. Mask values
                 selected in ``[0, 1]``:
-
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
-
                 `What are attention masks? <../glossary.html#attention-mask>`__
             head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
                 Mask to nullify selected heads of the attention modules. Mask values selected in ``[0, 1]``:
-
                 - 1 indicates the head is **not masked**,
                 - 0 indicates the head is **masked**.
-
             cross_attn_head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
                 Mask to nullify selected heads of the cross-attention modules in the decoder to avoid performing
                 cross-attention on hidden heads. Mask values selected in ``[0, 1]``:
-
                 - 1 indicates the head is **not masked**,
                 - 0 indicates the head is **masked**.
-
             past_key_values (:obj:`tuple(tuple(torch.FloatTensor))`, `optional`, returned when ``use_cache=True`` is passed or when ``config.use_cache=True``):
                 Tuple of :obj:`tuple(torch.FloatTensor)` of length :obj:`config.n_layers`, with each tuple having 2
                 tensors of shape :obj:`(batch_size, num_heads, sequence_length, embed_size_per_head)`) and 2 additional
                 tensors of shape :obj:`(batch_size, num_heads, encoder_sequence_length, embed_size_per_head)`.
-
                 Contains pre-computed hidden-states (key and values in the self-attention blocks and in the
                 cross-attention blocks) that can be used (see :obj:`past_key_values` input) to speed up sequential
                 decoding.
-
                 If :obj:`past_key_values` are used, the user can optionally input only the last
                 :obj:`decoder_input_ids` (those that don't have their past key value states given to this model) of
                 shape :obj:`(batch_size, 1)` instead of all :obj:`decoder_input_ids`` of shape :obj:`(batch_size,
@@ -1226,8 +1182,6 @@ class MBartModel(MBartPreTrainedModel):
         )
 
 
-
-
 @add_start_docstrings(
     "The MBART Model with a language modeling head. Can be used for summarization.", MBART_START_DOCSTRING
 )
@@ -1254,12 +1208,10 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
     def get_decoder(self):
         return self.model.get_decoder()
 
-
     def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
         new_embeddings = super().resize_token_embeddings(new_num_tokens)
         self._resize_final_logits_bias(new_num_tokens)
         return new_embeddings
-
 
     def _resize_final_logits_bias(self, new_num_tokens: int) -> None:
         old_num_tokens = self.final_logits_bias.shape[-1]
@@ -1270,14 +1222,11 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
         self.register_buffer("final_logits_bias", new_bias)
 
-
     def get_output_embeddings(self):
         return self.lm_head
 
-
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
-
 
     @add_start_docstrings_to_model_forward(MBART_INPUTS_DOCSTRING)
     @replace_return_docstrings(output_type=Seq2SeqLMOutput, config_class=_CONFIG_FOR_DOC)
@@ -1306,9 +1255,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             Labels for computing the masked language modeling loss. Indices should either be in ``[0, ...,
             config.vocab_size]`` or -100 (see ``input_ids`` docstring). Tokens with indices set to ``-100`` are ignored
             (masked), the loss is only computed for the tokens with labels in ``[0, ..., config.vocab_size]``.
-
         Returns:
-
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -1356,7 +1303,6 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             encoder_attentions=outputs.encoder_attentions,
         )
 
-
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids,
@@ -1384,7 +1330,6 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             "cross_attn_head_mask": cross_attn_head_mask,
             "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
         }
-
 
     def prepare_decoder_input_ids_from_labels(self, labels: torch.Tensor):
         return shift_tokens_right(labels, self.config.pad_token_id)
@@ -2102,14 +2047,26 @@ class MBartForSequenceClassification(MBartPreTrainedModel):
 
         loss = None
         if labels is not None:
-            if self.config.num_labels == 1:
-                # regression
+            if self.config.problem_type is None:
+                if self.config.num_labels == 1:
+                    self.config.problem_type = "regression"
+                elif self.config.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
+
+            if self.config.problem_type == "regression":
                 loss_fct = MSELoss()
-                loss = loss_fct(logits.view(-1), labels.view(-1))
-            else:
+                if self.config.num_labels == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
                 loss_fct = CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.config.num_labels), labels.view(-1))
-
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
         if not return_dict:
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
@@ -2145,7 +2102,6 @@ class MBartForQuestionAnswering(MBartPreTrainedModel):
         self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
 
         self.model._init_weights(self.qa_outputs)
-
 
     @add_start_docstrings_to_model_forward(MBART_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
@@ -2250,7 +2206,6 @@ class MBartForQuestionAnswering(MBartPreTrainedModel):
         )
 
 
-
 # Copied from transformers.models.bart.modeling_bart.BartDecoderWrapper with Bart->MBart
 class MBartDecoderWrapper(MBartPreTrainedModel):
     """
@@ -2267,7 +2222,6 @@ class MBartDecoderWrapper(MBartPreTrainedModel):
 
 
 # Copied from transformers.models.bart.modeling_bart.BartForCausalLM with Bart->MBart
-
 class MBartForCausalLM(MBartPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
@@ -2298,7 +2252,6 @@ class MBartForCausalLM(MBartPreTrainedModel):
     def get_decoder(self):
         return self.model.decoder
 
-
     @replace_return_docstrings(output_type=CausalLMOutputWithCrossAttentions, config_class=_CONFIG_FOR_DOC)
     def forward(
         self,
@@ -2321,18 +2274,14 @@ class MBartForCausalLM(MBartPreTrainedModel):
             input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
                 Indices of input sequence tokens in the vocabulary. Padding will be ignored by default should you
                 provide it.
-
                 Indices can be obtained using :class:`~transformers.MBartTokenizer`. See
                 :meth:`transformers.PreTrainedTokenizer.encode` and :meth:`transformers.PreTrainedTokenizer.__call__`
                 for details.
-
                 `What are input IDs? <../glossary.html#input-ids>`__
             attention_mask (:obj:`torch.Tensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
                 Mask to avoid performing attention on padding token indices. Mask values selected in ``[0, 1]``:
-
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
-
                 `What are attention masks? <../glossary.html#attention-mask>`__
             encoder_hidden_states  (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`):
                 Sequence of hidden-states at the output of the last layer of the encoder. Used in the cross-attention
@@ -2342,27 +2291,21 @@ class MBartForCausalLM(MBartPreTrainedModel):
                 in the cross-attention if the model is configured as a decoder. Mask values selected in ``[0, 1]``:
             head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
                 Mask to nullify selected heads of the attention modules. Mask values selected in ``[0, 1]``:
-
                 - 1 indicates the head is **not masked**,
                 - 0 indicates the head is **masked**.
-
             cross_attn_head_mask (:obj:`torch.Tensor` of shape :obj:`(decoder_layers, decoder_attention_heads)`, `optional`):
                 Mask to nullify selected heads of the cross-attention modules. Mask values selected in ``[0, 1]``:
-
                 - 1 indicates the head is **not masked**,
                 - 0 indicates the head is **masked**.
-
             past_key_values (:obj:`tuple(tuple(torch.FloatTensor))`, `optional`, returned when ``use_cache=True`` is passed or when ``config.use_cache=True``):
                 Tuple of :obj:`tuple(torch.FloatTensor)` of length :obj:`config.n_layers`, with each tuple having 2
                 tensors of shape :obj:`(batch_size, num_heads, sequence_length, embed_size_per_head)`) and 2 additional
                 tensors of shape :obj:`(batch_size, num_heads, encoder_sequence_length, embed_size_per_head)`. The two
                 additional tensors are only required when the model is used as a decoder in a Sequence to Sequence
                 model.
-
                 Contains pre-computed hidden-states (key and values in the self-attention blocks and in the
                 cross-attention blocks) that can be used (see :obj:`past_key_values` input) to speed up sequential
                 decoding.
-
                 If :obj:`past_key_values` are used, the user can optionally input only the last ``decoder_input_ids``
                 (those that don't have their past key value states given to this model) of shape :obj:`(batch_size, 1)`
                 instead of all ``decoder_input_ids`` of shape :obj:`(batch_size, sequence_length)`.
@@ -2374,7 +2317,6 @@ class MBartForCausalLM(MBartPreTrainedModel):
             use_cache (:obj:`bool`, `optional`):
                 If set to :obj:`True`, :obj:`past_key_values` key value states are returned and can be used to speed up
                 decoding (see :obj:`past_key_values`).
-
                 - 1 for tokens that are **not masked**,
                 - 0 for tokens that are **masked**.
             output_attentions (:obj:`bool`, `optional`):
@@ -2385,19 +2327,14 @@ class MBartForCausalLM(MBartPreTrainedModel):
                 for more detail.
             return_dict (:obj:`bool`, `optional`):
                 Whether or not to return a :class:`~transformers.file_utils.ModelOutput` instead of a plain tuple.
-
         Returns:
-
         Example::
-
             >>> from transformers import MBartTokenizer, MBartForCausalLM
-
             >>> tokenizer = MBartTokenizer.from_pretrained('facebook/bart-large')
             >>> model = MBartForCausalLM.from_pretrained('facebook/bart-large', add_cross_attention=False)
             >>> assert model.config.is_decoder, f"{model.__class__} has to be configured as a decoder."
             >>> inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
             >>> outputs = model(**inputs)
-
             >>> last_hidden_states = outputs.last_hidden_state
         """
 
@@ -2442,7 +2379,6 @@ class MBartForCausalLM(MBartPreTrainedModel):
             attentions=outputs.attentions,
             cross_attentions=outputs.cross_attentions,
         )
-
 
     def prepare_inputs_for_generation(self, input_ids, past=None, attention_mask=None, use_cache=None, **kwargs):
         # if model is used as a decoder in encoder-decoder model, the decoder attention mask is created on the fly
