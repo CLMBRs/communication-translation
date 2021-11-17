@@ -5,4 +5,4 @@ yapf
 pyyaml==5.3.1
 protobuf
 torch>=1.7.0
-transformers==4.0.1
+transformers==4.12.5
