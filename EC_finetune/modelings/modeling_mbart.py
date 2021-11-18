@@ -524,6 +524,12 @@ class MBartPreTrainedModel(PreTrainedModel):
         }
         return dummy_inputs
 
+    def _make_linear_from_emb(emb):
+        vocab_size, emb_size = emb.weight.shape
+        lin_layer = nn.Linear(vocab_size, emb_size, bias=False)
+        lin_layer.weight.data = emb.weight.data
+        return lin_layer
+
 
 MBART_START_DOCSTRING = r"""
     This model inherits from :class:`~transformers.PreTrainedModel`. Check the superclass documentation for the generic
@@ -1205,7 +1211,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
         self.model = MBartModel(config)
         self.embed_tokens_size = self.model.shared.weight.size()[0]
         self.register_buffer("final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings)))
-        self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
+        # self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
         self.init_weights()
 
@@ -1230,7 +1236,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
         self.register_buffer("final_logits_bias", new_bias)
 
     def get_output_embeddings(self):
-        return self.lm_head
+        return self._make_linear_from_emb(self.model.shared)  # make it on the fly
 
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
@@ -1287,7 +1293,10 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
+        lm_logits = F.linear(
+            outputs[0], self.model.shared.weight, bias=self.final_logits_bias
+        )
+        # lm_logits = self.lm_head(outputs[0]) + self.final_logits_bias
 
         masked_lm_loss = None
         if labels is not None:
