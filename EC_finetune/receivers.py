@@ -106,8 +106,8 @@ class MBartReceiver(Receiver):
         if self.dropout:
             message_embedding = self.dropout(message_embedding)
         hidden = self.encoder(
-            input_ids=message_ids,
-            input_embeds=message_embedding,
+            input_ids=None,
+            inputs_embeds=message_embedding,
             attention_mask=attention_mask
         )
         hidden = hidden.last_hidden_state

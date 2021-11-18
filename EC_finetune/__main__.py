@@ -241,6 +241,8 @@ def main():
     Train a model to generate image captions
     """
 
+    torch.autograd.set_detect_anomaly(True)
+
     # Configure the logger (boilerplate)
     logger = logging.getLogger(__name__)
     out_handler = logging.StreamHandler(sys.stdout)

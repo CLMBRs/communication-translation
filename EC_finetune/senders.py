@@ -7,8 +7,9 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_bart import _prepare_bart_decoder_inputs
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from EC_finetune.modelings.modeling_mbart import (
+    MBartForConditionalGeneration, shift_tokens_right
+)
 
 
 class Sender(Module):
@@ -145,17 +146,10 @@ class MBartSender(Sender):
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:
-            decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
-                config=self.top.config,
-                input_ids=decoder_input_ids,
-                causal_mask_dtype=self.embedding.weight.dtype
-            )
+            decoder_input_ids = shift_tokens_right(decoder_input_ids, self.top.config.pad_token_id)
             output = self.decoder(
                 input_ids=decoder_input_ids,
-                encoder_hidden_states=image_hidden,
-                encoder_padding_mask=None,
-                decoder_padding_mask=decoder_padding_mask,
-                decoder_causal_mask=causal_mask
+                encoder_hidden_states=image_hidden
             )
             logits = F.linear(
                 output.last_hidden_state,
