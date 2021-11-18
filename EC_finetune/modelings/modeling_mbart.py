@@ -524,6 +524,7 @@ class MBartPreTrainedModel(PreTrainedModel):
         }
         return dummy_inputs
 
+    @staticmethod
     def _make_linear_from_emb(emb):
         vocab_size, emb_size = emb.weight.shape
         lin_layer = nn.Linear(vocab_size, emb_size, bias=False)
