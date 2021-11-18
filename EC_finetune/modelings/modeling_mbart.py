@@ -1197,6 +1197,7 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
     def __init__(self, config: MBartConfig):
         super().__init__(config)
         self.model = MBartModel(config)
+        self.embed_tokens_size = self.model.shared.weight.size()[0]
         self.register_buffer("final_logits_bias", torch.zeros((1, self.model.shared.num_embeddings)))
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
@@ -1525,11 +1526,19 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
         logits_processor = self._get_logits_processor(
             repetition_penalty=repetition_penalty,
             no_repeat_ngram_size=no_repeat_ngram_size,
+            encoder_no_repeat_ngram_size=None,
+            encoder_input_ids=None,
             bad_words_ids=bad_words_ids,
             min_length=min_length,
+            max_length=max_length,
             eos_token_id=eos_token_id,
+            forced_bos_token_id=None,
+            forced_eos_token_id=None,
             prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
             num_beams=num_beams,
+            num_beam_groups=None,
+            diversity_penalty=None,
+            remove_invalid_values=None
         )
 
         if is_greedy_gen_mode:
@@ -1655,14 +1664,14 @@ class MBartForConditionalGeneration(MBartPreTrainedModel):
 
 
     def beam_search(
-            self,
-            input_ids: torch.LongTensor,
-            beam_scorer: BeamScorer,
-            logits_processor: Optional[LogitsProcessorList] = None,
-            max_length: Optional[int] = None,
-            pad_token_id: Optional[int] = None,
-            eos_token_id: Optional[int] = None,
-            **model_kwargs
+        self,
+        input_ids: torch.LongTensor,
+        beam_scorer: BeamScorer,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        max_length: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        **model_kwargs
     ):
         r"""
         Generates sequences for models with a language modeling head using beam search decoding.
