@@ -41,7 +41,7 @@ from transformers.modeling_outputs import (
 )
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
-from transformers import BeamScorer, BeamSearchScorer
+from transformers import BeamScorer
 from transformers.models.bart.configuration_bart import BartConfig
 
 from transformers.generation_logits_process import (
@@ -1322,6 +1322,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids,
+        decoder_input_embeds=None,
         past=None,
         attention_mask=None,
         use_cache=None,
@@ -1334,6 +1335,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             "encoder_outputs": encoder_outputs,
             "past_key_values": past,
             "decoder_input_ids": decoder_input_ids,
+            "decoder_input_embeds": decoder_input_embeds,
             "attention_mask": attention_mask,
             "use_cache":
                 use_cache,  # change this to avoid caching (presumably for debugging)
@@ -1862,6 +1864,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             sequences. The second dimension (sequence_length) is either equal to :obj:`max_length` or shorter if all
             batches finished early due to the :obj:`eos_token_id`.
         """
+        generate_from_logits = ("generate_from_logits" in model_kwargs and model_kwargs["generate_from_logits"])
         ret = {}
         # init values
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList(
@@ -1883,12 +1886,21 @@ class BartForConditionalGeneration(PretrainedBartModel):
         generated_logits = (torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0) == generated_token_ids).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
+        if generate_from_logits:
+            generated_embeds = torch.matmul(
+                generated_logits, self.model.shared.weight
+            )
 
         while cur_len < max_length:
             # prepare model inputs
-            model_inputs = self.prepare_inputs_for_generation(
-                generated_token_ids, **model_kwargs
-            )
+            if generate_from_logits:
+                model_inputs = self.prepare_inputs_for_generation(
+                    generated_token_ids, decoder_input_embeds=generated_embeds, **model_kwargs
+                )
+            else:
+                model_inputs = self.prepare_inputs_for_generation(
+                    generated_token_ids, **model_kwargs
+                )
 
             # forward pass to get next token
             outputs = self(**model_inputs, return_dict=True)
@@ -1907,6 +1919,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
             next_tokens = torch.argmax(next_logits, dim=-1)
             # next_token_embedding = next_logits @ self.embed_tokens.weight
             next_tokens = next_tokens.squeeze()
+            if generate_from_logits:
+                next_embeds = torch.matmul(
+                    next_logits, self.model.shared.weight
+                )
 
             # add code that transfomers next_tokens to tokens_to_add
             if eos_token_id is not None:
@@ -1914,9 +1930,15 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 next_tokens = next_tokens * unfinished_sequences + pad_token_id * (
                     1 - unfinished_sequences
                 )
+                
                 next_logits = next_logits.T * unfinished_sequences + \
                 (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
+                
+                if generate_from_logits:
+                    next_embeds = next_embeds.T * unfinished_sequences + \
+                    (pad_token_embed.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                    next_embeds = next_embeds.T
 
             # add token and increase length by one
             generated_token_ids = torch.cat(
@@ -1925,6 +1947,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
             generated_logits = torch.cat(
                 [generated_logits, next_logits[:, None]], dim=-2
             )
+            if generate_from_logits:
+                generated_embeds = torch.cat(
+                    [generated_embeds, next_embeds[:, None]], dim=-2
+                )
 
             # update sequence length
             if eos_token_id is not None:
