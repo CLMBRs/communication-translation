@@ -1,10 +1,8 @@
 from abc import abstractmethod
 from argparse import Namespace
-from copy import deepcopy
 from statistics import mean
 
 import numpy as np
-from numpy.core import einsumfunc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +11,6 @@ from torch.nn import Module
 
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
-from EC_finetune.modelings.modeling_bart import invert_mask
 
 
 class CommunicationAgent(Module):

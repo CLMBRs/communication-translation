@@ -54,7 +54,8 @@ class MBartSender(Sender):
         temperature: float = None,
         hard: bool = None,
         repetition_penalty: float = 1.0,
-        beam_width: int = 1
+        beam_width: int = 1,
+        generate_from_logits: bool = False
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -81,6 +82,7 @@ class MBartSender(Sender):
         self.seq_len = seq_len
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
+        self.generate_from_logits = generate_from_logits
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
 
@@ -177,6 +179,8 @@ class MBartSender(Sender):
             if 'lang_mask' in kwargs:
                 kwargs['lang_mask'] = \
                     kwargs['lang_mask'].to(image_hidden.device)
+            if self.generate_from_logits:
+                kwargs['generate_from_logits'] = True
 
             # Get the sender model output and return
             output = self.top.gumbel_generate(

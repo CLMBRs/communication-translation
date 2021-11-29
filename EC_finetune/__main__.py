@@ -361,7 +361,8 @@ def main():
             temperature=args.temperature,
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
-            beam_width=args.beam_width
+            beam_width=args.beam_width,
+            generate_from_logits=args.generate_from_logits
         )
         receiver = MBartReceiver(
             comm_model,
