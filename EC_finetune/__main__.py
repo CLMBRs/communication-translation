@@ -336,18 +336,23 @@ def main():
             tmp_language_model = MBartForConditionalGeneration.from_pretrained(
                 "facebook/mbart-large-cc25"
             )
-            lm = deepcopy(tmp_language_model)
+
+            decoder = deepcopy(tmp_language_model.model.decoder)
             embedding = deepcopy(tmp_language_model.model.shared)
+            bias = deepcopy(tmp_language_model.final_logits_bias)
+
             del tmp_language_model
 
-            for param in lm.parameters():
+            for param in decoder.parameters():
                 param.requires_grad = False
             for param in embedding.parameters():
                 param.requires_grad = False
+            bias.requires_grad = False
 
             language_model = {
-                'language_model': lm.to(device),
-                'embedding': embedding.to(device)
+                'decoder': decoder.to(device),
+                'embedding': embedding.to(device),
+                'bias': bias.to(device)
             }
 
         comm_model = MBartForConditionalGeneration.from_pretrained(

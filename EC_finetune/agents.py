@@ -11,6 +11,7 @@ from torch.nn import Module
 
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
+from EC_finetune.modelings.modeling_bart import invert_mask
 
 
 class CommunicationAgent(Module):
@@ -226,8 +227,9 @@ class ECImageIdentificationAgent(CommunicationAgent):
             ) else args.lm_lambda
             
             if language_model is not None:
-                self.language_model = language_model['language_model']
+                self.language_model = language_model['decoder']
                 self.lm_embedding = language_model['embedding']
+                self.lm_bias = language_model['bias']
             else:
                 raise ValueError(
                     "A language model must be provided if"
@@ -283,36 +285,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
             message_dict['message_logits'], message_dict['message_lengths']
         )
 
-        if self.language_model_loss:
-            lm_encoder_ids = message_dict['message_ids']
-            lm_encoder_logits = message_dict['message_logits']
-
-            lm_encoder_embeds = torch.matmul(
-                lm_encoder_logits, self.lm_embedding.weight
-            )
-            lm_decoder_embeds = torch.matmul(
-                lm_decoder_logits, self.lm_embedding.weight
-            )
-            
-            lm_targets = lm_encoder_ids.long()
-
-            lm_output = self.language_model(
-                input_ids=lm_encoder_ids,
-                encoder_input_embeds=lm_encoder_embeds,
-                attention_mask=lm_padding_mask,
-                decoder_input_ids=lm_decoder_ids,
-                decoder_input_embeds=lm_decoder_embeds,
-                decoder_attention_mask=lm_padding_mask
-            )
-            lm_loss = F.cross_entropy(
-                lm_output.logits.transpose(1, 2),
-                lm_targets.to(device),
-                ignore_index=self.padding_index
-            )
-            lm_loss *= self.lm_lambda
-        else:
-            lm_loss = None
-
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
         message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
@@ -324,6 +296,41 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict['message_logits'] = self.prepend_cls_logit(
             message_dict['message_logits'], self.cls_index
         )
+
+        if self.language_model_loss:
+            lm_ids = message_dict['message_ids'][:, :-1]
+            lm_logits = message_dict['message_logits'][:, :-1]
+            lm_input = torch.matmul(lm_logits, self.lm_embedding.weight)
+            lm_targets = message_dict['message_ids'][:, 1:].long()
+            max_length = lm_targets.size(1)
+            causal_mask = self.get_causal_mask(
+                max_length, self.lm_embedding.weight.dtype
+            )
+            causal_mask = causal_mask.to(device)
+            lm_padding_mask = invert_mask(
+                message_dict['attention_mask'][:, :-1].bool()
+            ).to(device)
+            lm_output = self.language_model(
+                input_ids=lm_ids,
+                input_embeds=lm_input,
+                encoder_hidden_states=None,
+                encoder_padding_mask=None,
+                decoder_padding_mask=lm_padding_mask,
+                decoder_causal_mask=causal_mask
+            )
+            lm_logits = F.linear(
+                lm_output.last_hidden_state,
+                self.lm_embedding.weight,
+                bias=self.lm_bias.to(device)
+            )
+            lm_loss = F.cross_entropy(
+                lm_logits.transpose(1, 2),
+                lm_targets.to(device),
+                ignore_index=self.padding_index
+            )
+            lm_loss *= self.lm_lambda
+        else:
+            lm_loss = None
 
         # Get the logits for the image choice candidates based on the sender's
         # message
