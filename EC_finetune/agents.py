@@ -369,6 +369,11 @@ class ImageCaptionGrounder(CommunicationAgent):
     An agent to train grounding of text to images, by producing captions based
     on images, and picking images based on a caption (independently)
     """
+    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
+        super().__init__(sender, receiver, args)
+        if hasattr(args, 'image_selection_lambda'):
+            self.image_selection_lambda = args.image_selection_lambda
+
     def forward(self, batch):
         """
         Train the sender to generate a gold-standard caption given an image.
@@ -437,6 +442,8 @@ class ImageCaptionGrounder(CommunicationAgent):
         eq = torch.eq(predicted_idx, target_image)
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
+        if self.image_selection_lambda:
+            image_selection_loss *= self.image_selection_lambda
         loss = caption_generation_loss + image_selection_loss
 
         return {
