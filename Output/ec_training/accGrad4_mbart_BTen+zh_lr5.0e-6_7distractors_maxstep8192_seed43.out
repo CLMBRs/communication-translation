@@ -1,0 +1,315 @@
+==========================================
+SLURM_JOB_ID = 6120703
+SLURM_JOB_NODELIST = d14-03
+TMPDIR = /tmp/SLURM_6120703
+==========================================
+/home1/zliu9986/communication-translation
+10-05-21 23:28:15 - Dataset Loaded
+10-05-21 23:28:15 - Configuration:
+Namespace(TransferH=False, alpha=1.0, batch_size=8, beam_width=1, config='Configs/en-zh_ec.yml', cpu=False, csv_headers=['mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'], decode_how='beam', device=device(type='cuda'), do_eval=True, do_train=True, dropout=0.1, fix_bhd=False, fix_spk=False, grad_clip=1.0, gradient_accumulation_steps=4, hard=False, has_vocab_constraint=False, hidden_dim=512, image_dim=2048, load_entire_agent=False, lr=5e-06, max_global_step=8192, max_seq_length=64, mode='emergent_communication', model_name='Models/bt_en-zh_baseline/best/', n_gpu=1, no_share_bhd=True, no_terminal=False, no_write=False, num_distractors_train=7, num_distractors_valid=7, num_games=30, num_warmup_steps=0, output_dir='Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43', print_every=32, recurrent_hidden_aggregation=False, recurrent_image_unroll=False, repetition_penalty=1.0, save_output_txt=True, save_pretrain_seperately=True, schedule='constant_w_warmup', seed=43, source_lang='en_XX', source_lang_vocab_constrain_file='/projects/unmt/communication-translation/en_cc_tokenID2count_dict.cc25.json', stats_to_print=['loss', 'accuracy', 'mean_length'], target_acc=85.0, target_lang='zh_CN', target_lang_vocab_constrain_file='/projects/unmt/communication-translation/zh-Hans_cc_tokenID2count_dict.cc25.json', temp=1.0, temperature=1.0, train_images='./Data/ec_finetuning/images_train', two_ffwd=False, unit_norm=False, valid_every=512, valid_images='./Data/ec_finetuning/images_val')
+Not sharing visual system for each agent.
+10-05-21 23:38:56 - epoch 0 | global step 0 | mode validation | loss 2.428 | accuracy 12.52 | mean_length 61.3902
+10-05-21 23:38:56 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 12.52, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-05-21 23:44:45 - epoch 0 | global step 32 | mode train | loss 2.2218 | accuracy 13.4766 | mean_length 61.6914
+10-05-21 23:50:25 - epoch 0 | global step 64 | mode train | loss 2.1138 | accuracy 13.0859 | mean_length 64
+10-05-21 23:56:05 - epoch 0 | global step 96 | mode train | loss 2.095 | accuracy 12.9883 | mean_length 63.959
+10-06-21 00:01:45 - epoch 0 | global step 128 | mode train | loss 2.0924 | accuracy 13.0859 | mean_length 64
+10-06-21 00:07:25 - epoch 0 | global step 160 | mode train | loss 2.096 | accuracy 12.6953 | mean_length 64
+10-06-21 00:13:05 - epoch 0 | global step 192 | mode train | loss 2.0846 | accuracy 12.9883 | mean_length 63.9961
+10-06-21 00:18:44 - epoch 0 | global step 224 | mode train | loss 2.0887 | accuracy 13.2812 | mean_length 64
+10-06-21 00:24:24 - epoch 0 | global step 256 | mode train | loss 2.0836 | accuracy 13.6719 | mean_length 64
+10-06-21 00:30:04 - epoch 0 | global step 288 | mode train | loss 2.0828 | accuracy 14.0625 | mean_length 64
+10-06-21 00:35:43 - epoch 0 | global step 320 | mode train | loss 2.0784 | accuracy 11.6211 | mean_length 63.9512
+10-06-21 00:41:22 - epoch 0 | global step 352 | mode train | loss 2.0311 | accuracy 14.9414 | mean_length 63.9619
+10-06-21 00:47:00 - epoch 0 | global step 384 | mode train | loss 2.0755 | accuracy 13.2812 | mean_length 64
+10-06-21 00:52:39 - epoch 0 | global step 416 | mode train | loss 2.0651 | accuracy 14.0625 | mean_length 63.9941
+10-06-21 00:58:18 - epoch 0 | global step 448 | mode train | loss 2.0131 | accuracy 15.2344 | mean_length 64
+10-06-21 01:03:56 - epoch 0 | global step 480 | mode train | loss 1.9918 | accuracy 17.1875 | mean_length 64
+10-06-21 01:09:35 - epoch 0 | global step 512 | mode train | loss 2.0515 | accuracy 15.625 | mean_length 64
+10-06-21 01:19:00 - epoch 0 | global step 512 | mode validation | loss 2.1171 | accuracy 13.56 | mean_length 64
+10-06-21 01:19:00 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 13.56, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 01:24:48 - epoch 0 | global step 544 | mode train | loss 2.0291 | accuracy 15.918 | mean_length 64
+10-06-21 01:30:27 - epoch 0 | global step 576 | mode train | loss 1.9976 | accuracy 16.3086 | mean_length 64
+10-06-21 01:36:06 - epoch 0 | global step 608 | mode train | loss 2.0029 | accuracy 17.7734 | mean_length 64
+10-06-21 01:41:45 - epoch 0 | global step 640 | mode train | loss 1.9449 | accuracy 22.0703 | mean_length 64
+10-06-21 01:47:24 - epoch 0 | global step 672 | mode train | loss 1.8762 | accuracy 23.9258 | mean_length 64
+10-06-21 01:53:03 - epoch 0 | global step 704 | mode train | loss 1.8679 | accuracy 25.0977 | mean_length 64
+10-06-21 01:58:42 - epoch 0 | global step 736 | mode train | loss 1.9195 | accuracy 20.7031 | mean_length 64
+10-06-21 02:04:21 - epoch 0 | global step 768 | mode train | loss 1.9429 | accuracy 20.2148 | mean_length 64
+10-06-21 02:10:00 - epoch 0 | global step 800 | mode train | loss 1.9085 | accuracy 21.582 | mean_length 64
+10-06-21 02:15:39 - epoch 0 | global step 832 | mode train | loss 1.8869 | accuracy 23.1445 | mean_length 64
+10-06-21 02:21:18 - epoch 0 | global step 864 | mode train | loss 1.9089 | accuracy 20.5078 | mean_length 64
+10-06-21 02:26:57 - epoch 0 | global step 896 | mode train | loss 1.8752 | accuracy 23.4375 | mean_length 64
+10-06-21 02:32:36 - epoch 0 | global step 928 | mode train | loss 2.0296 | accuracy 17.2852 | mean_length 64
+10-06-21 02:38:16 - epoch 0 | global step 960 | mode train | loss 2.0014 | accuracy 16.2109 | mean_length 64
+10-06-21 02:43:55 - epoch 0 | global step 992 | mode train | loss 1.9406 | accuracy 21.0938 | mean_length 64
+10-06-21 02:49:35 - epoch 0 | global step 1024 | mode train | loss 1.9136 | accuracy 22.8516 | mean_length 64
+10-06-21 02:59:02 - epoch 0 | global step 1024 | mode validation | loss 1.8649 | accuracy 22.76 | mean_length 64
+10-06-21 02:59:02 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 22.76, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 03:04:49 - epoch 0 | global step 1056 | mode train | loss 1.8653 | accuracy 22.7539 | mean_length 64
+10-06-21 03:10:28 - epoch 0 | global step 1088 | mode train | loss 1.9519 | accuracy 20.8008 | mean_length 64
+10-06-21 03:16:07 - epoch 0 | global step 1120 | mode train | loss 1.8992 | accuracy 21.875 | mean_length 64
+10-06-21 03:21:46 - epoch 0 | global step 1152 | mode train | loss 1.9656 | accuracy 19.5312 | mean_length 64
+10-06-21 03:27:25 - epoch 0 | global step 1184 | mode train | loss 1.9692 | accuracy 20.5078 | mean_length 64
+10-06-21 03:33:04 - epoch 0 | global step 1216 | mode train | loss 1.8966 | accuracy 22.168 | mean_length 64
+10-06-21 03:38:44 - epoch 0 | global step 1248 | mode train | loss 1.7987 | accuracy 28.418 | mean_length 64
+10-06-21 03:44:23 - epoch 0 | global step 1280 | mode train | loss 1.7035 | accuracy 29.2969 | mean_length 64
+10-06-21 03:50:02 - epoch 0 | global step 1312 | mode train | loss 1.7687 | accuracy 26.4648 | mean_length 64
+10-06-21 03:55:41 - epoch 0 | global step 1344 | mode train | loss 1.777 | accuracy 29.1992 | mean_length 64
+10-06-21 04:01:20 - epoch 0 | global step 1376 | mode train | loss 1.7238 | accuracy 27.0508 | mean_length 64
+10-06-21 04:06:59 - epoch 0 | global step 1408 | mode train | loss 1.6577 | accuracy 31.6406 | mean_length 64
+10-06-21 04:12:47 - epoch 0 | global step 1440 | mode train | loss 1.6548 | accuracy 32.0312 | mean_length 64
+10-06-21 04:18:26 - epoch 0 | global step 1472 | mode train | loss 1.6184 | accuracy 31.3477 | mean_length 64
+10-06-21 04:24:05 - epoch 0 | global step 1504 | mode train | loss 1.6372 | accuracy 31.7383 | mean_length 64
+10-06-21 04:29:44 - epoch 0 | global step 1536 | mode train | loss 1.5638 | accuracy 33.3008 | mean_length 63.9844
+10-06-21 04:39:22 - epoch 0 | global step 1536 | mode validation | loss 1.6721 | accuracy 31.34 | mean_length 63.9988
+10-06-21 04:39:22 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 31.34, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 04:45:10 - epoch 0 | global step 1568 | mode train | loss 1.6902 | accuracy 27.832 | mean_length 64
+10-06-21 04:50:50 - epoch 0 | global step 1600 | mode train | loss 1.5624 | accuracy 35.3516 | mean_length 63.998
+10-06-21 05:00:02 - epoch 0 | global step 1632 | mode train | loss 1.539 | accuracy 36.3281 | mean_length 63.9941
+10-06-21 05:05:44 - epoch 0 | global step 1664 | mode train | loss 1.5532 | accuracy 33.9844 | mean_length 63.9688
+10-06-21 05:11:23 - epoch 0 | global step 1696 | mode train | loss 1.5475 | accuracy 34.9609 | mean_length 63.9639
+10-06-21 05:17:36 - epoch 0 | global step 1728 | mode train | loss 1.5177 | accuracy 38.5742 | mean_length 63.7188
+10-06-21 05:23:44 - epoch 0 | global step 1760 | mode train | loss 1.4902 | accuracy 37.3047 | mean_length 63.5576
+10-06-21 05:29:23 - epoch 0 | global step 1792 | mode train | loss 1.5497 | accuracy 34.9609 | mean_length 61.9443
+10-06-21 05:35:12 - epoch 0 | global step 1824 | mode train | loss 1.4689 | accuracy 38.3789 | mean_length 63.002
+10-06-21 05:40:51 - epoch 0 | global step 1856 | mode train | loss 1.4721 | accuracy 36.9141 | mean_length 63.1992
+10-06-21 05:46:30 - epoch 0 | global step 1888 | mode train | loss 1.4605 | accuracy 39.6484 | mean_length 63.1514
+10-06-21 05:52:10 - epoch 0 | global step 1920 | mode train | loss 1.5487 | accuracy 37.5977 | mean_length 63.3184
+10-06-21 05:57:49 - epoch 0 | global step 1952 | mode train | loss 1.4333 | accuracy 42.6758 | mean_length 62.6465
+10-06-21 06:03:28 - epoch 0 | global step 1984 | mode train | loss 1.4063 | accuracy 41.6992 | mean_length 63.3398
+10-06-21 06:09:07 - epoch 0 | global step 2016 | mode train | loss 1.3803 | accuracy 41.9922 | mean_length 63.9414
+10-06-21 06:14:46 - epoch 0 | global step 2048 | mode train | loss 1.368 | accuracy 45.0195 | mean_length 63.9531
+10-06-21 06:24:11 - epoch 0 | global step 2048 | mode validation | loss 1.3382 | accuracy 44.46 | mean_length 63.9808
+10-06-21 06:24:11 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 44.46, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 06:29:59 - epoch 0 | global step 2080 | mode train | loss 1.3321 | accuracy 44.1406 | mean_length 63.8955
+10-06-21 06:35:38 - epoch 0 | global step 2112 | mode train | loss 1.3208 | accuracy 43.0664 | mean_length 63.9746
+10-06-21 06:41:17 - epoch 0 | global step 2144 | mode train | loss 1.3428 | accuracy 45.1172 | mean_length 63.9209
+10-06-21 06:46:56 - epoch 0 | global step 2176 | mode train | loss 1.3467 | accuracy 44.3359 | mean_length 63.999
+10-06-21 06:52:36 - epoch 0 | global step 2208 | mode train | loss 1.2955 | accuracy 48.1445 | mean_length 63.9521
+10-06-21 06:58:15 - epoch 0 | global step 2240 | mode train | loss 1.2291 | accuracy 50.1953 | mean_length 63.8027
+10-06-21 07:03:54 - epoch 0 | global step 2272 | mode train | loss 1.2317 | accuracy 50.9766 | mean_length 63.8867
+10-06-21 07:09:33 - epoch 0 | global step 2304 | mode train | loss 1.2436 | accuracy 48.5352 | mean_length 63.9521
+10-06-21 07:15:12 - epoch 0 | global step 2336 | mode train | loss 1.2109 | accuracy 51.2695 | mean_length 63.8145
+10-06-21 07:20:51 - epoch 0 | global step 2368 | mode train | loss 1.1752 | accuracy 52.0508 | mean_length 63.9668
+10-06-21 07:26:30 - epoch 0 | global step 2400 | mode train | loss 1.2016 | accuracy 50.293 | mean_length 63.999
+10-06-21 07:32:09 - epoch 0 | global step 2432 | mode train | loss 1.1724 | accuracy 51.6602 | mean_length 63.9658
+10-06-21 07:37:49 - epoch 0 | global step 2464 | mode train | loss 1.1762 | accuracy 52.4414 | mean_length 63.8701
+10-06-21 07:43:28 - epoch 0 | global step 2496 | mode train | loss 1.1227 | accuracy 54.4922 | mean_length 63.9141
+10-06-21 07:49:08 - epoch 0 | global step 2528 | mode train | loss 1.0986 | accuracy 54.8828 | mean_length 63.9678
+10-06-21 07:54:47 - epoch 0 | global step 2560 | mode train | loss 1.1333 | accuracy 53.5156 | mean_length 63.8643
+10-06-21 08:04:13 - epoch 0 | global step 2560 | mode validation | loss 1.0585 | accuracy 58.7 | mean_length 63.9028
+10-06-21 08:04:13 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 58.7, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 08:10:01 - epoch 0 | global step 2592 | mode train | loss 1.1256 | accuracy 55.8594 | mean_length 63.7822
+10-06-21 08:15:40 - epoch 0 | global step 2624 | mode train | loss 1.1077 | accuracy 53.5156 | mean_length 63.8438
+10-06-21 08:21:36 - epoch 0 | global step 2656 | mode train | loss 1.0835 | accuracy 56.6406 | mean_length 63.9365
+10-06-21 08:27:15 - epoch 0 | global step 2688 | mode train | loss 1.0707 | accuracy 56.7383 | mean_length 63.9736
+10-06-21 08:32:54 - epoch 0 | global step 2720 | mode train | loss 1.0078 | accuracy 62.0117 | mean_length 63.8652
+10-06-21 08:38:34 - epoch 0 | global step 2752 | mode train | loss 0.995 | accuracy 59.5703 | mean_length 63.8574
+10-06-21 08:44:13 - epoch 0 | global step 2784 | mode train | loss 1.0555 | accuracy 58.3008 | mean_length 64
+10-06-21 08:49:52 - epoch 0 | global step 2816 | mode train | loss 0.9717 | accuracy 58.6914 | mean_length 63.8779
+10-06-21 08:55:31 - epoch 0 | global step 2848 | mode train | loss 0.9348 | accuracy 62.5 | mean_length 63.9863
+10-06-21 09:01:14 - epoch 0 | global step 2880 | mode train | loss 0.9204 | accuracy 65.0391 | mean_length 63.9814
+10-06-21 09:06:54 - epoch 0 | global step 2912 | mode train | loss 0.9724 | accuracy 60.7422 | mean_length 63.9678
+10-06-21 09:12:33 - epoch 0 | global step 2944 | mode train | loss 0.9027 | accuracy 64.8438 | mean_length 63.9805
+10-06-21 09:18:12 - epoch 0 | global step 2976 | mode train | loss 0.8338 | accuracy 69.3359 | mean_length 63.9609
+10-06-21 09:23:51 - epoch 0 | global step 3008 | mode train | loss 0.87 | accuracy 65.918 | mean_length 63.9619
+10-06-21 09:29:30 - epoch 0 | global step 3040 | mode train | loss 0.8825 | accuracy 66.4062 | mean_length 63.9258
+10-06-21 09:35:10 - epoch 0 | global step 3072 | mode train | loss 0.9228 | accuracy 64.1602 | mean_length 63.9639
+10-06-21 09:44:37 - epoch 0 | global step 3072 | mode validation | loss 0.8216 | accuracy 69.24 | mean_length 63.9888
+10-06-21 09:44:37 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 0, Prediction Accuracy: 69.24, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 09:50:25 - epoch 0 | global step 3104 | mode train | loss 0.8499 | accuracy 67.3828 | mean_length 63.96
+10-06-21 09:56:04 - epoch 0 | global step 3136 | mode train | loss 0.8591 | accuracy 67.0898 | mean_length 63.9219
+10-06-21 10:01:43 - epoch 0 | global step 3168 | mode train | loss 0.8389 | accuracy 66.7969 | mean_length 64
+10-06-21 10:07:22 - epoch 0 | global step 3200 | mode train | loss 0.8038 | accuracy 68.3594 | mean_length 63.71
+10-06-21 10:13:02 - epoch 1 | global step 3232 | mode train | loss 0.7909 | accuracy 70.8008 | mean_length 63.6562
+10-06-21 10:18:41 - epoch 1 | global step 3264 | mode train | loss 0.7099 | accuracy 73.2422 | mean_length 63.9131
+10-06-21 10:24:20 - epoch 1 | global step 3296 | mode train | loss 0.7384 | accuracy 71.7773 | mean_length 63.918
+10-06-21 10:29:59 - epoch 1 | global step 3328 | mode train | loss 0.7249 | accuracy 73.2422 | mean_length 63.9453
+10-06-21 10:35:37 - epoch 1 | global step 3360 | mode train | loss 0.717 | accuracy 72.6562 | mean_length 63.9893
+10-06-21 10:41:17 - epoch 1 | global step 3392 | mode train | loss 0.7425 | accuracy 72.6562 | mean_length 64
+10-06-21 10:46:56 - epoch 1 | global step 3424 | mode train | loss 0.716 | accuracy 72.9492 | mean_length 63.9941
+10-06-21 10:52:35 - epoch 1 | global step 3456 | mode train | loss 0.7345 | accuracy 71.7773 | mean_length 63.9814
+10-06-21 10:58:14 - epoch 1 | global step 3488 | mode train | loss 0.6892 | accuracy 72.2656 | mean_length 63.9893
+10-06-21 11:03:53 - epoch 1 | global step 3520 | mode train | loss 0.6354 | accuracy 76.0742 | mean_length 63.999
+10-06-21 11:09:32 - epoch 1 | global step 3552 | mode train | loss 0.6523 | accuracy 73.9258 | mean_length 63.9365
+10-06-21 11:15:11 - epoch 1 | global step 3584 | mode train | loss 0.675 | accuracy 74.6094 | mean_length 64
+10-06-21 11:24:37 - epoch 1 | global step 3584 | mode validation | loss 0.6207 | accuracy 76.46 | mean_length 64
+10-06-21 11:24:37 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 76.46, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 11:30:24 - epoch 1 | global step 3616 | mode train | loss 0.6167 | accuracy 78.418 | mean_length 64
+10-06-21 11:36:03 - epoch 1 | global step 3648 | mode train | loss 0.6177 | accuracy 76.3672 | mean_length 64
+10-06-21 11:41:43 - epoch 1 | global step 3680 | mode train | loss 0.6442 | accuracy 76.4648 | mean_length 64
+10-06-21 11:47:21 - epoch 1 | global step 3712 | mode train | loss 0.525 | accuracy 82.0312 | mean_length 64
+10-06-21 11:53:00 - epoch 1 | global step 3744 | mode train | loss 0.5967 | accuracy 78.2227 | mean_length 64
+10-06-21 11:58:39 - epoch 1 | global step 3776 | mode train | loss 0.5568 | accuracy 79.5898 | mean_length 64
+10-06-21 12:04:17 - epoch 1 | global step 3808 | mode train | loss 0.5719 | accuracy 77.6367 | mean_length 64
+10-06-21 12:09:57 - epoch 1 | global step 3840 | mode train | loss 0.5736 | accuracy 79.2969 | mean_length 64
+10-06-21 12:15:35 - epoch 1 | global step 3872 | mode train | loss 0.6174 | accuracy 76.9531 | mean_length 64
+10-06-21 12:21:14 - epoch 1 | global step 3904 | mode train | loss 0.5695 | accuracy 77.7344 | mean_length 64
+10-06-21 12:26:53 - epoch 1 | global step 3936 | mode train | loss 0.5796 | accuracy 77.5391 | mean_length 64
+10-06-21 12:32:32 - epoch 1 | global step 3968 | mode train | loss 0.5478 | accuracy 79.7852 | mean_length 64
+10-06-21 12:38:12 - epoch 1 | global step 4000 | mode train | loss 0.5147 | accuracy 80.957 | mean_length 64
+10-06-21 12:43:54 - epoch 1 | global step 4032 | mode train | loss 0.5235 | accuracy 80.3711 | mean_length 64
+10-06-21 12:49:33 - epoch 1 | global step 4064 | mode train | loss 0.6036 | accuracy 76.3672 | mean_length 64
+10-06-21 12:55:12 - epoch 1 | global step 4096 | mode train | loss 0.5232 | accuracy 81.0547 | mean_length 64
+10-06-21 13:04:38 - epoch 1 | global step 4096 | mode validation | loss 0.5147 | accuracy 81.28 | mean_length 64
+10-06-21 13:04:38 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 81.28, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 13:10:26 - epoch 1 | global step 4128 | mode train | loss 0.5304 | accuracy 80.7617 | mean_length 64
+10-06-21 13:16:05 - epoch 1 | global step 4160 | mode train | loss 0.5293 | accuracy 80.5664 | mean_length 64
+10-06-21 13:21:44 - epoch 1 | global step 4192 | mode train | loss 0.5041 | accuracy 80.957 | mean_length 63.9922
+10-06-21 13:27:23 - epoch 1 | global step 4224 | mode train | loss 0.5189 | accuracy 80.6641 | mean_length 64
+10-06-21 13:33:02 - epoch 1 | global step 4256 | mode train | loss 0.5257 | accuracy 79.1992 | mean_length 64
+10-06-21 13:38:41 - epoch 1 | global step 4288 | mode train | loss 0.5281 | accuracy 79.8828 | mean_length 63.9961
+10-06-21 13:44:20 - epoch 1 | global step 4320 | mode train | loss 0.4607 | accuracy 83.7891 | mean_length 63.9775
+10-06-21 13:49:59 - epoch 1 | global step 4352 | mode train | loss 0.483 | accuracy 82.0312 | mean_length 64
+10-06-21 13:55:38 - epoch 1 | global step 4384 | mode train | loss 0.4641 | accuracy 82.5195 | mean_length 64
+10-06-21 14:01:17 - epoch 1 | global step 4416 | mode train | loss 0.4657 | accuracy 83.5938 | mean_length 63.999
+10-06-21 14:06:56 - epoch 1 | global step 4448 | mode train | loss 0.5022 | accuracy 81.9336 | mean_length 64
+10-06-21 14:12:34 - epoch 1 | global step 4480 | mode train | loss 0.4426 | accuracy 84.2773 | mean_length 64
+10-06-21 14:18:13 - epoch 1 | global step 4512 | mode train | loss 0.4172 | accuracy 84.2773 | mean_length 64
+10-06-21 14:23:52 - epoch 1 | global step 4544 | mode train | loss 0.4063 | accuracy 84.7656 | mean_length 64
+10-06-21 14:29:31 - epoch 1 | global step 4576 | mode train | loss 0.5008 | accuracy 80.7617 | mean_length 64
+10-06-21 14:35:10 - epoch 1 | global step 4608 | mode train | loss 0.4964 | accuracy 79.8828 | mean_length 64
+10-06-21 14:44:36 - epoch 1 | global step 4608 | mode validation | loss 0.459 | accuracy 82.78 | mean_length 64
+10-06-21 14:44:36 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 82.78, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 14:50:24 - epoch 1 | global step 4640 | mode train | loss 0.4086 | accuracy 86.3281 | mean_length 64
+10-06-21 14:56:03 - epoch 1 | global step 4672 | mode train | loss 0.4086 | accuracy 85.6445 | mean_length 64
+10-06-21 15:01:41 - epoch 1 | global step 4704 | mode train | loss 0.4707 | accuracy 82.2266 | mean_length 64
+10-06-21 15:07:21 - epoch 1 | global step 4736 | mode train | loss 0.4462 | accuracy 83.8867 | mean_length 64
+10-06-21 15:13:09 - epoch 1 | global step 4768 | mode train | loss 0.4357 | accuracy 83.9844 | mean_length 64
+10-06-21 15:18:48 - epoch 1 | global step 4800 | mode train | loss 0.3817 | accuracy 86.3281 | mean_length 64
+10-06-21 15:24:27 - epoch 1 | global step 4832 | mode train | loss 0.3936 | accuracy 85.8398 | mean_length 64
+10-06-21 15:30:06 - epoch 1 | global step 4864 | mode train | loss 0.3571 | accuracy 87.9883 | mean_length 64
+10-06-21 15:35:45 - epoch 1 | global step 4896 | mode train | loss 0.3961 | accuracy 85.6445 | mean_length 64
+10-06-21 15:41:24 - epoch 1 | global step 4928 | mode train | loss 0.4134 | accuracy 85.4492 | mean_length 64
+10-06-21 15:47:03 - epoch 1 | global step 4960 | mode train | loss 0.3791 | accuracy 86.6211 | mean_length 64
+10-06-21 15:52:41 - epoch 1 | global step 4992 | mode train | loss 0.3813 | accuracy 86.1328 | mean_length 64
+10-06-21 15:58:20 - epoch 1 | global step 5024 | mode train | loss 0.4033 | accuracy 84.7656 | mean_length 64
+10-06-21 16:03:59 - epoch 1 | global step 5056 | mode train | loss 0.3732 | accuracy 86.7188 | mean_length 63.96
+10-06-21 16:09:38 - epoch 1 | global step 5088 | mode train | loss 0.3722 | accuracy 87.1094 | mean_length 64
+10-06-21 16:15:16 - epoch 1 | global step 5120 | mode train | loss 0.3952 | accuracy 86.3281 | mean_length 64
+10-06-21 16:24:42 - epoch 1 | global step 5120 | mode validation | loss 0.3366 | accuracy 88.1 | mean_length 64
+10-06-21 16:24:42 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 88.1, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 16:30:29 - epoch 1 | global step 5152 | mode train | loss 0.3228 | accuracy 88.3789 | mean_length 64
+10-06-21 16:36:08 - epoch 1 | global step 5184 | mode train | loss 0.3533 | accuracy 86.9141 | mean_length 64
+10-06-21 16:41:51 - epoch 1 | global step 5216 | mode train | loss 0.3677 | accuracy 86.6211 | mean_length 63.9951
+10-06-21 16:47:29 - epoch 1 | global step 5248 | mode train | loss 0.4189 | accuracy 84.1797 | mean_length 64
+10-06-21 16:53:08 - epoch 1 | global step 5280 | mode train | loss 0.3467 | accuracy 87.4023 | mean_length 64
+10-06-21 16:58:47 - epoch 1 | global step 5312 | mode train | loss 0.33 | accuracy 88.1836 | mean_length 64
+10-06-21 17:04:26 - epoch 1 | global step 5344 | mode train | loss 0.3195 | accuracy 87.9883 | mean_length 64
+10-06-21 17:10:05 - epoch 1 | global step 5376 | mode train | loss 0.3452 | accuracy 88.5742 | mean_length 64
+10-06-21 17:15:44 - epoch 1 | global step 5408 | mode train | loss 0.327 | accuracy 88.7695 | mean_length 64
+10-06-21 17:21:25 - epoch 1 | global step 5440 | mode train | loss 0.3476 | accuracy 87.793 | mean_length 64
+10-06-21 17:27:04 - epoch 1 | global step 5472 | mode train | loss 0.3172 | accuracy 88.3789 | mean_length 64
+10-06-21 17:32:43 - epoch 1 | global step 5504 | mode train | loss 0.3448 | accuracy 88.1836 | mean_length 64
+10-06-21 17:38:22 - epoch 1 | global step 5536 | mode train | loss 0.3366 | accuracy 87.5 | mean_length 64
+10-06-21 17:44:01 - epoch 1 | global step 5568 | mode train | loss 0.3793 | accuracy 86.1328 | mean_length 64
+10-06-21 17:49:40 - epoch 1 | global step 5600 | mode train | loss 0.3149 | accuracy 88.8672 | mean_length 64
+10-06-21 17:55:19 - epoch 1 | global step 5632 | mode train | loss 0.3658 | accuracy 84.8633 | mean_length 64
+10-06-21 18:04:44 - epoch 1 | global step 5632 | mode validation | loss 0.2986 | accuracy 89.0 | mean_length 64
+10-06-21 18:04:44 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 89.0, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 18:10:30 - epoch 1 | global step 5664 | mode train | loss 0.3327 | accuracy 87.1094 | mean_length 64
+10-06-21 18:16:09 - epoch 1 | global step 5696 | mode train | loss 0.344 | accuracy 88.0859 | mean_length 64
+10-06-21 18:21:48 - epoch 1 | global step 5728 | mode train | loss 0.3361 | accuracy 87.9883 | mean_length 64
+10-06-21 18:27:26 - epoch 1 | global step 5760 | mode train | loss 0.3466 | accuracy 87.5977 | mean_length 64
+10-06-21 18:33:05 - epoch 1 | global step 5792 | mode train | loss 0.3089 | accuracy 88.4766 | mean_length 64
+10-06-21 18:38:44 - epoch 1 | global step 5824 | mode train | loss 0.2607 | accuracy 91.5039 | mean_length 64
+10-06-21 18:44:23 - epoch 1 | global step 5856 | mode train | loss 0.3235 | accuracy 87.4023 | mean_length 64
+10-06-21 18:50:02 - epoch 1 | global step 5888 | mode train | loss 0.3087 | accuracy 88.4766 | mean_length 64
+10-06-21 18:55:41 - epoch 1 | global step 5920 | mode train | loss 0.3229 | accuracy 88.6719 | mean_length 64
+10-06-21 19:01:20 - epoch 1 | global step 5952 | mode train | loss 0.3165 | accuracy 89.3555 | mean_length 64
+10-06-21 19:07:08 - epoch 1 | global step 5984 | mode train | loss 0.3598 | accuracy 87.0117 | mean_length 64
+10-06-21 19:12:47 - epoch 1 | global step 6016 | mode train | loss 0.2829 | accuracy 90.625 | mean_length 64
+10-06-21 19:18:26 - epoch 1 | global step 6048 | mode train | loss 0.2805 | accuracy 90.332 | mean_length 64
+10-06-21 19:24:05 - epoch 1 | global step 6080 | mode train | loss 0.2913 | accuracy 89.6484 | mean_length 64
+10-06-21 19:29:44 - epoch 1 | global step 6112 | mode train | loss 0.2746 | accuracy 91.0156 | mean_length 64
+10-06-21 19:35:23 - epoch 1 | global step 6144 | mode train | loss 0.2753 | accuracy 89.7461 | mean_length 64
+10-06-21 19:44:47 - epoch 1 | global step 6144 | mode validation | loss 0.2521 | accuracy 91.22 | mean_length 64
+10-06-21 19:44:47 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 1, Prediction Accuracy: 91.22, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 19:50:35 - epoch 1 | global step 6176 | mode train | loss 0.2718 | accuracy 91.0156 | mean_length 64
+10-06-21 19:56:13 - epoch 1 | global step 6208 | mode train | loss 0.2667 | accuracy 90.8203 | mean_length 63.9775
+10-06-21 20:01:52 - epoch 1 | global step 6240 | mode train | loss 0.2714 | accuracy 90.332 | mean_length 64
+10-06-21 20:07:31 - epoch 1 | global step 6272 | mode train | loss 0.2859 | accuracy 89.7461 | mean_length 64
+10-06-21 20:13:10 - epoch 1 | global step 6304 | mode train | loss 0.2724 | accuracy 89.8438 | mean_length 64
+10-06-21 20:18:49 - epoch 1 | global step 6336 | mode train | loss 0.2316 | accuracy 92.3828 | mean_length 64
+10-06-21 20:24:28 - epoch 1 | global step 6368 | mode train | loss 0.2811 | accuracy 88.3789 | mean_length 64
+10-06-21 20:30:06 - epoch 1 | global step 6400 | mode train | loss 0.2814 | accuracy 89.4531 | mean_length 64
+10-06-21 20:35:45 - epoch 1 | global step 6432 | mode train | loss 0.2453 | accuracy 91.3086 | mean_length 64
+10-06-21 20:41:24 - epoch 2 | global step 6464 | mode train | loss 0.2412 | accuracy 90.625 | mean_length 64
+10-06-21 20:47:04 - epoch 2 | global step 6496 | mode train | loss 0.3101 | accuracy 89.4531 | mean_length 64
+10-06-21 20:52:43 - epoch 2 | global step 6528 | mode train | loss 0.2319 | accuracy 91.7969 | mean_length 64
+10-06-21 20:58:22 - epoch 2 | global step 6560 | mode train | loss 0.2421 | accuracy 91.0156 | mean_length 64
+10-06-21 21:04:01 - epoch 2 | global step 6592 | mode train | loss 0.2445 | accuracy 90.918 | mean_length 64
+10-06-21 21:09:40 - epoch 2 | global step 6624 | mode train | loss 0.2607 | accuracy 90.918 | mean_length 64
+10-06-21 21:15:19 - epoch 2 | global step 6656 | mode train | loss 0.2634 | accuracy 89.7461 | mean_length 64
+10-06-21 21:24:43 - epoch 2 | global step 6656 | mode validation | loss 0.235 | accuracy 91.92 | mean_length 64
+10-06-21 21:24:43 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 2, Prediction Accuracy: 91.92, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 21:30:30 - epoch 2 | global step 6688 | mode train | loss 0.2495 | accuracy 91.3086 | mean_length 64
+10-06-21 21:36:09 - epoch 2 | global step 6720 | mode train | loss 0.2727 | accuracy 90.0391 | mean_length 64
+10-06-21 21:41:48 - epoch 2 | global step 6752 | mode train | loss 0.2447 | accuracy 91.6992 | mean_length 64
+10-06-21 21:47:27 - epoch 2 | global step 6784 | mode train | loss 0.2362 | accuracy 91.7969 | mean_length 64
+10-06-21 21:53:06 - epoch 2 | global step 6816 | mode train | loss 0.222 | accuracy 92.8711 | mean_length 64
+10-06-21 21:58:45 - epoch 2 | global step 6848 | mode train | loss 0.2448 | accuracy 92.9688 | mean_length 64
+10-06-21 22:04:24 - epoch 2 | global step 6880 | mode train | loss 0.2584 | accuracy 91.3086 | mean_length 64
+10-06-21 22:10:03 - epoch 2 | global step 6912 | mode train | loss 0.2498 | accuracy 91.3086 | mean_length 64
+10-06-21 22:15:42 - epoch 2 | global step 6944 | mode train | loss 0.2696 | accuracy 90.332 | mean_length 64
+10-06-21 22:21:21 - epoch 2 | global step 6976 | mode train | loss 0.2555 | accuracy 90.8203 | mean_length 64
+10-06-21 22:26:59 - epoch 2 | global step 7008 | mode train | loss 0.237 | accuracy 91.9922 | mean_length 64
+10-06-21 22:32:38 - epoch 2 | global step 7040 | mode train | loss 0.2073 | accuracy 93.3594 | mean_length 64
+10-06-21 22:38:17 - epoch 2 | global step 7072 | mode train | loss 0.2451 | accuracy 90.1367 | mean_length 64
+10-06-21 22:43:57 - epoch 2 | global step 7104 | mode train | loss 0.2321 | accuracy 91.3086 | mean_length 64
+10-06-21 22:49:36 - epoch 2 | global step 7136 | mode train | loss 0.2677 | accuracy 89.5508 | mean_length 64
+10-06-21 22:55:15 - epoch 2 | global step 7168 | mode train | loss 0.2683 | accuracy 90.0391 | mean_length 64
+10-06-21 23:04:37 - epoch 2 | global step 7168 | mode validation | loss 0.1908 | accuracy 93.38 | mean_length 64
+10-06-21 23:04:37 - Saving model to Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+Epoch: 2, Prediction Accuracy: 93.38, Saved to Path: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43
+10-06-21 23:11:30 - epoch 2 | global step 7200 | mode train | loss 0.2053 | accuracy 93.9453 | mean_length 64
+10-06-21 23:17:09 - epoch 2 | global step 7232 | mode train | loss 0.209 | accuracy 92.6758 | mean_length 64
+10-06-21 23:22:49 - epoch 2 | global step 7264 | mode train | loss 0.2437 | accuracy 91.1133 | mean_length 64
+10-06-21 23:28:28 - epoch 2 | global step 7296 | mode train | loss 0.2838 | accuracy 89.2578 | mean_length 64
+10-06-21 23:34:07 - epoch 2 | global step 7328 | mode train | loss 0.2761 | accuracy 90.4297 | mean_length 64
+10-06-21 23:39:46 - epoch 2 | global step 7360 | mode train | loss 0.2695 | accuracy 90.1367 | mean_length 64
+10-06-21 23:45:25 - epoch 2 | global step 7392 | mode train | loss 0.23 | accuracy 92.0898 | mean_length 64
+10-06-21 23:51:04 - epoch 2 | global step 7424 | mode train | loss 0.2088 | accuracy 93.5547 | mean_length 64
+10-06-21 23:56:43 - epoch 2 | global step 7456 | mode train | loss 0.2218 | accuracy 91.2109 | mean_length 64
+10-07-21 00:02:22 - epoch 2 | global step 7488 | mode train | loss 0.2386 | accuracy 91.1133 | mean_length 64
+10-07-21 00:08:00 - epoch 2 | global step 7520 | mode train | loss 0.1882 | accuracy 94.1406 | mean_length 64
+10-07-21 00:13:39 - epoch 2 | global step 7552 | mode train | loss 0.2396 | accuracy 91.5039 | mean_length 64
+10-07-21 00:19:18 - epoch 2 | global step 7584 | mode train | loss 0.2242 | accuracy 92.2852 | mean_length 64
+10-07-21 00:24:57 - epoch 2 | global step 7616 | mode train | loss 0.2176 | accuracy 92.7734 | mean_length 64
+10-07-21 00:30:35 - epoch 2 | global step 7648 | mode train | loss 0.2084 | accuracy 91.8945 | mean_length 64
+10-07-21 00:36:14 - epoch 2 | global step 7680 | mode train | loss 0.2081 | accuracy 92.9688 | mean_length 64
+10-07-21 00:45:39 - epoch 2 | global step 7680 | mode validation | loss 0.1939 | accuracy 93.08 | mean_length 64
+10-07-21 00:51:24 - epoch 2 | global step 7712 | mode train | loss 0.2012 | accuracy 93.5547 | mean_length 64
+10-07-21 00:57:02 - epoch 2 | global step 7744 | mode train | loss 0.1732 | accuracy 95.1172 | mean_length 64
+10-07-21 01:02:47 - epoch 2 | global step 7776 | mode train | loss 0.2025 | accuracy 93.5547 | mean_length 64
+10-07-21 01:08:26 - epoch 2 | global step 7808 | mode train | loss 0.1965 | accuracy 93.457 | mean_length 64
+10-07-21 01:14:04 - epoch 2 | global step 7840 | mode train | loss 0.1999 | accuracy 92.9688 | mean_length 64
+10-07-21 01:19:43 - epoch 2 | global step 7872 | mode train | loss 0.2124 | accuracy 92.5781 | mean_length 64
+10-07-21 01:25:22 - epoch 2 | global step 7904 | mode train | loss 0.2215 | accuracy 91.7969 | mean_length 64
+10-07-21 01:31:09 - epoch 2 | global step 7936 | mode train | loss 0.2561 | accuracy 91.0156 | mean_length 64
+10-07-21 01:37:33 - epoch 2 | global step 7968 | mode train | loss 0.181 | accuracy 94.7266 | mean_length 64
+10-07-21 01:43:14 - epoch 2 | global step 8000 | mode train | loss 0.1915 | accuracy 93.457 | mean_length 64
+10-07-21 01:49:24 - epoch 2 | global step 8032 | mode train | loss 0.1904 | accuracy 93.75 | mean_length 64
+10-07-21 01:55:07 - epoch 2 | global step 8064 | mode train | loss 0.1931 | accuracy 93.8477 | mean_length 64
+10-07-21 02:00:50 - epoch 2 | global step 8096 | mode train | loss 0.2134 | accuracy 91.7969 | mean_length 64
+10-07-21 02:06:55 - epoch 2 | global step 8128 | mode train | loss 0.1945 | accuracy 92.9688 | mean_length 64
+10-07-21 02:13:30 - epoch 2 | global step 8160 | mode train | loss 0.2144 | accuracy 92.4805 | mean_length 64
+10-07-21 02:19:11 - epoch 2 | global step 8192 | mode train | loss 0.2014 | accuracy 93.2617 | mean_length 64
+10-07-21 02:19:11 - Evaluate the following checkpoint: Output/accGrad4_mbart_BTen+zh_lr5.0e-6_7distractors_maxstep8192_seed43/model.pt
+10-07-21 02:32:11 - Best model stats: 
+10-07-21 02:32:11 - epoch 0 | global step 0 | mode validation | loss 0.2084 | accuracy 92.42 | mean_length 64
