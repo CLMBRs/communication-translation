@@ -411,7 +411,7 @@ def main():
         )
     else:
         model = ECImageIdentificationAgent(
-            sender, receiver, args, language_model=language_model
+            sender, receiver, args, language_model=language_model, orig_model=orig_model
         )
         training_set = XLImageIdentificationDataset(
             train_images, args.num_distractors_train, args, tokenizer

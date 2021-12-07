@@ -1,3 +1,4 @@
+import random
 from abc import abstractmethod
 from argparse import Namespace
 from functools import reduce
@@ -325,7 +326,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict['message_logits'] = self.prepend_cls_logit(
             message_dict['message_logits'], self.cls_index
         )
-
+        
+        lm_loss = 0
         if self.language_model_loss:
             lm_ids = message_dict['message_ids'][:, :-1]
             lm_logits = message_dict['message_logits'][:, :-1]
@@ -358,8 +360,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 ignore_index=self.padding_index
             )
             lm_loss *= self.lm_lambda
-        else:
-            lm_loss = None
 
         # Get the logits for the image choice candidates based on the sender's
         # message
@@ -373,27 +373,21 @@ class ECImageIdentificationAgent(CommunicationAgent):
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
-
+        
+        weight_drift_loss = 0
         if self.weight_drift_loss:
-            weight_drift_loss = 0
             num_params = sum(
-                [p for p in self.orig_model.parameters() if p.requires_grad]
+                [p.numel() for p in self.orig_model.parameters() if p.requires_grad]
             )
             for key in dict(self.orig_model.named_parameters()).keys():
                 weight_drift_loss += F.mse_loss(
                     rgetattr(self.sender.top, key),
                     rgetattr(self.orig_model, key),
                     reduction='sum'
-                ) / num_params
+                )
             weight_drift_loss *= self.drift_lambda
-        else:
-            weight_drift_loss = None
 
-        overall_loss = communication_loss
-        if lm_loss:
-            overall_loss += lm_loss
-        if weight_drift_loss:
-            overall_loss += weight_drift_loss
+        overall_loss = communication_loss + lm_loss + weight_drift_loss
 
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)
@@ -407,17 +401,17 @@ class ECImageIdentificationAgent(CommunicationAgent):
             'mean_length': mean(lengths)
         }
 
-        if lm_loss:
+        if self.language_model_loss:
             return_dict.update(
                 {
                     'lm loss': lm_loss.item(),
                     'communication loss': communication_loss.item(),
                 }
             )
-        if weight_drift_loss:
+        if self.weight_drift_loss:
             return_dict.update(
                 {
-                    'weight drift loss': weight_drift_loss.item(),
+                    'drift loss': weight_drift_loss.item(),
                     'communication loss': communication_loss.item(),
                 }
             )
