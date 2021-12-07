@@ -256,6 +256,11 @@ def main():
     parser = argparse.ArgumentParser(description='Image caption training')
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
+    parser.add_argument(
+        '--drift_loss_override',
+        action="store_true",
+        help="Flag to trigger weight drift loss (overriding config)"
+    )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -265,6 +270,10 @@ def main():
     if args.seed_override:
         args.seed = args.seed_override
     set_seed(args)
+
+    # weight drift override
+    if args.drift_loss_override:
+        args.weight_drift_loss = True
 
     # set csv output file
     if not os.path.exists(args.output_dir):
