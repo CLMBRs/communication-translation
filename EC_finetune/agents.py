@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from functools import reduce
 from statistics import mean
 
 import numpy as np
@@ -12,6 +13,13 @@ from torch.nn import Module
 from EC_finetune.senders import Sender
 from EC_finetune.receivers import Receiver
 from EC_finetune.modelings.modeling_bart import invert_mask
+
+
+def rgetattr(obj, attr, *args):
+    def _getattr(obj, attr):
+        return getattr(obj, attr, *args)
+
+    return reduce(_getattr, [obj] + attr.split('.'))
 
 
 class CommunicationAgent(Module):
@@ -143,9 +151,11 @@ class CommunicationAgent(Module):
         buff = torch.zeros((input_ids.size(0), 1), device=device)
         input_ids = torch.cat((input_ids, buff), dim=1)
         first_pad_indices = lengths.unsqueeze(-1)
+        # yapf: disable
         new_ids = torch.scatter(
             input_ids, 1, first_pad_indices, input_ids
         )[:, 1:]
+        # yapf: enable
         return new_ids
 
     @staticmethod
@@ -203,7 +213,7 @@ class CommunicationAgent(Module):
         device = input_logits.device
         batch_size = input_logits.size(0)
         hidden_size = input_logits.size(2)
-        
+
         # Form a one-hot representation of the CLS token and prepend it to the
         # beginning of the sequence of logits
         cls_onehot = (torch.arange(0, hidden_size) == cls_id).float()
@@ -217,15 +227,22 @@ class CommunicationAgent(Module):
 
 
 class ECImageIdentificationAgent(CommunicationAgent):
-    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace, language_model = None):
+    def __init__(
+        self,
+        sender: Sender,
+        receiver: Receiver,
+        args: Namespace,
+        language_model=None,
+        orig_model=None
+    ):
         super().__init__(sender, receiver, args)
         self.language_model_loss = args.language_model_loss
-        
+        self.weight_drift_loss = args.weight_drift_loss
+
         if self.language_model_loss:
             self.lm_lambda = 1.0 if not (
                 hasattr(args, 'lm_lambda') and args.lm_lambda
             ) else args.lm_lambda
-            
             if language_model is not None:
                 self.language_model = language_model['decoder']
                 self.lm_embedding = language_model['embedding']
@@ -234,6 +251,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 raise ValueError(
                     "A language model must be provided if"
                     " `language_model_loss` is True"
+                )
+
+        if self.weight_drift_loss:
+            self.drift_lambda = 1.0 if not (
+                hasattr(args, 'drift_lambda') and args.drift_lambda
+            ) else args.drift_lambda
+            if orig_model is not None:
+                self.orig_model = orig_model
+            else:
+                raise ValueError(
+                    "A reference model must be provided if"
+                    " `weight_drift_loss` is True"
                 )
 
     def forward(self, batch: dict) -> dict:
@@ -344,10 +373,27 @@ class ECImageIdentificationAgent(CommunicationAgent):
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
-        if lm_loss:
-            overall_loss = communication_loss + lm_loss
+
+        if self.weight_drift_loss:
+            weight_drift_loss = 0
+            num_params = sum(
+                [p for p in self.orig_model.parameters() if p.requires_grad]
+            )
+            for key in dict(self.orig_model.named_parameters()).keys():
+                weight_drift_loss += F.mse_loss(
+                    rgetattr(self.sender.top, key),
+                    rgetattr(self.orig_model, key),
+                    reduction='sum'
+                ) / num_params
+            weight_drift_loss *= self.drift_lambda
         else:
-            overall_loss = communication_loss
+            weight_drift_loss = None
+
+        overall_loss = communication_loss
+        if lm_loss:
+            overall_loss += lm_loss
+        if weight_drift_loss:
+            overall_loss += weight_drift_loss
 
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)
@@ -362,13 +408,20 @@ class ECImageIdentificationAgent(CommunicationAgent):
         }
 
         if lm_loss:
-            return_dict.update({
-                'lm loss': lm_loss.item(),
-                'communication loss': communication_loss.item(),
-            })
-            return return_dict
-        else:
-            return return_dict
+            return_dict.update(
+                {
+                    'lm loss': lm_loss.item(),
+                    'communication loss': communication_loss.item(),
+                }
+            )
+        if weight_drift_loss:
+            return_dict.update(
+                {
+                    'weight drift loss': weight_drift_loss.item(),
+                    'communication loss': communication_loss.item(),
+                }
+            )
+        return return_dict
 
 
 class ImageCaptionGrounder(CommunicationAgent):

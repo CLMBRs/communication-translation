@@ -276,6 +276,12 @@ def main():
         args.csv_headers = EC_LM_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
+        if args.language_model_loss or args.weight_drift_loss:
+            args.csv_headers += ["communication loss"]
+        if args.language_model_loss:
+            args.csv_headers += ["lm loss"]
+        if args.weight_drift_loss:
+            args.csv_headers += ["drift loss"]
 
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
@@ -314,6 +320,7 @@ def main():
     args.vocab_size = len(vocab)
 
     language_model = None
+    orig_model = None
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
@@ -358,6 +365,12 @@ def main():
         comm_model = MBartForConditionalGeneration.from_pretrained(
             args.model_name
         )
+
+        if args.weight_drift_loss:
+            orig_model = deepcopy(comm_model)
+            for param in orig_model.parameters():
+                param.requireds_grad = False
+
         sender = MBartSender(
             comm_model,
             args.hidden_dim,
