@@ -262,6 +262,11 @@ def main():
         action="store_true",
         help="Flag to trigger weight drift loss (overriding config)"
     )
+    parser.add_argument(
+        '--adapter_freeze_override',
+        action="store_true",
+        help="Flag to trigger adapter freezing (overriding config)"
+    )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -275,6 +280,9 @@ def main():
     # weight drift override
     if args.drift_loss_override:
         args.weight_drift_loss = True
+
+    if args.adapter_freeze_override:
+        args.freeze_adapters = True
 
     # set csv output file
     if not os.path.exists(args.output_dir):
@@ -390,7 +398,8 @@ def main():
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
             beam_width=args.beam_width,
-            generate_from_logits=args.generate_from_logits
+            generate_from_logits=args.generate_from_logits,
+            freeze_adapter=args.freeze_adapters
         )
         receiver = MBartReceiver(
             comm_model,

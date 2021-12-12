@@ -63,6 +63,10 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
+        if args.freeze_adapters:
+            for param in self.beholder1.parameters() + self.beholder2.parameters():
+                param.requires_grad = False
+
         self.sender = sender
         self.receiver = receiver
         self.tokenizer = args.tokenizer
