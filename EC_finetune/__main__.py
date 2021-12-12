@@ -12,13 +12,14 @@ from statistics import mean
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import transformers
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
+from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent, rgetattr
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.senders import MBartSender, RnnSender
 from EC_finetune.receivers import MBartReceiver, RnnReceiver
@@ -119,7 +120,7 @@ def save(args, model, logger):
     state_dict = {
         k: v
         for k, v in model.state_dict().items()
-        if not k.startswith("language_model")
+        if not (k.startswith("language_model") or k.startswith("orig_model"))
     }
     torch.save(state_dict, args.output_dir + '/model.pt')
 

@@ -385,6 +385,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
                     rgetattr(self.orig_model, key),
                     reduction='sum'
                 )
+            if weight_drift_loss.item() > 0.0:
+                weight_drift_loss = torch.pow(weight_drift_loss, 0.5)
             weight_drift_loss *= self.drift_lambda
 
         overall_loss = communication_loss + lm_loss + weight_drift_loss
