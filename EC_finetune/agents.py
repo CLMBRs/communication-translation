@@ -309,8 +309,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict['attention_mask'] = padding_mask.to(device)
 
         if self.language_model_loss:
-            lm_decoder_ids = message_dict['message_ids']
-            lm_decoder_logits = message_dict['message_logits']
+            lm_ids = message_dict['message_ids']
+            lm_logits = message_dict['message_logits']
             lm_padding_mask = message_dict['attention_mask']
 
         # Move the language id to the end of each sequence
@@ -321,31 +321,17 @@ class ECImageIdentificationAgent(CommunicationAgent):
             message_dict['message_logits'], message_dict['message_lengths']
         )
 
-        # Prepend the CLS id to the beginning of the sequence, and adjust the
-        # padding mask properly
-        message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
-            message_dict['attention_mask']
-        )
-        message_dict['message_ids'] = self.prepend_cls(
-            message_dict['message_ids'], self.cls_index
-        )
-        message_dict['message_logits'] = self.prepend_cls_logit(
-            message_dict['message_logits'], self.cls_index
-        )
-        
         lm_loss = 0
         if self.language_model_loss:
-            lm_ids = message_dict['message_ids'][:, :-1]
-            lm_logits = message_dict['message_logits'][:, :-1]
             lm_input = torch.matmul(lm_logits, self.lm_embedding.weight)
-            lm_targets = message_dict['message_ids'][:, 1:].long()
+            lm_targets = message_dict['message_ids'].long()
             max_length = lm_targets.size(1)
             causal_mask = self.get_causal_mask(
                 max_length, self.lm_embedding.weight.dtype
             )
             causal_mask = causal_mask.to(device)
             lm_padding_mask = invert_mask(
-                message_dict['attention_mask'][:, :-1].bool()
+                lm_padding_mask.bool()
             ).to(device)
             lm_output = self.language_model(
                 input_ids=lm_ids,
@@ -366,6 +352,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 ignore_index=self.padding_index
             )
             lm_loss *= self.lm_lambda
+
+        # Prepend the CLS id to the beginning of the sequence, and adjust the
+        # padding mask properly
+        message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
+            message_dict['attention_mask']
+        )
+        message_dict['message_ids'] = self.prepend_cls(
+            message_dict['message_ids'], self.cls_index
+        )
+        message_dict['message_logits'] = self.prepend_cls_logit(
+            message_dict['message_logits'], self.cls_index
+        )
 
         # Get the logits for the image choice candidates based on the sender's
         # message
