@@ -1987,6 +1987,53 @@ class BartForConditionalGeneration(PretrainedBartModel):
         return ret
 
 
+class BartForCausalLanguageModeling(PretrainedBartModel):
+    def __init__(self, config: BartConfig):
+        super().__init__(config)
+        padding_idx, vocab_size = config.pad_token_id, config.vocab_size
+        self.embedding = nn.Embedding(vocab_size, config.d_model, padding_idx)
+        self.decoder = BartDecoder(config, self.shared)
+        self.register_buffer(
+            "final_logits_bias",
+            torch.zeros((1, self.model.embedding.num_embeddings))
+        )
+        self.init_weights()
+
+    def forward(
+        self,
+        input_ids,
+        padding_mask,
+        causal_mask=None,
+        input_embeds=None
+    ):
+        if causal_mask is None:
+            max_length = input_ids.size(1)
+            dtype = self.embedding.weight.dtype
+            causal_mask = self.get_causal_mask(max_length, dtype)
+        decoder_output = self.decoder(
+            input_ids=input_ids,
+            input_embeds=input_embeds,
+            encoder_hidden_states=None,
+            encoder_padding_mask=None,
+            decoder_padding_mask=padding_mask,
+            decoder_causal_mask=causal_mask
+        )
+        decoder_logits = F.linear(
+            decoder_output.last_hidden_state,
+            self.embedding.weight,
+            bias=self.final_logits_bias
+        )
+        return decoder_logits
+
+    @staticmethod
+    def get_causal_mask(max_length, dtype):
+        mask = (np.triu(np.ones((max_length, max_length))) == 1).transpose()
+        mask = torch.tensor(mask, dtype=dtype)
+        mask = mask.masked_fill(mask == 0, float('-inf'))
+        mask = mask.masked_fill(mask == 1, float(0.0))
+        return mask
+
+
 class SinusoidalPositionalEmbedding(nn.Embedding):
     """This module produces sinusoidal positional embeddings of any length."""
     def __init__(self, num_positions, embedding_dim, padding_idx=None):

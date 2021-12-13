@@ -14,7 +14,7 @@
 
 from transformers.models.mbart.configuration_mbart import MBartConfig
 
-from EC_finetune.modelings.modeling_bart import BartForConditionalGeneration
+from EC_finetune.modelings.modeling_bart import BartForCausalLanguageModeling, BartForConditionalGeneration
 
 _CONFIG_FOR_DOC = "MBartConfig"
 _TOKENIZER_FOR_DOC = "MBartTokenizer"
@@ -51,3 +51,12 @@ class MBartForConditionalGeneration(BartForConditionalGeneration):
     #    "model.encoder.embed_positions.weight",
     #    "model.decoder.embed_positions.weight",
     #]
+
+
+class MBartForCausalLanguageModeling(BartForCausalLanguageModeling):
+    model_type = "mbart"
+    config_class = MBartConfig
+    _keys_to_ignore_on_load_missing = [
+        "model.encoder.embed_positions.weight",
+        "model.decoder.embed_positions.weight",
+    ]
