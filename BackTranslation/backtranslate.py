@@ -373,8 +373,9 @@ def main(args, backtranslation_pack):
                         translation_results, args.num_printed_translation
                     )
                 )
-
+                
     save_model(args, backtranslation_pack, saved_model_name="last")
+    logger.info("training complete; final model state saved")
 
 
 BackTranslationPack = namedtuple(

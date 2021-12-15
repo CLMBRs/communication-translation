@@ -136,7 +136,7 @@ def save(args, model, logger):
         model_to_save.save_pretrained(args.output_dir)
 
 
-def train(args, model, dataloader, valid_dataloader, params, logger):
+def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
     global_step = 0
     best_loss = np.inf
     checkpoint_stats = defaultdict(list)
@@ -222,6 +222,11 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     cur_loss = float(results['loss'])
                     if cur_loss < best_loss:
                         best_loss = cur_loss
+                        if args.save_output_txt:
+                            output_texts = ids_to_texts(output_ids, tokenizer)
+                            with open(args.output_dir + '/eval_texts.txt', 'w') as f:
+                                for i in output_texts:
+                                    f.write(i)
                         save(args, model, logger)
                         print(
                             f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
@@ -232,9 +237,6 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             if global_step >= args.max_global_step:
                 return global_step
-
-    print(f"Length of train data logs: {len(train_csv_data)}")
-    print(f"Length of val data logs: {len(val_csv_data)}")
 
 
 def main():
@@ -258,6 +260,11 @@ def main():
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
+        '--lm_loss_override',
+        action="store_true",
+        help="Flag to trigger language model loss (overriding config)"
+    )
+    parser.add_argument(
         '--drift_loss_override',
         action="store_true",
         help="Flag to trigger weight drift loss (overriding config)"
@@ -277,6 +284,9 @@ def main():
         args.seed = args.seed_override
     set_seed(args)
 
+    if args.lm_loss_override:
+        args.language_model_loss = True
+
     # weight drift override
     if args.drift_loss_override:
         args.weight_drift_loss = True
@@ -290,8 +300,6 @@ def main():
 
     if args.mode == 'image_grounding':
         args.csv_headers = CAPTIONING_CSV_HEADERS
-    elif args.language_model_loss:
-        args.csv_headers = EC_LM_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
         if args.language_model_loss or args.weight_drift_loss:
@@ -476,7 +484,7 @@ def main():
 
     if args.do_train:
         train(
-            args, model, training_dataloader, valid_dataloader,
+            args, model, training_dataloader, valid_dataloader, tokenizer,
             model.parameters(), logger
         )
     if args.do_eval:
