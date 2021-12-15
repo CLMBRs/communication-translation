@@ -5,7 +5,7 @@ import random
 import sys
 import time
 from collections import defaultdict, namedtuple
-from math import ceil, isinf
+from math import ceil
 from statistics import mean
 
 import sacrebleu
