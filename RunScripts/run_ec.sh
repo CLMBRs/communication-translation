@@ -2,4 +2,4 @@
 source activate unmt
 CONFIG_FILE=$1
 
-python -u EC_finetune/__main__.py --config Configs/$CONFIG_FILE
+python -u -m EC_finetune --config Configs/$CONFIG_FILE

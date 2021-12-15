@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from .modelings.modeling_mbart import MBartForConditionalGeneration
 
 
 class Receiver(Module):

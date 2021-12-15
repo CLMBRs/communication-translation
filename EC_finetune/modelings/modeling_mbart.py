@@ -14,7 +14,7 @@
 
 from transformers.models.mbart.configuration_mbart import MBartConfig
 
-from EC_finetune.modelings.modeling_bart import BartForCausalLanguageModeling, BartForConditionalGeneration
+from .modeling_bart import BartForCausalLanguageModeling, BartForConditionalGeneration
 
 _CONFIG_FOR_DOC = "MBartConfig"
 _TOKENIZER_FOR_DOC = "MBartTokenizer"

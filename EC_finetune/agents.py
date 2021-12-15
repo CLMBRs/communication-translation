@@ -11,9 +11,9 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.senders import Sender
-from EC_finetune.receivers import Receiver
-from EC_finetune.modelings.modeling_bart import invert_mask
+from .senders import Sender
+from .receivers import Receiver
+from .modelings.modeling_bart import invert_mask
 
 
 def rgetattr(obj, attr, *args):
