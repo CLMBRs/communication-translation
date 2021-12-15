@@ -12,14 +12,13 @@ from statistics import mean
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import transformers
 import yaml
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent, rgetattr
+from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.senders import MBartSender, RnnSender
 from EC_finetune.receivers import MBartReceiver, RnnReceiver
@@ -31,7 +30,8 @@ EC_CSV_HEADERS = [
     "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
 ]
 EC_LM_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "lm loss", "communication loss", "accuracy", "mean_length"
+    "mode", "epoch", "global step", "loss", "lm loss", "communication loss",
+    "accuracy", "mean_length"
 ]
 CAPTIONING_CSV_HEADERS = [
     "mode", "epoch", "global step", "loss", "caption generation loss",
@@ -224,7 +224,9 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
                         best_loss = cur_loss
                         if args.save_output_txt:
                             output_texts = ids_to_texts(output_ids, tokenizer)
-                            with open(args.output_dir + '/eval_texts.txt', 'w') as f:
+                            with open(
+                                args.output_dir + '/eval_texts.txt', 'w'
+                            ) as f:
                                 for i in output_texts:
                                     f.write(i)
                         save(args, model, logger)
@@ -438,7 +440,11 @@ def main():
         )
     else:
         model = ECImageIdentificationAgent(
-            sender, receiver, args, language_model=language_model, orig_model=orig_model
+            sender,
+            receiver,
+            args,
+            language_model=language_model,
+            orig_model=orig_model
         )
         training_set = XLImageIdentificationDataset(
             train_images, args.num_distractors_train, args, tokenizer
