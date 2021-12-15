@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import csv
-import random
 import sys
 from collections import defaultdict
 from copy import deepcopy
@@ -18,13 +17,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.senders import MBartSender, RnnSender
-from EC_finetune.receivers import MBartReceiver, RnnReceiver
-from EC_finetune.dataloader import (
+from .agents import ImageCaptionGrounder, ECImageIdentificationAgent
+from .modelings.modeling_mbart import MBartForConditionalGeneration
+from .senders import MBartSender, RnnSender
+from .receivers import MBartReceiver, RnnReceiver
+from .dataloader import (
     CaptionTrainingDataset, XLImageIdentificationDataset
 )
+from .util import set_seed, statbar_string
 
 EC_CSV_HEADERS = [
     "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
@@ -39,14 +39,6 @@ CAPTIONING_CSV_HEADERS = [
 ]
 
 
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
-
-
 def ids_to_texts(output_ids, tokenizer):
     text = []
     # concatnate batch-wise ids
@@ -57,16 +49,6 @@ def ids_to_texts(output_ids, tokenizer):
         for i in batch:
             text.append(tokenizer.decode(i) + '\n')
     return text
-
-
-def statbar_string(stat_dict: dict) -> str:
-    """
-    Return a printable "statbar" string from a dictionary of named statistics
-    """
-    stat_items = []
-    for key, value in stat_dict.items():
-        stat_items.append(f"{key} {value}")
-    return ' | '.join(stat_items)
 
 
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
