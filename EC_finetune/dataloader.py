@@ -5,7 +5,7 @@ from numpy import ndarray
 from torch import LongTensor
 from torch.utils.data.dataset import Dataset
 
-from EC_finetune.util import *
+from .util import *
 
 
 class ImageIdentificationDataset(Dataset):

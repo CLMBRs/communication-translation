@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_bart import _prepare_bart_decoder_inputs
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from .modelings.modeling_bart import _prepare_bart_decoder_inputs
+from .modelings.modeling_mbart import MBartForConditionalGeneration
 
 
 class Sender(Module):
