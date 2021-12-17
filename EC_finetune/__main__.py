@@ -27,15 +27,11 @@ from .dataloader import (
 from .util import set_seed, statbar_string
 
 EC_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
-]
-EC_LM_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "lm loss", "communication loss",
-    "accuracy", "mean_length"
+    'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
 ]
 CAPTIONING_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "caption generation loss",
-    "image selection loss", "accuracy"
+    'mode', 'epoch', 'global step', 'loss', 'caption generation loss',
+    'image selection loss', 'accuracy'
 ]
 
 
@@ -52,14 +48,11 @@ def ids_to_texts(output_ids, tokenizer):
 
 
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
-    stats = defaultdict(list)
-    epoch_iterator = tqdm(dataloader, desc="Iteration")
+    batchwise_stats = defaultdict(list)
+    epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
     for batch in epoch_iterator:
-        # Start evaluation mode
         model.eval()
-
-        # Move data to the GPU
         batch['sender_image'] = batch['sender_image'].to(args.device)
         batch['receiver_images'] = batch['receiver_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
@@ -74,13 +67,13 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
             if key in args.stats_to_print:
-                stats[key].append(value)
+                batchwise_stats[key].append(value)
 
     average_stats = {}
     average_stats['epoch'] = epoch
     average_stats['global step'] = global_step
     average_stats['mode'] = 'validation'
-    for key, value in stats.items():
+    for key, value in batchwise_stats.items():
         average_stats[key] = round(mean(value), 4)
 
     printout = statbar_string(average_stats)
@@ -98,13 +91,14 @@ def save(args, model, logger):
     # Good practice: save your training arguments together
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+    
     # Save the general part of the model
     state_dict = {
         k: v
         for k, v in model.state_dict().items()
         if not (k.startswith("language_model") or k.startswith("orig_model"))
     }
-    torch.save(state_dict, args.output_dir + '/model.pt')
+    torch.save(state_dict, args.output_dir + "/model.pt")
 
     # For pretrained models, provide extra saving strategy
     if args.save_pretrain_seperately:
@@ -113,7 +107,7 @@ def save(args, model, logger):
         # reloaded using `from_pretrained()`
         model_to_save = (
             model.sender.sender.module
-            if hasattr(model.sender.top, "module") else model.sender.top
+            if hasattr(model.sender.top, 'module') else model.sender.top
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
@@ -144,7 +138,7 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
     scheduler = scheduler_method(**scheduler_args)
 
     for epoch in range(args.num_games):
-        epoch_iterator = tqdm(dataloader, desc="Iteration")
+        epoch_iterator = tqdm(dataloader, desc='Iteration')
         for batch in epoch_iterator:
             model.train()
             # Move data to the GPU
@@ -207,7 +201,7 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
                         if args.save_output_txt:
                             output_texts = ids_to_texts(output_ids, tokenizer)
                             with open(
-                                args.output_dir + '/eval_texts.txt', 'w'
+                                args.output_dir + "/eval_texts.txt", 'w'
                             ) as f:
                                 for i in output_texts:
                                     f.write(i)
@@ -240,22 +234,24 @@ def main():
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
-    parser = argparse.ArgumentParser(description='Image caption training')
+    parser = argparse.ArgumentParser(
+        description="Train emergent communication model via image-identification"
+    )
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
         '--lm_loss_override',
-        action="store_true",
+        action='store_true',
         help="Flag to trigger language model loss (overriding config)"
     )
     parser.add_argument(
         '--drift_loss_override',
-        action="store_true",
+        action='store_true',
         help="Flag to trigger weight drift loss (overriding config)"
     )
     parser.add_argument(
         '--adapter_freeze_override',
-        action="store_true",
+        action='store_true',
         help="Flag to trigger adapter freezing (overriding config)"
     )
     args = parser.parse_args()
@@ -287,20 +283,20 @@ def main():
     else:
         args.csv_headers = EC_CSV_HEADERS
         if args.language_model_loss or args.weight_drift_loss:
-            args.csv_headers += ["communication loss"]
+            args.csv_headers += ['communication loss']
         if args.language_model_loss:
-            args.csv_headers += ["lm loss"]
+            args.csv_headers += ['lm loss']
         if args.weight_drift_loss:
-            args.csv_headers += ["drift loss"]
+            args.csv_headers += ['drift loss']
 
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
 
-    logging.info('Entering main run script')
+    logging.info("Entering main run script")
 
     # Setup CUDA, GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
     if args.mode == 'image_grounding':
@@ -315,10 +311,10 @@ def main():
     train_images = torch.load(args.train_images)
     valid_images = torch.load(args.valid_images)
 
-    logger.info('Dataset Loaded')
+    logger.info("Dataset Loaded")
 
     # Write the model description
-    logger.info('Configuration:')
+    logger.info("Configuration:")
     print(args)
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_name)
@@ -457,14 +453,14 @@ def main():
 
     # Initialize the dataloader
     training_params = {
-        "batch_size": args.batch_size,
-        "shuffle": True,
-        "drop_last": True
+        'batch_size': args.batch_size,
+        'shuffle': True,
+        'drop_last': True
     }
     test_params = {
-        "batch_size": args.batch_size,
-        "shuffle": False,
-        "drop_last": False
+        'batch_size': args.batch_size,
+        'shuffle': False,
+        'drop_last': False
     }
 
     training_dataloader = DataLoader(training_set, **training_params)
@@ -476,7 +472,7 @@ def main():
             model.parameters(), logger
         )
     if args.do_eval:
-        checkpoint = args.output_dir + '/model.pt'
+        checkpoint = args.output_dir + "/model.pt"
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
         model.load_state_dict(torch.load(checkpoint), strict=False)
         model.to(args.device)
@@ -484,7 +480,7 @@ def main():
         results, output_ids, printout = evaluate(args, model, valid_dataloader)
         if args.save_output_txt:
             output_texts = ids_to_texts(output_ids, tokenizer)
-            with open(args.output_dir + '/eval_texts.txt', 'w') as f:
+            with open(args.output_dir + "/eval_texts.txt", 'w') as f:
                 for i in output_texts:
                     f.write(i)
 
