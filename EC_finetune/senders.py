@@ -51,6 +51,7 @@ class MBartSender(Sender):
         input_dim: int,
         seq_len: int = None,
         recurrent_unroll: bool = False,
+        unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,
         repetition_penalty: float = 1.0,
@@ -78,6 +79,7 @@ class MBartSender(Sender):
         self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
         self.recurrent_unroll = recurrent_unroll
+        self.unroll_length = unroll_length
         self.top.temp = temperature
         self.top.hard = hard
         self.seq_len = seq_len
@@ -143,7 +145,7 @@ class MBartSender(Sender):
             c = torch.zeros_like(image_hidden).transpose(0, 1).to(
                 image_hidden.device
             )
-            for i in range(int(self.seq_len / 2)):
+            for i in range(self.unroll_length):
                 next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden

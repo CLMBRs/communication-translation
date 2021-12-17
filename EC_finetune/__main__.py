@@ -402,6 +402,7 @@ def main():
             args.hidden_dim,
             seq_len=args.max_seq_length,
             recurrent_unroll=args.recurrent_image_unroll,
+            unroll_length=args.image_unroll_length,
             temperature=args.temperature,
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
