@@ -1992,30 +1992,40 @@ class BartForCausalLanguageModeling(PretrainedBartModel):
         super().__init__(config)
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
         self.embedding = nn.Embedding(vocab_size, config.d_model, padding_idx)
-        self.decoder = BartDecoder(config, self.shared)
+        self.decoder = BartDecoder(config, self.embedding)
         self.register_buffer(
             "final_logits_bias",
-            torch.zeros((1, self.model.embedding.num_embeddings))
+            torch.zeros((1, self.embedding.num_embeddings))
         )
         self.init_weights()
 
     def forward(
         self,
-        input_ids,
-        padding_mask,
-        causal_mask=None,
+        input_ids=None,
+        decoder_input_ids=None,
+        attention_mask=None,
         input_embeds=None
     ):
-        if causal_mask is None:
-            max_length = input_ids.size(1)
-            dtype = self.embedding.weight.dtype
-            causal_mask = self.get_causal_mask(max_length, dtype)
+        if input_ids is None and decoder_input_ids is not None:
+            input_ids = decoder_input_ids
+        elif input_ids is None and decoder_input_ids is None:
+            raise ValueError(
+                "Forward pass must receive either `input_ids` or"
+                " `decoder_input_ids`"
+            )
+        decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
+            self.config,
+            input_ids,
+            decoder_input_ids=decoder_input_ids,
+            decoder_padding_mask=attention_mask,
+            causal_mask_dtype=self.embedding.weight.dtype,
+        )
         decoder_output = self.decoder(
-            input_ids=input_ids,
+            input_ids=decoder_input_ids,
             input_embeds=input_embeds,
             encoder_hidden_states=None,
             encoder_padding_mask=None,
-            decoder_padding_mask=padding_mask,
+            decoder_padding_mask=decoder_padding_mask,
             decoder_causal_mask=causal_mask
         )
         decoder_logits = F.linear(
