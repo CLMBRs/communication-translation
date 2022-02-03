@@ -1,0 +1,27 @@
+model_name: facebook/mbart-large-cc25
+seed: 1
+output_dir: Output/mbart_lm
+csv_headers: ['step', 'lr', 'loss']
+data_dir: Data/cc
+train_data_files:
+  en: en_toy.txt
+  zh: zh_toy.txt
+  ro: ro_toy.txt
+valid_data_files:
+  en: en_toy.txt
+  zh: zh_toy.txt
+  ro: ro_toy.txt
+
+do_train: true
+do_eval: true
+n_gpu: 1
+max_global_step: 512
+num_epochs: 1
+lr: 5.0e-6
+schedule: constant_w_warmup
+num_warmup_steps: 0
+batch_size: 32
+gradient_accumulation_steps: 1
+grad_clip: 1.0
+valid_every: 512
+print_every: 32
