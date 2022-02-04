@@ -18,7 +18,7 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from .agents import ImageCaptionGrounder, ECImageIdentificationAgent
-from .modelings.modeling_mbart import MBartForConditionalGeneration
+from .modelings.modeling_mbart import MBartForCausalLanguageModeling, MBartForConditionalGeneration
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
 from .dataloader import (
@@ -346,27 +346,11 @@ def main():
         # facebook weights, deepcopy the decoder and embeddings, and delete the
         # rest
         if args.language_model_loss:
-            tmp_language_model = MBartForConditionalGeneration.from_pretrained(
-                "facebook/mbart-large-cc25"
+            language_model = MBartForCausalLanguageModeling.from_pretrained(
+                args.language_model_path
             )
-
-            decoder = deepcopy(tmp_language_model.model.decoder)
-            embedding = deepcopy(tmp_language_model.model.shared)
-            bias = deepcopy(tmp_language_model.final_logits_bias)
-
-            del tmp_language_model
-
-            for param in decoder.parameters():
+            for param in language_model.parameters():
                 param.requires_grad = False
-            for param in embedding.parameters():
-                param.requires_grad = False
-            bias.requires_grad = False
-
-            language_model = {
-                'decoder': decoder.to(device),
-                'embedding': embedding.to(device),
-                'bias': bias.to(device)
-            }
 
         comm_model = MBartForConditionalGeneration.from_pretrained(
             args.model_name

@@ -1,4 +1,3 @@
-import random
 from abc import abstractmethod
 from argparse import Namespace
 from functools import reduce
@@ -251,9 +250,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 hasattr(args, 'lm_lambda') and args.lm_lambda
             ) else args.lm_lambda
             if language_model is not None:
-                self.language_model = language_model['decoder']
-                self.lm_embedding = language_model['embedding']
-                self.lm_bias = language_model['bias']
+                self.language_model = language_model
             else:
                 raise ValueError(
                     "A language model must be provided if"
@@ -313,7 +310,9 @@ class ECImageIdentificationAgent(CommunicationAgent):
             lm_logits = message_dict['message_logits']
             lm_padding_mask = message_dict['attention_mask']
 
-        # Move the language id to the end of each sequence
+        # Move the language id to the end of each sequence. We don't prepend
+        # the CLS token now since the LM component will use the sequence
+        # without the CLS as the targets
         message_dict['message_ids'] = self.lang_id_to_end(
             message_dict['message_ids'], message_dict['message_lengths']
         )
@@ -321,30 +320,20 @@ class ECImageIdentificationAgent(CommunicationAgent):
             message_dict['message_logits'], message_dict['message_lengths']
         )
 
+        # Optional language model loss block
         lm_loss = 0
         if self.language_model_loss:
-            lm_input = torch.matmul(lm_logits, self.lm_embedding.weight)
-            lm_targets = message_dict['message_ids'].long()
-            max_length = lm_targets.size(1)
-            causal_mask = self.get_causal_mask(
-                max_length, self.lm_embedding.weight.dtype
+            lm_embeds = torch.matmul(
+                lm_logits, self.language_model.shared.weight
             )
-            causal_mask = causal_mask.to(device)
+            lm_targets = message_dict['message_ids'].long()
             lm_padding_mask = invert_mask(
                 lm_padding_mask.bool()
             ).to(device)
-            lm_output = self.language_model(
-                input_ids=lm_ids,
-                input_embeds=lm_input,
-                encoder_hidden_states=None,
-                encoder_padding_mask=None,
-                decoder_padding_mask=lm_padding_mask,
-                decoder_causal_mask=causal_mask
-            )
-            lm_logits = F.linear(
-                lm_output.last_hidden_state,
-                self.lm_embedding.weight,
-                bias=self.lm_bias.to(device)
+            lm_logits = self.language_model(
+                decoder_input_ids=lm_ids,
+                input_embeds=lm_embeds,
+                attention_mask=lm_padding_mask,
             )
             lm_loss = F.cross_entropy(
                 lm_logits.transpose(1, 2),
