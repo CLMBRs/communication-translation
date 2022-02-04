@@ -195,12 +195,13 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
 
 
 class XLMDataset(Dataset):
-    def __init__(self, examples: dict, tokenizer, alpha: float = 0.7) -> Dataset:
+    def __init__(self, examples: dict, tokenizer, alpha: float = 0.7, max_length: int = 128) -> Dataset:
         super().__init__()
         self.examples = examples
         self.lang_ids = list(examples.keys())
         self.tokenizer = tokenizer
         self.alpha = alpha
+        self.max_length = max_length
 
         # Use the original lengths of each dataset to calculate the resampling
         # probability of drawing from each language
@@ -235,7 +236,13 @@ class XLMDataset(Dataset):
         # Return the batch from the language-specific dataloader
         batch = self.examples[sampled_lang].__getitem__(modulo_index)
         self.tokenizer.set_src_lang_special_tokens(lang_fairseq_code)
-        batch = self.tokenizer(batch, padding=True, return_tensors='pt')
+        batch = self.tokenizer(
+            batch,
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
         return {
             'input_ids': batch['input_ids'],
             'attention_mask': batch['attention_mask']
@@ -283,12 +290,14 @@ class XLMDataset(Dataset):
 
 class SingleLangXLMDataset(Dataset):
     def __init__(
-        self, datafile: str, batch_size: int, shuffle: bool = True
+        self, datafile: str, batch_size: int, order: str = 'none'
     ) -> Dataset:
         super().__init__()
         examples = [line.strip() for line in open(datafile, 'r') if line != '']
-        if shuffle:
+        if order == 'shuffle':
             random.shuffle(examples)
+        elif order == 'sort':
+            examples.sort(key=len, reverse=True)
         
         self.batch_size = batch_size
         num_examples = len(examples)

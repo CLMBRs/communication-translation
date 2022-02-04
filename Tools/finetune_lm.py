@@ -27,8 +27,8 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
     epoch_iterator = tqdm(dataloader, desc='iteration')
     for batch in epoch_iterator:
         model.eval()
-        batch['input_ids'] = batch['input_ids'].to(args.device)
-        batch['attention_mask'] = batch['attention_mask'].to(args.device)
+        batch['input_ids'] = batch['input_ids'].squeeze().to(args.device)
+        batch['attention_mask'] = batch['attention_mask'].squeeze().to(args.device)
         targets = batch['input_ids']
         outputs = model(**batch)
         loss = F.cross_entropy(
@@ -117,7 +117,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             if global_step % args.valid_every == 0 and gradient_count == 0:
                 with torch.no_grad():
-                    eval_return_dict = evaluate(
+                    eval_return_dict, printout = evaluate(
                         args, model, valid_dataloader, epoch, global_step
                     )
                     val_csv_data.append(eval_return_dict)
@@ -126,6 +126,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                             f, fieldnames=args.csv_headers
                         )
                         csv_file.writerow(eval_return_dict)
+                    logger.info(printout)
                     cur_loss = float(eval_return_dict['loss'])
                     if cur_loss < best_loss:
                         best_loss = cur_loss
@@ -188,7 +189,7 @@ def main():
 
     train_lang_datasets = {
         lang_id: SingleLangXLMDataset(
-            os.path.join(args.data_dir, data_file), args.batch_size
+            os.path.join(args.data_dir, data_file), args.batch_size, order='sort'
         )
         for lang_id, data_file in args.train_data_files.items()
     }
@@ -199,7 +200,7 @@ def main():
         for lang_id, data_file in args.valid_data_files.items()
     }
 
-    train_dataset = XLMDataset(train_lang_datasets, tokenizer)
+    train_dataset = XLMDataset(train_lang_datasets, tokenizer, alpha=args.lang_alpha, max_length=args.max_seq_length)
     valid_dataset = XLMDataset(valid_lang_datasets, tokenizer, alpha=1.0)
     train_dataloader = DataLoader(train_dataset, shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, shuffle=False)

@@ -1991,11 +1991,11 @@ class BartForCausalLanguageModeling(PretrainedBartModel):
     def __init__(self, config: BartConfig):
         super().__init__(config)
         padding_idx, vocab_size = config.pad_token_id, config.vocab_size
-        self.embedding = nn.Embedding(vocab_size, config.d_model, padding_idx)
-        self.decoder = BartDecoder(config, self.embedding)
+        self.shared = nn.Embedding(vocab_size, config.d_model, padding_idx)
+        self.decoder = BartDecoder(config, self.shared)
         self.register_buffer(
             "final_logits_bias",
-            torch.zeros((1, self.embedding.num_embeddings))
+            torch.zeros((1, self.shared.num_embeddings))
         )
         self.init_weights()
 
@@ -2018,7 +2018,7 @@ class BartForCausalLanguageModeling(PretrainedBartModel):
             input_ids,
             decoder_input_ids=decoder_input_ids,
             decoder_padding_mask=attention_mask,
-            causal_mask_dtype=self.embedding.weight.dtype,
+            causal_mask_dtype=self.shared.weight.dtype,
         )
         decoder_output = self.decoder(
             input_ids=decoder_input_ids,
@@ -2030,7 +2030,7 @@ class BartForCausalLanguageModeling(PretrainedBartModel):
         )
         decoder_logits = F.linear(
             decoder_output.last_hidden_state,
-            self.embedding.weight,
+            self.shared.weight,
             bias=self.final_logits_bias
         )
         return decoder_logits
