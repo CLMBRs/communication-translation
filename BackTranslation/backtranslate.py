@@ -464,6 +464,10 @@ if __name__ == "__main__":
     if not hasattr(args, 'num_constrained_steps'):
         args.num_constrained_steps = 0
 
+    # Write the model description
+    logger.info("Configuration:")
+    print(args)
+
     lang1_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
         file=args.lang1_vocab_constrain_file,
