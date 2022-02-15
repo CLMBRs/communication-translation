@@ -152,9 +152,9 @@ class CommunicationAgent(Module):
         return mask
 
     @staticmethod
-    def lang_id_to_end(input_ids, lengths):
+    def lang_id_to_end(input_ids, lengths, pad_index):
         device = input_ids.device
-        buff = torch.zeros((input_ids.size(0), 1), device=device)
+        buff = torch.full((input_ids.size(0), 1), pad_index, device=device)
         input_ids = torch.cat((input_ids, buff), dim=1)
         first_pad_indices = lengths.unsqueeze(-1)
         # yapf: disable
@@ -314,7 +314,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # the CLS token now since the LM component will use the sequence
         # without the CLS as the targets
         message_dict['message_ids'] = self.lang_id_to_end(
-            message_dict['message_ids'], message_dict['message_lengths']
+            message_dict['message_ids'], message_dict['message_lengths'], self.padding_index
         )
         message_dict['message_logits'] = self.lang_id_logit_to_end(
             message_dict['message_logits'], message_dict['message_lengths']
