@@ -371,8 +371,7 @@ def main():
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
             beam_width=args.beam_width,
-            generate_from_logits=args.generate_from_logits,
-            freeze_adapter=args.freeze_adapters
+            generate_from_logits=args.generate_from_logits
         )
         receiver = MBartReceiver(
             comm_model,
@@ -432,6 +431,9 @@ def main():
             )
         }
         model.load_state_dict(state_dict, strict=False)
+
+    if args.freeze_adapters:
+        model.freeze_adapters()
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
