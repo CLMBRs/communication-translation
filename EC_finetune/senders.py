@@ -56,8 +56,7 @@ class MBartSender(Sender):
         hard: bool = None,
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
-        generate_from_logits: bool = False,
-        freeze_adapter: bool = False
+        generate_from_logits: bool = False
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -93,9 +92,6 @@ class MBartSender(Sender):
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
-            if freeze_adapter:
-                for param in self.lstm.parameters():
-                    param.requires_grad = False
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs

@@ -62,12 +62,6 @@ class CommunicationAgent(Module):
             print("Sharing visual system for each agent.")
             self.beholder1 = self.beholder2 = self.beholder
 
-        if args.freeze_adapters:
-            for param in self.beholder1.parameters():
-                param.requires_grad = False
-            for param in self.beholder2.parameters():
-                param.requires_grad = False
-
         self.sender = sender
         self.receiver = receiver
         self.tokenizer = args.tokenizer
@@ -80,6 +74,15 @@ class CommunicationAgent(Module):
         self.padding_index = args.padding_index
         self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
+
+    def freeze_adapters(self) -> None:
+        for param in self.beholder1.parameters():
+            param.requires_grad = False
+        for param in self.beholder2.parameters():
+            param.requires_grad = False
+        if self.sender.recurrent_unroll:
+            for param in self.sender.lstm.parameters():
+                param.requires_grad = False
 
     def image_to_message(self, batch: dict) -> dict:
         """
