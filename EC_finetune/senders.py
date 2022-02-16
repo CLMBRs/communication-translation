@@ -194,6 +194,7 @@ class MBartSender(Sender):
                 num_beams=self.beam_width,
                 max_length=self.seq_len,
                 repetition_penalty=self.repetition_penalty,
+                no_repeat_ngram_size=4,
                 **kwargs
             )
             return {
