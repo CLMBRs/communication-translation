@@ -18,12 +18,12 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from .agents import ImageCaptionGrounder, ECImageIdentificationAgent
-from .modelings.modeling_mbart import MBartForCausalLanguageModeling, MBartForConditionalGeneration
+from .modelings.modeling_mbart import (
+    MBartForCausalLanguageModeling, MBartForConditionalGeneration
+)
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
-from .dataloader import (
-    CaptionTrainingDataset, XLImageIdentificationDataset
-)
+from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
 from .util import set_seed, statbar_string
 
 EC_CSV_HEADERS = [
@@ -91,7 +91,7 @@ def save(args, model, logger):
     # Good practice: save your training arguments together
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
-    
+
     # Save the general part of the model
     state_dict = {
         k: v

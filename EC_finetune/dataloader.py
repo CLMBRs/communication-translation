@@ -195,7 +195,13 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
 
 
 class XLMDataset(Dataset):
-    def __init__(self, examples: dict, tokenizer, alpha: float = 0.7, max_length: int = 128) -> Dataset:
+    def __init__(
+        self,
+        examples: dict,
+        tokenizer,
+        alpha: float = 0.7,
+        max_length: int = 128
+    ) -> Dataset:
         super().__init__()
         self.examples = examples
         self.lang_ids = list(examples.keys())
@@ -298,7 +304,7 @@ class SingleLangXLMDataset(Dataset):
             random.shuffle(examples)
         elif order == 'sort':
             examples.sort(key=len, reverse=True)
-        
+
         self.batch_size = batch_size
         num_examples = len(examples)
         self.num_batches = num_examples // self.batch_size

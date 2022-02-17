@@ -12,7 +12,6 @@ from torch.nn import Module
 
 from .senders import Sender
 from .receivers import Receiver
-from .modelings.modeling_bart import invert_mask
 
 
 def rgetattr(obj, attr, *args):
@@ -317,7 +316,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
         # the CLS token now since the LM component will use the sequence
         # without the CLS as the targets
         message_dict['message_ids'] = self.lang_id_to_end(
-            message_dict['message_ids'], message_dict['message_lengths'], self.padding_index
+            message_dict['message_ids'], message_dict['message_lengths'],
+            self.padding_index
         )
         message_dict['message_logits'] = self.lang_id_logit_to_end(
             message_dict['message_logits'], message_dict['message_lengths']
@@ -367,11 +367,14 @@ class ECImageIdentificationAgent(CommunicationAgent):
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
-        
+
         weight_drift_loss = 0
         if self.weight_drift_loss:
             num_params = sum(
-                [p.numel() for p in self.orig_model.parameters() if p.requires_grad]
+                [
+                    p.numel()
+                    for p in self.orig_model.parameters() if p.requires_grad
+                ]
             )
             for key in dict(self.orig_model.named_parameters()).keys():
                 weight_drift_loss += F.mse_loss(
