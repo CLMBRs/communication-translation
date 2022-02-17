@@ -433,6 +433,7 @@ def main():
         model.load_state_dict(state_dict, strict=False)
 
     if args.freeze_adapters:
+        print("Freezing adapter modules")
         model.freeze_adapters()
 
     # Move the model to gpu if the configuration calls for it
