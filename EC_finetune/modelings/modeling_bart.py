@@ -505,7 +505,6 @@ class BartGumbelEncoder(nn.Module):
         # check attention mask and invert
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
-        from pdb import set_trace; set_trace
         inputs_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
         inputs_embeds = inputs_embeds * self.embed_scale
         embed_pos = self.embed_positions(input_ids)
