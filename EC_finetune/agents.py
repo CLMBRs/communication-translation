@@ -146,14 +146,6 @@ class CommunicationAgent(Module):
         return image_candidate_logits
 
     @staticmethod
-    def get_causal_mask(max_length, dtype):
-        mask = (np.triu(np.ones((max_length, max_length))) == 1).transpose()
-        mask = torch.tensor(mask, dtype=dtype)
-        mask = mask.masked_fill(mask == 0, float('-inf'))
-        mask = mask.masked_fill(mask == 1, float(0.0))
-        return mask
-
-    @staticmethod
     def lang_id_to_end(input_ids, lengths, pad_index):
         device = input_ids.device
         buff = torch.full((input_ids.size(0), 1), pad_index, device=device)

@@ -2034,14 +2034,6 @@ class BartForCausalLanguageModeling(PretrainedBartModel):
         )
         return decoder_logits
 
-    @staticmethod
-    def get_causal_mask(max_length, dtype):
-        mask = (np.triu(np.ones((max_length, max_length))) == 1).transpose()
-        mask = torch.tensor(mask, dtype=dtype)
-        mask = mask.masked_fill(mask == 0, float('-inf'))
-        mask = mask.masked_fill(mask == 1, float(0.0))
-        return mask
-
 
 class SinusoidalPositionalEmbedding(nn.Embedding):
     """This module produces sinusoidal positional embeddings of any length."""
