@@ -284,11 +284,11 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_lambda > 0.0 or args.weight_drift_lambda > 0.0: 
+        if args.language_model_lambda or args.weight_drift_lambda: 
             args.csv_headers += ['communication loss']
-        if args.language_model_lambda > 0.0:
+        if args.language_model_lambda:
             args.csv_headers += ['lm loss']
-        if args.weight_drift_lambda > 0.0:
+        if args.weight_drift_lambda:
             args.csv_headers += ['drift loss']
 
     with open(f"{args.output_dir}/log.csv", 'w') as f:
@@ -347,7 +347,7 @@ def main():
         # If language modeling loss is to be used, get a copy of the original
         # facebook weights, deepcopy the decoder and embeddings, and delete the
         # rest
-        if args.language_model_lambda > 0.0:
+        if args.language_model_lambda:
             language_model = MBartForCausalLanguageModeling.from_pretrained(
                 args.language_model_path
             )
@@ -358,7 +358,7 @@ def main():
             args.model_name
         )
 
-        if args.weight_drift_lambda > 0.0:
+        if args.weight_drift_lambda:
             orig_model = deepcopy(comm_model)
             for param in orig_model.parameters():
                 param.requireds_grad = False
