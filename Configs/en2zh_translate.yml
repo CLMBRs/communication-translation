@@ -8,7 +8,7 @@ output_dir: Output/en-zh_pipeline/
 translation_filename: zh-en.en.val.zh
 
 # data config
-dataset_script: Backtranslation/wmt19/wmt19.py
+dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: zh-en
 dataset_split: validation
 source_id: en

@@ -3,10 +3,10 @@ model_path: Output/en-zh_pipeline_2/last
 
 # training config
 num_steps: 512
-lr: 2.5e-05
-grad_clip: 1.0
+lr: 8.0e-06
+grad_clip: 0.5
 num_warmup_steps: 0
-schedule: constant_w_warmup
+schedule: linear_w_warmup
 batch_size: 32
 seed: 1
 n_gpu: 1

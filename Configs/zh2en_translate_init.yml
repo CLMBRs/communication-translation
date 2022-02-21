@@ -1,5 +1,5 @@
 # Path to load model for generation
-model_path: Output/en-zh_pipeline/last
+model_path: Output/en-zh_pipeline/bt_init/last
 seed: 1
 n_gpu: 1
 batch_size: 64
