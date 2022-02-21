@@ -28,7 +28,9 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
     for batch in epoch_iterator:
         model.eval()
         batch['input_ids'] = batch['input_ids'].squeeze().to(args.device)
-        batch['attention_mask'] = batch['attention_mask'].squeeze().to(args.device)
+        batch['attention_mask'] = batch['attention_mask'].squeeze().to(
+            args.device
+        )
         targets = batch['input_ids']
         outputs = model(**batch)
         loss = F.cross_entropy(
@@ -79,7 +81,9 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
             model.train()
             # Move data to the GPU
             batch['input_ids'] = batch['input_ids'].squeeze().to(args.device)
-            batch['attention_mask'] = batch['attention_mask'].squeeze().to(args.device)
+            batch['attention_mask'] = batch['attention_mask'].squeeze().to(
+                args.device
+            )
             targets = batch['input_ids']
             outputs = model(**batch)
             loss = F.cross_entropy(
@@ -189,7 +193,9 @@ def main():
 
     train_lang_datasets = {
         lang_id: SingleLangXLMDataset(
-            os.path.join(args.data_dir, data_file), args.batch_size, order='sort'
+            os.path.join(args.data_dir, data_file),
+            args.batch_size,
+            order='sort'
         )
         for lang_id, data_file in args.train_data_files.items()
     }
@@ -200,12 +206,20 @@ def main():
         for lang_id, data_file in args.valid_data_files.items()
     }
 
-    train_dataset = XLMDataset(train_lang_datasets, tokenizer, alpha=args.lang_alpha, max_length=args.max_seq_length)
+    train_dataset = XLMDataset(
+        train_lang_datasets,
+        tokenizer,
+        alpha=args.lang_alpha,
+        max_length=args.max_seq_length
+    )
     valid_dataset = XLMDataset(valid_lang_datasets, tokenizer, alpha=1.0)
     train_dataloader = DataLoader(train_dataset, shuffle=True)
     valid_dataloader = DataLoader(valid_dataset, shuffle=False)
 
-    train(args, model, train_dataloader, valid_dataloader, model.parameters(), logger)
+    train(
+        args, model, train_dataloader, valid_dataloader, model.parameters(),
+        logger
+    )
 
 
 if __name__ == '__main__':
