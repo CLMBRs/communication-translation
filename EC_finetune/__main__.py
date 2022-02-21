@@ -264,7 +264,7 @@ def main():
     # set random seed
     if args.seed_override:
         args.seed = args.seed_override
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     if args.lm_lambda_override:
         args.language_model_lambda = args.lm_lambda_override

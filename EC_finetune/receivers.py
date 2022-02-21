@@ -67,14 +67,17 @@ class MBartReceiver(Receiver):
         super().__init__()
         self.embedding = model.model.shared
         self.encoder = model.model.encoder
+        self.embedding_dim = model.model.shared.weight.size(1)
         self.recurrent_aggregation = recurrent_aggregation
         self.dropout = nn.Dropout(p=dropout) if dropout else None
         self.unit_norm = unit_norm
 
         if self.recurrent_aggregation:
-            self.hidden_to_output = nn.LSTM(1024, output_dim, batch_first=True)
+            self.hidden_to_output = nn.LSTM(
+                self.embedding_dim, output_dim, batch_first=True
+            )
         else:
-            self.hidden_to_output = nn.Linear(1024, output_dim)
+            self.hidden_to_output = nn.Linear(self.embedding_dim, output_dim)
 
     def forward(
         self,

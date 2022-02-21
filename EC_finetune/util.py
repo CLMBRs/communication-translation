@@ -8,12 +8,12 @@ from torch import Tensor
 from transformers import PreTrainedTokenizer
 
 
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
+def set_seed(seed, num_gpu):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if num_gpu > 0:
+        torch.cuda.manual_seed_all(seed)
 
 
 def statbar_string(stat_dict: dict) -> str:
