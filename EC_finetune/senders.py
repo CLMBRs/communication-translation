@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
-from EC_finetune.modelings.modeling_bart import _prepare_bart_decoder_inputs
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
+from .modelings.modeling_bart import _prepare_bart_decoder_inputs
+from .modelings.modeling_mbart import MBartForConditionalGeneration
 
 
 class Sender(Module):
@@ -51,10 +51,12 @@ class MBartSender(Sender):
         input_dim: int,
         seq_len: int = None,
         recurrent_unroll: bool = False,
+        unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,
         repetition_penalty: float = 1.0,
-        beam_width: int = 1
+        beam_width: int = 1,
+        generate_from_logits: bool = False
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -69,16 +71,20 @@ class MBartSender(Sender):
             hard: whether generation should produce one-hot logits
         """
         super().__init__()
-        self.sender = model
+        self.top = model
         self.decoder = model.model.decoder
+        self.embedding = model.model.shared
+        self.output_bias = model.final_logits_bias
         self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
         self.recurrent_unroll = recurrent_unroll
-        self.sender.temp = temperature
-        self.sender.hard = hard
+        self.unroll_length = unroll_length
+        self.top.temp = temperature
+        self.top.hard = hard
         self.seq_len = seq_len
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
+        self.generate_from_logits = generate_from_logits
 
         self.projection = nn.Linear(self.input_dim, self.embedding_dim)
 
@@ -115,7 +121,7 @@ class MBartSender(Sender):
                     `(batch_size, max_seq_length, vocab_size)`
                 `message_lengths`: the length for each output. `(batch_size)`
         """
-
+        device = self.embedding.weight.device
         # Ensure the batch is the correct shape
         # (batch_size, image_hidden_dim)
         batch_size = image_hidden.size(0)
@@ -129,9 +135,13 @@ class MBartSender(Sender):
 
         if self.recurrent_unroll:
             unrolled_hidden = []
-            h = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
-            c = torch.zeros_like(image_hidden).transpose(0,1).to(image_hidden.device)
-            for i in range(int(self.seq_len / 2)):
+            h = torch.zeros_like(image_hidden).transpose(0, 1).to(
+                image_hidden.device
+            )
+            c = torch.zeros_like(image_hidden).transpose(0, 1).to(
+                image_hidden.device
+            )
+            for i in range(self.unroll_length):
                 next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden
@@ -140,9 +150,9 @@ class MBartSender(Sender):
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:
             decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
-                config=self.sender.config,
+                config=self.top.config,
                 input_ids=decoder_input_ids,
-                causal_mask_dtype=self.sender.model.shared.weight.dtype
+                causal_mask_dtype=self.embedding.weight.dtype
             )
             output = self.decoder(
                 input_ids=decoder_input_ids,
@@ -153,8 +163,8 @@ class MBartSender(Sender):
             )
             logits = F.linear(
                 output.last_hidden_state,
-                self.sender.model.shared.weight,
-                bias=self.sender.final_logits_bias
+                self.embedding.weight,
+                bias=self.output_bias.to(device)
             )
             return {
                 'message_ids': torch.argmax(logits, dim=2, keepdim=False),
@@ -171,13 +181,16 @@ class MBartSender(Sender):
             if 'lang_mask' in kwargs:
                 kwargs['lang_mask'] = \
                     kwargs['lang_mask'].to(image_hidden.device)
+            if self.generate_from_logits:
+                kwargs['generate_from_logits'] = True
 
             # Get the sender model output and return
-            output = self.sender.gumbel_generate(
+            output = self.top.gumbel_generate(
                 input_embeds=image_hidden,
                 num_beams=self.beam_width,
                 max_length=self.seq_len,
                 repetition_penalty=self.repetition_penalty,
+                no_repeat_ngram_size=4,
                 **kwargs
             )
             return {

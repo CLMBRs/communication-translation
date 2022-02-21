@@ -5,7 +5,7 @@ import random
 import sys
 import time
 from collections import defaultdict, namedtuple
-from math import ceil, isinf
+from math import ceil
 from statistics import mean
 
 import sacrebleu
@@ -373,8 +373,9 @@ def main(args, backtranslation_pack):
                         translation_results, args.num_printed_translation
                     )
                 )
-
+                
     save_model(args, backtranslation_pack, saved_model_name="last")
+    logger.info("training complete; final model state saved")
 
 
 BackTranslationPack = namedtuple(
@@ -462,6 +463,10 @@ if __name__ == "__main__":
 
     if not hasattr(args, 'num_constrained_steps'):
         args.num_constrained_steps = 0
+
+    # Write the model description
+    logger.info("Configuration:")
+    print(args)
 
     lang1_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,

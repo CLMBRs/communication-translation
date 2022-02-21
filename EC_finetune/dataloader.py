@@ -5,7 +5,8 @@ from numpy import ndarray
 from torch import LongTensor
 from torch.utils.data.dataset import Dataset
 
-from EC_finetune.util import *
+from .util import *
+from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 
 
 class ImageIdentificationDataset(Dataset):
@@ -191,3 +192,133 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
             ret["lang_mask"] = self.lang_mask
 
         return ret
+
+
+class XLMDataset(Dataset):
+    def __init__(
+        self,
+        examples: dict,
+        tokenizer,
+        alpha: float = 0.7,
+        max_length: int = 128
+    ) -> Dataset:
+        super().__init__()
+        self.examples = examples
+        self.lang_ids = list(examples.keys())
+        self.tokenizer = tokenizer
+        self.alpha = alpha
+        self.max_length = max_length
+
+        # Use the original lengths of each dataset to calculate the resampling
+        # probability of drawing from each language
+        self.lengths = {
+            lang_id: len(self.examples[lang_id])
+            for lang_id in self.lang_ids
+        }
+        self.total_length = sum(self.lengths.values())
+
+        self._set_sampling_lambdas()
+
+        self.adjusted_lengths = {
+            lang_id: round(self.lengths[lang_id] * self.lambdas[lang_id])
+            for lang_id in self.lang_ids
+        }
+        self.adjusted_total_length = sum(self.adjusted_lengths.values())
+
+        self._set_lang_indices()
+
+    def __len__(self) -> int:
+        return self.adjusted_total_length
+
+    def __getitem__(self, index: int) -> dict:
+        # Get the language for the batch based on the (up/down)-sampled language
+        # set lengths
+        sampled_lang = self._lang_from_idx(index)
+        lang_fairseq_code = LANG_ID_2_LANGUAGE_CODES[sampled_lang]
+        # The within-language index is set as the global index modulo the
+        # language-specific length
+        adjusted_index = index - self.lang_start_indices[sampled_lang]
+        modulo_index = adjusted_index % self.lengths[sampled_lang]
+        # Return the batch from the language-specific dataloader
+        batch = self.examples[sampled_lang].__getitem__(modulo_index)
+        self.tokenizer.set_src_lang_special_tokens(lang_fairseq_code)
+        batch = self.tokenizer(
+            batch,
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
+        return {
+            'input_ids': batch['input_ids'],
+            'attention_mask': batch['attention_mask']
+        }
+
+    def _set_sampling_lambdas(self):
+        orig_probs = {
+            lang_id: (length / self.total_length)
+            for lang_id, length in self.lengths.items()
+        }
+        exponiated_probs = {
+            lang_id: prob**self.alpha
+            for lang_id, prob in orig_probs.items()
+        }
+        z = sum(exponiated_probs.values())
+        self.sample_probs = {
+            lang_id: exponiated_probs[lang_id] / z
+            for lang_id in self.lang_ids
+        }
+        self.lambdas = {
+            lang_id: (1 / orig_probs[lang_id]) * self.sample_probs[lang_id]
+            for lang_id in self.lang_ids
+        }
+
+    def _set_lang_indices(self):
+        curr_start_index = 0
+        self.lang_start_indices = {}
+        for lang_id in self.lang_ids:
+            self.lang_start_indices[lang_id] = curr_start_index
+            curr_start_index = curr_start_index + self.adjusted_lengths[lang_id]
+
+    def _lang_from_idx(self, index: int) -> str:
+        for i, lang_id in enumerate(self.lang_ids):
+            curr_start_index = self.lang_start_indices[lang_id]
+            if i < len(self.lang_ids) - 1:
+                next_lang_id = self.lang_ids[i + 1]
+                next_start_index = self.lang_start_indices[next_lang_id]
+            else:
+                next_start_index = curr_start_index + self.adjusted_lengths[
+                    lang_id]
+            if curr_start_index <= index < next_start_index:
+                return lang_id
+        raise ValueError(f"Example index {index} is out of range")
+
+
+class SingleLangXLMDataset(Dataset):
+    def __init__(
+        self, datafile: str, batch_size: int, order: str = 'none'
+    ) -> Dataset:
+        super().__init__()
+        examples = [line.strip() for line in open(datafile, 'r') if line != '']
+        if order == 'shuffle':
+            random.shuffle(examples)
+        elif order == 'sort':
+            examples.sort(key=len, reverse=True)
+
+        self.batch_size = batch_size
+        num_examples = len(examples)
+        self.num_batches = num_examples // self.batch_size
+        num_examples = self.num_batches * self.batch_size
+        examples = examples[:num_examples]
+
+        self.batches = [
+            examples[i:i + batch_size]
+            for i in range(0, num_examples, batch_size)
+        ]
+        assert len(self.batches) == self.num_batches
+
+    def __len__(self) -> int:
+        return self.num_batches
+
+    def __getitem__(self, index: int) -> List[list]:
+        return self.batches[index]

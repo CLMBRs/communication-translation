@@ -3,9 +3,9 @@ import json
 import logging
 import os
 import csv
-import random
 import sys
 from collections import defaultdict
+from copy import deepcopy
 from statistics import mean
 
 import numpy as np
@@ -17,29 +17,22 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from EC_finetune.agents import ImageCaptionGrounder, ECImageIdentificationAgent
-from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-from EC_finetune.senders import MBartSender, RnnSender
-from EC_finetune.receivers import MBartReceiver, RnnReceiver
-from EC_finetune.dataloader import (
-    CaptionTrainingDataset, XLImageIdentificationDataset
+from .agents import ImageCaptionGrounder, ECImageIdentificationAgent
+from .modelings.modeling_mbart import (
+    MBartForCausalLanguageModeling, MBartForConditionalGeneration
 )
+from .senders import MBartSender, RnnSender
+from .receivers import MBartReceiver, RnnReceiver
+from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
+from .util import set_seed, statbar_string
 
 EC_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "accuracy", "mean_length"
+    'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
 ]
 CAPTIONING_CSV_HEADERS = [
-    "mode", "epoch", "global step", "loss", "caption generation loss",
-    "image selection loss", "accuracy"
+    'mode', 'epoch', 'global step', 'loss', 'caption generation loss',
+    'image selection loss', 'accuracy'
 ]
-
-
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
 
 
 def ids_to_texts(output_ids, tokenizer):
@@ -54,25 +47,12 @@ def ids_to_texts(output_ids, tokenizer):
     return text
 
 
-def statbar_string(stat_dict: dict) -> str:
-    """
-    Return a printable "statbar" string from a dictionary of named statistics
-    """
-    stat_items = []
-    for key, value in stat_dict.items():
-        stat_items.append(f"{key} {value}")
-    return ' | '.join(stat_items)
-
-
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
-    stats = defaultdict(list)
-    epoch_iterator = tqdm(dataloader, desc="Iteration")
+    batchwise_stats = defaultdict(list)
+    epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
     for batch in epoch_iterator:
-        # Start evaluation mode
         model.eval()
-
-        # Move data to the GPU
         batch['sender_image'] = batch['sender_image'].to(args.device)
         batch['receiver_images'] = batch['receiver_images'].to(args.device)
         batch['target'] = batch['target'].to(args.device)
@@ -87,13 +67,13 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
             if key in args.stats_to_print:
-                stats[key].append(value)
+                batchwise_stats[key].append(value)
 
     average_stats = {}
     average_stats['epoch'] = epoch
     average_stats['global step'] = global_step
     average_stats['mode'] = 'validation'
-    for key, value in stats.items():
+    for key, value in batchwise_stats.items():
         average_stats[key] = round(mean(value), 4)
 
     printout = statbar_string(average_stats)
@@ -111,8 +91,14 @@ def save(args, model, logger):
     # Good practice: save your training arguments together
     # with the trained model
     torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+
     # Save the general part of the model
-    torch.save(model.state_dict(), args.output_dir + '/model.pt')
+    state_dict = {
+        k: v
+        for k, v in model.state_dict().items()
+        if not (k.startswith("language_model") or k.startswith("orig_model"))
+    }
+    torch.save(state_dict, args.output_dir + "/model.pt")
 
     # For pretrained models, provide extra saving strategy
     if args.save_pretrain_seperately:
@@ -121,12 +107,12 @@ def save(args, model, logger):
         # reloaded using `from_pretrained()`
         model_to_save = (
             model.sender.sender.module
-            if hasattr(model.sender.sender, "module") else model.sender.sender
+            if hasattr(model.sender.top, 'module') else model.sender.top
         )  # Take care of distributed/parallel training
         model_to_save.save_pretrained(args.output_dir)
 
 
-def train(args, model, dataloader, valid_dataloader, params, logger):
+def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
     global_step = 0
     best_loss = np.inf
     checkpoint_stats = defaultdict(list)
@@ -152,7 +138,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
     scheduler = scheduler_method(**scheduler_args)
 
     for epoch in range(args.num_games):
-        epoch_iterator = tqdm(dataloader, desc="Iteration")
+        epoch_iterator = tqdm(dataloader, desc='Iteration')
         for batch in epoch_iterator:
             model.train()
             # Move data to the GPU
@@ -212,6 +198,13 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
                     cur_loss = float(results['loss'])
                     if cur_loss < best_loss:
                         best_loss = cur_loss
+                        if args.save_output_txt:
+                            output_texts = ids_to_texts(output_ids, tokenizer)
+                            with open(
+                                args.output_dir + "/eval_texts.txt", 'w'
+                            ) as f:
+                                for i in output_texts:
+                                    f.write(i)
                         save(args, model, logger)
                         print(
                             f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
@@ -222,9 +215,6 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
             if global_step >= args.max_global_step:
                 return global_step
-
-    print(f"Length of train data logs: {len(train_csv_data)}")
-    print(f"Length of val data logs: {len(val_csv_data)}")
 
 
 def main():
@@ -244,9 +234,28 @@ def main():
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
-    parser = argparse.ArgumentParser(description='Image caption training')
+    parser = argparse.ArgumentParser(
+        description="Train emergent communication model via image-identification"
+    )
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
+    parser.add_argument(
+        '--lm_lambda_override',
+        type=float,
+        default=None,
+        help="Flag to override the language model lambda in the config"
+    )
+    parser.add_argument(
+        '--drift_lambda_override',
+        type=float,
+        default=None,
+        help="Flag to override the drift loss lambda in the config"
+    )
+    parser.add_argument(
+        '--adapter_freeze_override',
+        action='store_true',
+        help="Flag to trigger adapter freezing (overriding config)"
+    )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -255,24 +264,41 @@ def main():
     # set random seed
     if args.seed_override:
         args.seed = args.seed_override
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
+
+    if args.lm_lambda_override:
+        args.language_model_lambda = args.lm_lambda_override
+
+    # weight drift override
+    if args.drift_lambda_override:
+        args.weight_drift_lambda = args.drift_lambda_override
+
+    if args.adapter_freeze_override:
+        args.freeze_adapters = True
 
     # set csv output file
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    args.csv_headers = (
-        CAPTIONING_CSV_HEADERS
-        if args.mode == 'image_grounding' else EC_CSV_HEADERS
-    )
+    if args.mode == 'image_grounding':
+        args.csv_headers = CAPTIONING_CSV_HEADERS
+    else:
+        args.csv_headers = EC_CSV_HEADERS
+        if args.language_model_lambda or args.weight_drift_lambda: 
+            args.csv_headers += ['communication loss']
+        if args.language_model_lambda:
+            args.csv_headers += ['lm loss']
+        if args.weight_drift_lambda:
+            args.csv_headers += ['drift loss']
+
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
 
-    logging.info('Entering main run script')
+    logging.info("Entering main run script")
 
     # Setup CUDA, GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
     if args.mode == 'image_grounding':
@@ -287,17 +313,22 @@ def main():
     train_images = torch.load(args.train_images)
     valid_images = torch.load(args.valid_images)
 
-    logger.info('Dataset Loaded')
+    logger.info("Dataset Loaded")
 
     # Write the model description
-    logger.info('Configuration:')
+    logger.info("Configuration:")
     print(args)
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_name)
+    args.tokenizer = tokenizer
     tokenizer.save_pretrained(args.output_dir)
     vocab = tokenizer.get_vocab()
     args.padding_index = vocab['<pad>']
+    args.cls_index = vocab['<s>']
     args.vocab_size = len(vocab)
+
+    language_model = None
+    orig_model = None
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
@@ -313,18 +344,36 @@ def main():
         )
         receiver = RnnReceiver(comm_model, args.hidden_dim, args.vocab_size)
     else:
+        # If language modeling loss is to be used, get a copy of the original
+        # facebook weights, deepcopy the decoder and embeddings, and delete the
+        # rest
+        if args.language_model_lambda:
+            language_model = MBartForCausalLanguageModeling.from_pretrained(
+                args.language_model_path
+            )
+            for param in language_model.parameters():
+                param.requires_grad = False
+
         comm_model = MBartForConditionalGeneration.from_pretrained(
             args.model_name
         )
+
+        if args.weight_drift_lambda:
+            orig_model = deepcopy(comm_model)
+            for param in orig_model.parameters():
+                param.requireds_grad = False
+
         sender = MBartSender(
             comm_model,
             args.hidden_dim,
             seq_len=args.max_seq_length,
             recurrent_unroll=args.recurrent_image_unroll,
+            unroll_length=args.image_unroll_length,
             temperature=args.temperature,
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
-            beam_width=args.beam_width
+            beam_width=args.beam_width,
+            generate_from_logits=args.generate_from_logits
         )
         receiver = MBartReceiver(
             comm_model,
@@ -354,7 +403,13 @@ def main():
             max_length=args.max_seq_length
         )
     else:
-        model = ECImageIdentificationAgent(sender, receiver, args)
+        model = ECImageIdentificationAgent(
+            sender,
+            receiver,
+            args,
+            language_model=language_model,
+            orig_model=orig_model
+        )
         training_set = XLImageIdentificationDataset(
             train_images, args.num_distractors_train, args, tokenizer
         )
@@ -365,11 +420,13 @@ def main():
     if args.load_entire_agent:
         state_dict = torch.load(args.model_name + "/model.pt")
         state_dict = {
-            k:v
+            k: v
             for k, v in state_dict.items() if (
                 not (
-                    k.startswith("sender.sender") or
+                    k.startswith("sender.top") or
                     k.startswith("sender.decoder") or
+                    k.startswith("sender.embedding") or
+                    k.startswith("sender.output_bias") or
                     k.startswith("receiver.encoder") or
                     k.startswith("receiver.embedding")
                 )
@@ -377,19 +434,23 @@ def main():
         }
         model.load_state_dict(state_dict, strict=False)
 
+    if args.freeze_adapters:
+        print("Freezing adapter modules")
+        model.freeze_adapters()
+
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
 
     # Initialize the dataloader
     training_params = {
-        "batch_size": args.batch_size,
-        "shuffle": True,
-        "drop_last": True
+        'batch_size': args.batch_size,
+        'shuffle': True,
+        'drop_last': True
     }
     test_params = {
-        "batch_size": args.batch_size,
-        "shuffle": False,
-        "drop_last": False
+        'batch_size': args.batch_size,
+        'shuffle': False,
+        'drop_last': False
     }
 
     training_dataloader = DataLoader(training_set, **training_params)
@@ -397,19 +458,19 @@ def main():
 
     if args.do_train:
         train(
-            args, model, training_dataloader, valid_dataloader,
+            args, model, training_dataloader, valid_dataloader, tokenizer,
             model.parameters(), logger
         )
     if args.do_eval:
-        checkpoint = args.output_dir + '/model.pt'
+        checkpoint = args.output_dir + "/model.pt"
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
-        model.load_state_dict(torch.load(checkpoint))
+        model.load_state_dict(torch.load(checkpoint), strict=False)
         model.to(args.device)
         model.eval()
         results, output_ids, printout = evaluate(args, model, valid_dataloader)
         if args.save_output_txt:
             output_texts = ids_to_texts(output_ids, tokenizer)
-            with open(args.output_dir + '/eval_texts.txt', 'w') as f:
+            with open(args.output_dir + "/eval_texts.txt", 'w') as f:
                 for i in output_texts:
                     f.write(i)
 
