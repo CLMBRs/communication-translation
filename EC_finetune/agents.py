@@ -236,31 +236,25 @@ class ECImageIdentificationAgent(CommunicationAgent):
         orig_model=None
     ):
         super().__init__(sender, receiver, args)
-        self.language_model_loss = args.language_model_loss
-        self.weight_drift_loss = args.weight_drift_loss
+        self.language_model_lambda = args.language_model_lambda
+        self.weight_drift_lambda = args.weight_drift_lambda
 
-        if self.language_model_loss:
-            self.lm_lambda = 1.0 if not (
-                hasattr(args, 'lm_lambda') and args.lm_lambda
-            ) else args.lm_lambda
+        if self.language_model_lambda > 0.0:
             if language_model is not None:
                 self.language_model = language_model
             else:
                 raise ValueError(
                     "A language model must be provided if"
-                    " `language_model_loss` is True"
+                    " `language_model_lambda` is greater than 0.0"
                 )
 
-        if self.weight_drift_loss:
-            self.drift_lambda = 1.0 if not (
-                hasattr(args, 'drift_lambda') and args.drift_lambda
-            ) else args.drift_lambda
+        if self.weight_drift_lambda > 0.0:
             if orig_model is not None:
                 self.orig_model = orig_model
             else:
                 raise ValueError(
                     "A reference model must be provided if"
-                    " `weight_drift_loss` is True"
+                    " `weight_drift_lambda` is greater than 0.0"
                 )
 
     def forward(self, batch: dict) -> dict:
@@ -299,7 +293,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         padding_mask = torch.tensor(padding_mask)
         message_dict['attention_mask'] = padding_mask.to(device)
 
-        if self.language_model_loss:
+        if self.language_model_lambda > 0.0:
             lm_ids = message_dict['message_ids']
             lm_logits = message_dict['message_logits']
             lm_padding_mask = message_dict['attention_mask']
@@ -317,7 +311,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         # Optional language model loss block
         lm_loss = 0
-        if self.language_model_loss:
+        if self.language_model_lambda > 0.0:
             lm_embeds = torch.matmul(
                 lm_logits, self.language_model.shared.weight
             )
@@ -333,7 +327,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 lm_targets.to(device),
                 ignore_index=self.padding_index
             )
-            lm_loss *= self.lm_lambda
+            lm_loss *= self.language_model_lambda
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
@@ -361,7 +355,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         )
 
         weight_drift_loss = 0
-        if self.weight_drift_loss:
+        if self.weight_drift_lambda > 0.0:
             num_params = sum(
                 [
                     p.numel()
@@ -376,7 +370,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 )
             if weight_drift_loss.item() > 0.0:
                 weight_drift_loss = torch.pow(weight_drift_loss, 0.5)
-            weight_drift_loss *= self.drift_lambda
+            weight_drift_loss *= self.weight_drift_lambda
 
         overall_loss = communication_loss + lm_loss + weight_drift_loss
 
@@ -387,24 +381,19 @@ class ECImageIdentificationAgent(CommunicationAgent):
 
         return_dict = {
             'loss': overall_loss,
+            'communication loss': communication_loss.item(),
             'accuracy': 100 * accuracy,
             'message': message_dict['message_ids'],
             'mean_length': mean(lengths)
         }
 
-        if self.language_model_loss:
+        if self.language_model_lambda > 0.0:
             return_dict.update(
-                {
-                    'lm loss': lm_loss.item(),
-                    'communication loss': communication_loss.item(),
-                }
+                {'lm loss': lm_loss.item()}
             )
-        if self.weight_drift_loss:
+        if self.weight_drift_lambda > 0.0:
             return_dict.update(
-                {
-                    'drift loss': weight_drift_loss.item(),
-                    'communication loss': communication_loss.item(),
-                }
+                {'drift loss': weight_drift_loss.item()}
             )
         return return_dict
 

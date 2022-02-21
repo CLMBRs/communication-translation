@@ -240,14 +240,16 @@ def main():
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
-        '--lm_loss_override',
-        action='store_true',
-        help="Flag to trigger language model loss (overriding config)"
+        '--lm_lambda_override',
+        type=float,
+        default=None,
+        help="Flag to override the language model lambda in the config"
     )
     parser.add_argument(
-        '--drift_loss_override',
-        action='store_true',
-        help="Flag to trigger weight drift loss (overriding config)"
+        '--drift_lambda_override',
+        type=float,
+        default=None,
+        help="Flag to override the drift loss lambda in the config"
     )
     parser.add_argument(
         '--adapter_freeze_override',
@@ -264,12 +266,12 @@ def main():
         args.seed = args.seed_override
     set_seed(args)
 
-    if args.lm_loss_override:
-        args.language_model_loss = True
+    if args.lm_lambda_override:
+        args.language_model_lambda = args.lm_lambda_override
 
     # weight drift override
-    if args.drift_loss_override:
-        args.weight_drift_loss = True
+    if args.drift_lambda_override:
+        args.weight_drift_lambda = args.drift_lambda_override
 
     if args.adapter_freeze_override:
         args.freeze_adapters = True
@@ -282,11 +284,11 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_loss or args.weight_drift_loss:
+        if args.language_model_lambda > 0.0 or args.weight_drift_lambda > 0.0: 
             args.csv_headers += ['communication loss']
-        if args.language_model_loss:
+        if args.language_model_lambda > 0.0:
             args.csv_headers += ['lm loss']
-        if args.weight_drift_loss:
+        if args.weight_drift_lambda > 0.0:
             args.csv_headers += ['drift loss']
 
     with open(f"{args.output_dir}/log.csv", 'w') as f:
@@ -345,7 +347,7 @@ def main():
         # If language modeling loss is to be used, get a copy of the original
         # facebook weights, deepcopy the decoder and embeddings, and delete the
         # rest
-        if args.language_model_loss:
+        if args.language_model_lambda > 0.0:
             language_model = MBartForCausalLanguageModeling.from_pretrained(
                 args.language_model_path
             )
@@ -356,7 +358,7 @@ def main():
             args.model_name
         )
 
-        if args.weight_drift_loss:
+        if args.weight_drift_lambda > 0.0:
             orig_model = deepcopy(comm_model)
             for param in orig_model.parameters():
                 param.requireds_grad = False
