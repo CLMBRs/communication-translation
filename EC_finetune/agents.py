@@ -18,7 +18,7 @@ def rgetattr(obj, attr, *args):
     def _getattr(obj, attr):
         return getattr(obj, attr, *args)
 
-    return reduce(_getattr, [obj] + attr.split('.'))
+    return reduce(_getattr, [obj] + attr.split("."))
 
 
 class CommunicationAgent(Module):
@@ -35,6 +35,7 @@ class CommunicationAgent(Module):
         receiver: the receiver/listener module, subclassed from Receiver
         args: a dictionary of parameters
     """
+
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__()
 
@@ -45,7 +46,7 @@ class CommunicationAgent(Module):
             hidden_dim=args.hidden_dim,
             dropout=args.dropout,
             unit_norm=args.unit_norm,
-            two_ffwd=args.two_ffwd
+            two_ffwd=args.two_ffwd,
         )
         if args.no_share_bhd:
             print("Not sharing visual system for each agent.")
@@ -55,7 +56,7 @@ class CommunicationAgent(Module):
                 hidden_dim=args.hidden_dim,
                 dropout=args.dropout,
                 unit_norm=args.unit_norm,
-                two_ffwd=args.two_ffwd
+                two_ffwd=args.two_ffwd,
             )
         else:
             print("Sharing visual system for each agent.")
@@ -100,7 +101,7 @@ class CommunicationAgent(Module):
         """
 
         # Embed the Sender's image using the Beholder
-        image_embedding = self.beholder1(batch['sender_image'])
+        image_embedding = self.beholder1(batch["sender_image"])
         # Generate the Sender's message/caption about the image
         return self.sender(image_embedding, **batch)
 
@@ -131,15 +132,15 @@ class CommunicationAgent(Module):
         # a candidate image
         receiver_hidden = self.receiver(**message_dict)
         # (batch_size, num_image_choices, hidden_dim)
-        receiver_hidden = receiver_hidden.unsqueeze(1).repeat(
-            1, num_image_choices, 1
-        )
+        receiver_hidden = receiver_hidden.unsqueeze(1).repeat(1, num_image_choices, 1)
 
         # Get the Mean Squared Error between the final receiver representation
         # and all of the candidate images
-        image_candidate_errors = F.mse_loss(
-            receiver_hidden, receiver_image_embeddings, reduction='none'
-        ).mean(dim=2).squeeze(-1)
+        image_candidate_errors = (
+            F.mse_loss(receiver_hidden, receiver_image_embeddings, reduction="none")
+            .mean(dim=2)
+            .squeeze(-1)
+        )
 
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
@@ -166,9 +167,7 @@ class CommunicationAgent(Module):
 
         # Since the longest sequence has no padding, add an extra pad position
         # to the end of dimension 1
-        buff = torch.zeros(
-            (input_logits.size(0), 1, hidden_size), device=device
-        )
+        buff = torch.zeros((input_logits.size(0), 1, hidden_size), device=device)
         input_logits = torch.cat((input_logits, buff), dim=1)
 
         # For scatter to be compatible with the backward pass, the `index`
@@ -183,9 +182,9 @@ class CommunicationAgent(Module):
 
         # Use `torch.scatter` to do the swap. Drop the first token which is now
         # just padding
-        new_logits = torch.scatter(
-            input_logits, 1, first_pad_indices, input_logits
-        )[:, 1:]
+        new_logits = torch.scatter(input_logits, 1, first_pad_indices, input_logits)[
+            :, 1:
+        ]
         return new_logits
 
     @staticmethod
@@ -233,7 +232,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         receiver: Receiver,
         args: Namespace,
         language_model=None,
-        orig_model=None
+        orig_model=None,
     ):
         super().__init__(sender, receiver, args)
         self.language_model_lambda = args.language_model_lambda
@@ -282,91 +281,87 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict = self.image_to_message(batch)
 
         # Create the padding mask
-        lengths = message_dict['message_lengths'].tolist()
+        lengths = message_dict["message_lengths"].tolist()
         batch_size = len(lengths)
         max_length = min(max(lengths), self.max_seq_length)
-        device = message_dict['message_ids'].device
+        device = message_dict["message_ids"].device
 
         padding_mask = np.ones((batch_size, max_length))
         for seq in range(batch_size):
-            padding_mask[seq][lengths[seq]:max_length] = 0
+            padding_mask[seq][lengths[seq] : max_length] = 0
         padding_mask = torch.tensor(padding_mask)
-        message_dict['attention_mask'] = padding_mask.to(device)
+        message_dict["attention_mask"] = padding_mask.to(device)
 
         if self.language_model_lambda:
-            lm_ids = message_dict['message_ids']
-            lm_logits = message_dict['message_logits']
-            lm_padding_mask = message_dict['attention_mask']
+            lm_ids = message_dict["message_ids"]
+            lm_logits = message_dict["message_logits"]
+            lm_padding_mask = message_dict["attention_mask"]
 
         # Move the language id to the end of each sequence. We don't prepend
         # the CLS token now since the LM component will use the sequence
         # without the CLS as the targets
-        message_dict['message_ids'] = self.lang_id_to_end(
-            message_dict['message_ids'], message_dict['message_lengths'],
-            self.padding_index
+        message_dict["message_ids"] = self.lang_id_to_end(
+            message_dict["message_ids"],
+            message_dict["message_lengths"],
+            self.padding_index,
         )
-        message_dict['message_logits'] = self.lang_id_logit_to_end(
-            message_dict['message_logits'], message_dict['message_lengths']
+        message_dict["message_logits"] = self.lang_id_logit_to_end(
+            message_dict["message_logits"], message_dict["message_lengths"]
         )
 
         # Optional language model loss block
         lm_loss = 0
         if self.language_model_lambda:
-            lm_embeds = torch.matmul(
-                lm_logits, self.language_model.shared.weight
-            )
-            lm_targets = message_dict['message_ids'].long()
+            lm_embeds = torch.matmul(lm_logits, self.language_model.shared.weight)
+            lm_targets = message_dict["message_ids"].long()
             lm_padding_mask = lm_padding_mask.to(device)
             lm_logits = self.language_model(
                 decoder_input_ids=lm_ids,
                 input_embeds=lm_embeds,
                 attention_mask=lm_padding_mask,
             )
-            lm_loss = F.cross_entropy(
-                lm_logits.transpose(1, 2),
-                lm_targets.to(device),
-                ignore_index=self.padding_index
+            # TODO: do lm_logits need to be transposed?
+            lm_loss = F.kl_div(
+                message_dict["message_logits"],
+                lm_logits,
+                log_target=True,
+                reduction="batchmean",
             )
             lm_loss *= self.language_model_lambda
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
-        message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
-            message_dict['attention_mask']
+        message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
+            message_dict["attention_mask"]
         )
-        message_dict['message_ids'] = self.prepend_cls(
-            message_dict['message_ids'], self.cls_index
+        message_dict["message_ids"] = self.prepend_cls(
+            message_dict["message_ids"], self.cls_index
         )
-        message_dict['message_logits'] = self.prepend_cls_logit(
-            message_dict['message_logits'], self.cls_index
+        message_dict["message_logits"] = self.prepend_cls_logit(
+            message_dict["message_logits"], self.cls_index
         )
 
         # Get the logits for the image choice candidates based on the sender's
         # message
         image_candidate_logits = self.choose_image_from_message(
-            message_dict, batch['receiver_images']
+            message_dict, batch["receiver_images"]
         )
 
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
-        communication_loss = F.cross_entropy(
-            image_candidate_logits, target_image
-        )
+        target_image = batch["target"]
+        communication_loss = F.cross_entropy(image_candidate_logits, target_image)
 
         weight_drift_loss = 0
         if self.weight_drift_lambda:
             num_params = sum(
-                [
-                    p.numel()
-                    for p in self.orig_model.parameters() if p.requires_grad
-                ]
+                [p.numel() for p in self.orig_model.parameters() if p.requires_grad]
             )
             for key in dict(self.orig_model.named_parameters()).keys():
                 weight_drift_loss += F.mse_loss(
                     rgetattr(self.sender.top, key),
                     rgetattr(self.orig_model, key),
-                    reduction='sum'
+                    reduction="sum",
                 )
             if weight_drift_loss.item() > 0.0:
                 weight_drift_loss = torch.pow(weight_drift_loss, 0.5)
@@ -380,21 +375,17 @@ class ECImageIdentificationAgent(CommunicationAgent):
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
         return_dict = {
-            'loss': overall_loss,
-            'communication loss': communication_loss.item(),
-            'accuracy': 100 * accuracy,
-            'message': message_dict['message_ids'],
-            'mean_length': mean(lengths)
+            "loss": overall_loss,
+            "communication loss": communication_loss.item(),
+            "accuracy": 100 * accuracy,
+            "message": message_dict["message_ids"],
+            "mean_length": mean(lengths),
         }
 
         if self.language_model_lambda:
-            return_dict.update(
-                {'lm loss': lm_loss.item()}
-            )
+            return_dict.update({"lm loss": lm_loss.item()})
         if self.weight_drift_lambda:
-            return_dict.update(
-                {'drift loss': weight_drift_loss.item()}
-            )
+            return_dict.update({"drift loss": weight_drift_loss.item()})
         return return_dict
 
 
@@ -403,9 +394,10 @@ class ImageCaptionGrounder(CommunicationAgent):
     An agent to train grounding of text to images, by producing captions based
     on images, and picking images based on a caption (independently)
     """
+
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__(sender, receiver, args)
-        if hasattr(args, 'image_selection_lambda'):
+        if hasattr(args, "image_selection_lambda"):
             self.image_selection_lambda = args.image_selection_lambda
 
     def forward(self, batch):
@@ -436,40 +428,38 @@ class ImageCaptionGrounder(CommunicationAgent):
         # based on the input image and calculate loss with the gold caption.
         # Adding the caption ids as `decoder_input_ids` puts the caption
         # generation into a supervised mode rather than free generation
-        batch['decoder_input_ids'] = batch['caption_ids']
+        batch["decoder_input_ids"] = batch["caption_ids"]
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
-            message_dict['message_logits'].transpose(1, 2),
-            batch['caption_ids'],
-            ignore_index=self.padding_index
+            message_dict["message_logits"].transpose(1, 2),
+            batch["caption_ids"],
+            ignore_index=self.padding_index,
         )
 
         # Get the logits for the image choice candidates based on the gold
         # caption (NOT the sender's message)
         caption = {
-            'message_ids': batch['caption_ids'],
-            'attention_mask': batch['caption_mask'],
-            'message_lengths': batch['caption_mask'].float().sum(dim=1).long()
+            "message_ids": batch["caption_ids"],
+            "attention_mask": batch["caption_mask"],
+            "message_lengths": batch["caption_mask"].float().sum(dim=1).long(),
         }
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
-        caption['attention_mask'] = self.prepend_non_pad_to_mask(
-            caption['attention_mask']
+        caption["attention_mask"] = self.prepend_non_pad_to_mask(
+            caption["attention_mask"]
         )
-        caption['message_ids'] = self.prepend_cls(
-            caption['message_ids'], self.cls_index
+        caption["message_ids"] = self.prepend_cls(
+            caption["message_ids"], self.cls_index
         )
 
         image_candidate_logits = self.choose_image_from_message(
-            caption, batch['receiver_images']
+            caption, batch["receiver_images"]
         )
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
-        image_selection_loss = F.cross_entropy(
-            image_candidate_logits, target_image
-        )
+        target_image = batch["target"]
+        image_selection_loss = F.cross_entropy(image_candidate_logits, target_image)
 
         # Get predicted accuracy
         _, predicted_idx = torch.max(image_candidate_logits, dim=1)
@@ -481,11 +471,11 @@ class ImageCaptionGrounder(CommunicationAgent):
         loss = caption_generation_loss + image_selection_loss
 
         return {
-            'loss': loss,
-            'caption generation loss': caption_generation_loss.item(),
-            'image selection loss': image_selection_loss.item(),
-            'accuracy': 100 * accuracy,
-            'message': message_dict['message_ids']
+            "loss": loss,
+            "caption generation loss": caption_generation_loss.item(),
+            "image selection loss": image_selection_loss.item(),
+            "accuracy": 100 * accuracy,
+            "message": message_dict["message_ids"],
         }
 
 
@@ -501,13 +491,14 @@ class Beholder(Module):
         unit_norm: Whether to divide the output by the unit norm. Default:
             ``False``
     """
+
     def __init__(
         self,
         image_dim: int,
         hidden_dim: int,
         dropout: float,
         unit_norm: bool = False,
-        two_ffwd: bool = False
+        two_ffwd: bool = False,
     ):
         super().__init__()
         self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)
