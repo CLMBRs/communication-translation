@@ -313,7 +313,6 @@ class ECImageIdentificationAgent(CommunicationAgent):
         lm_loss = 0
         if self.language_model_lambda:
             lm_embeds = torch.matmul(lm_logits, self.language_model.shared.weight)
-            lm_targets = message_dict["message_ids"].long()
             lm_padding_mask = lm_padding_mask.to(device)
             lm_logits = self.language_model(
                 decoder_input_ids=lm_ids,
