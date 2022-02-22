@@ -1865,27 +1865,45 @@ class BartForConditionalGeneration(PretrainedBartModel):
             batches finished early due to the :obj:`eos_token_id`.
         """
         generate_from_logits = ("generate_from_logits" in model_kwargs and model_kwargs["generate_from_logits"])
-        ret = {}
-        # init values
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList(
         )
         max_length = max_length if max_length is not None else self.config.max_length
         pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
         eos_token_id = eos_token_id if eos_token_id is not None else self.config.eos_token_id
+        
+        # Get the embedding for the padding token
         pad_token_embed = self.model.shared(
             torch.tensor(pad_token_id, device=generated_token_ids.device)
         )
-        pad_token_logits = (torch.arange(0, self.embed_tokens_size) == pad_token_id).float().clone().detach()
-        pad_token_logits = pad_token_logits.to(generated_token_ids.device)
+
+        # Get the one-hot vector for the padding token
+        pad_token_onehot = (torch.arange(0, self.embed_tokens_size) == pad_token_id).float().clone().detach()
+        pad_token_onehot = pad_token_onehot.to(generated_token_ids.device)
 
         # init sequence length tensors
         sequence_lengths, unfinished_sequences, cur_len = self._init_sequence_length_for_generation(
             generated_token_ids, max_length
         )
 
-        generated_logits = (torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0) == generated_token_ids).float().clone().detach()
+        # Initialize the sequence of logits with the one-hot vector(s) for the starting tokens
+        generated_logits = (
+            torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0)
+            == generated_token_ids
+        ).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
+
+        # Initialize the sequence of sample distributions (i.e. the output of gumbel-softmax) with
+        # the one-hot vector(s) for the starting tokens
+        generated_samples = (
+            torch.arange(0, self.embed_tokens_size, device=generated_token_ids.device).unsqueeze(0) 
+            == generated_token_ids
+        ).float().clone().detach()
+        generated_samples = generated_samples.to(generated_token_ids.device)
+        generated_samples = generated_samples.unsqueeze(-2)
+
+        # If iteratively generating from the logits of the previous timestep, also keep track of the
+        # generated embedding sequence (logits * embedding matrix)
         if generate_from_logits:
             generated_embeds = torch.matmul(
                 generated_logits, self.model.shared.weight
@@ -1904,24 +1922,23 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # forward pass to get next token
             outputs = self(**model_inputs, return_dict=True)
-            next_token_logits = outputs.logits[:, -1, :]
+            next_logits = outputs.logits[:, -1, :]
             if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
-                next_token_logits += model_kwargs["lang_mask"]
+                next_logits += model_kwargs["lang_mask"]
 
             # pre-process distribution
-            scores = logits_processor(generated_token_ids, next_token_logits)
+            next_logits = logits_processor(generated_token_ids, next_logits)
 
             # argmax
-            next_logits = F.gumbel_softmax(
-                scores, tau=self.temp, hard=self.hard
+            next_samples = F.gumbel_softmax(
+                next_logits, tau=self.temp, hard=self.hard
             )
-            next_tokens = torch.argmax(next_logits, dim=-1)
-            # next_token_embedding = next_logits @ self.embed_tokens.weight
+            next_tokens = torch.argmax(next_samples, dim=-1)
             next_tokens = next_tokens.squeeze()
             if generate_from_logits:
                 next_embeds = torch.matmul(
-                    next_logits, self.model.shared.weight
+                    next_samples, self.model.shared.weight
                 )
 
             # add code that transfomers next_tokens to tokens_to_add
@@ -1932,8 +1949,12 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 )
                 
                 next_logits = next_logits.T * unfinished_sequences + \
-                (pad_token_logits.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
+
+                next_samples = next_samples.T * unfinished_sequences + \
+                (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                next_samples = next_samples.T
                 
                 if generate_from_logits:
                     next_embeds = next_embeds.T * unfinished_sequences + \
@@ -1946,6 +1967,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
             )
             generated_logits = torch.cat(
                 [generated_logits, next_logits[:, None]], dim=-2
+            )
+            generated_samples = torch.cat(
+                [generated_samples, next_samples[:, None]], dim=-2
             )
             if generate_from_logits:
                 generated_embeds = torch.cat(
@@ -1980,9 +2004,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         ret = {
             "generated_token_ids": generated_token_ids,
             "generated_logits": generated_logits,
+            "generated_samples": generated_samples,
             "generated_sentence_len": generated_sentence_len
         }
-        # "generated_embeddings": generated_embeddings}
         return ret
 
 

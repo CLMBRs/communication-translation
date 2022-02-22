@@ -196,6 +196,7 @@ class MBartSender(Sender):
             return {
                 'message_ids': output['generated_token_ids'],
                 'message_logits': output['generated_logits'],
+                'message_samples': output['generated_samples'],
                 'message_lengths': output['generated_sentence_len']
             }
 
