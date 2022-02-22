@@ -1925,14 +1925,14 @@ class BartForConditionalGeneration(PretrainedBartModel):
             next_logits = outputs.logits[:, -1, :]
             if "lang_mask" in model_kwargs:
                 # here, the place we don't want have value of -inf
-                next_logits += model_kwargs["lang_mask"]
+               adjusted_next_logits = next_logits + model_kwargs["lang_mask"]
 
             # pre-process distribution
-            next_logits = logits_processor(generated_token_ids, next_logits)
+            adjusted_next_logits = logits_processor(generated_token_ids, adjusted_next_logits)
 
             # argmax
             next_samples = F.gumbel_softmax(
-                next_logits, tau=self.temp, hard=self.hard
+                adjusted_next_logits, tau=self.temp, hard=self.hard
             )
             next_tokens = torch.argmax(next_samples, dim=-1)
             next_tokens = next_tokens.squeeze()

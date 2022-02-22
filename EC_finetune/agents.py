@@ -327,12 +327,21 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 input_embeds=lm_embeds,
                 attention_mask=lm_padding_mask,
             )
-            lm_loss = F.kl_div(
-                torch.log(message_dict["message_logits"]),
-                F.log_softmax(lm_logits),
-                log_target=True,
-                reduction="batchmean",
-            )
+            for seq_num in range(batch_size):
+                seq_length = lengths[seq_num]
+                generation_logit_seq = F.log_softmax(
+                    message_dict["message_logits"][seq_num, :seq_length-1], dim=-1
+                )
+                lm_logit_seq = F.log_softmax(
+                    lm_logits[seq_num, :seq_length-1], dim=-1
+                )
+                seq_kl_divergence = F.kl_div(
+                    generation_logit_seq,
+                    lm_logit_seq,
+                    log_target=True,
+                    reduction="batchmean"
+                )
+                lm_loss += seq_kl_divergence / batch_size
             lm_loss *= self.language_model_lambda
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
@@ -346,6 +355,9 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict["message_samples"] = self.prepend_cls_logit(
             message_dict["message_samples"], self.cls_index
         )
+        
+        # The receiver does not have `message_logits` as one of its arguments
+        del message_dict["message_logits"]
 
         # Get the logits for the image choice candidates based on the sender's
         # message
