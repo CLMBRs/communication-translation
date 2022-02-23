@@ -327,21 +327,19 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 input_embeds=lm_embeds,
                 attention_mask=lm_padding_mask,
             )
-            for seq_num in range(batch_size):
-                seq_length = lengths[seq_num]
-                generation_logit_seq = F.log_softmax(
-                    message_dict["message_logits"][seq_num, :seq_length-1], dim=-1
-                )
-                lm_logit_seq = F.log_softmax(
-                    lm_logits[seq_num, :seq_length-1], dim=-1
-                )
-                seq_kl_divergence = F.kl_div(
-                    generation_logit_seq,
-                    lm_logit_seq,
-                    log_target=True,
-                    reduction="batchmean"
-                )
-                lm_loss += seq_kl_divergence / batch_size
+            # Mask out the logits corresponding to the language ID
+            bad_logit_mask = torch.clone(message_dict["attention_mask"])
+            for seq in range(batch_size):
+                bad_logit_mask[seq, lengths[seq]-1] = 0
+            lm_logits *= bad_logit_mask
+            generated_logits = message_dict["message_logits"] * bad_logit_mask
+            # Take the KL divergence of the softmaxed logits
+            lm_loss = F.kl_div(
+                F.log_softmax(generated_logits, dim=-1),
+                F.log_softmax(lm_logits, dim=-1),
+                log_target=True,
+                reduction="batchmean"
+            )
             lm_loss *= self.language_model_lambda
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
