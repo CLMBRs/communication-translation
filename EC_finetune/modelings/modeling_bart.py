@@ -1892,6 +1892,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         ).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = generated_logits.unsqueeze(-2)
+        generated_logits = [generated_logits]
 
         # Initialize the sequence of sample distributions (i.e. the output of gumbel-softmax) with
         # the one-hot vector(s) for the starting tokens
@@ -1901,6 +1902,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         ).float().clone().detach()
         generated_samples = generated_samples.to(generated_token_ids.device)
         generated_samples = generated_samples.unsqueeze(-2)
+        generated_samples = []
 
         # If iteratively generating from the logits of the previous timestep, also keep track of the
         # generated embedding sequence (logits * embedding matrix)
@@ -1963,18 +1965,15 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
             # add token and increase length by one
             generated_token_ids = torch.cat(
-                [generated_token_ids, next_tokens[:, None]], dim=-1
-            )
-            generated_logits = torch.cat(
-                [generated_logits, next_logits[:, None]], dim=-2
-            )
-            generated_samples = torch.cat(
-                [generated_samples, next_samples[:, None]], dim=-2
+                [generated_token_ids, next_tokens.unsqueeze(-1)], dim=-1
             )
             if generate_from_logits:
                 generated_embeds = torch.cat(
-                    [generated_embeds, next_embeds[:, None]], dim=-2
+                    [generated_embeds, next_embeds.unsqueeze(-2)], dim=-2
                 )
+
+            generated_logits.append(next_logits.unsqueeze(-2))
+            generated_samples.append(next_samples.unsqueeze(-2))
 
             # update sequence length
             if eos_token_id is not None:
@@ -2000,6 +1999,9 @@ class BartForConditionalGeneration(PretrainedBartModel):
         generated_sentence_len = (~(generated_token_ids == pad_token_id)).sum(
             dim=1
         )
+
+        generated_logits = torch.stack(generated_logits, dim=-2)
+        generated_samples = torch.stack(generated_samples, dim=-2)
 
         ret = {
             "generated_token_ids": generated_token_ids,
