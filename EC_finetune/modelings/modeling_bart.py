@@ -1891,7 +1891,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
             == generated_token_ids
         ).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
-        generated_logits = generated_logits.unsqueeze(-2)
         generated_logits = [generated_logits]
 
         # Initialize the sequence of sample distributions (i.e. the output of gumbel-softmax) with
@@ -1901,8 +1900,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
             == generated_token_ids
         ).float().clone().detach()
         generated_samples = generated_samples.to(generated_token_ids.device)
-        generated_samples = generated_samples.unsqueeze(-2)
-        generated_samples = []
+        generated_samples = [generated_samples]
 
         # If iteratively generating from the logits of the previous timestep, also keep track of the
         # generated embedding sequence (logits * embedding matrix)
@@ -1972,8 +1970,8 @@ class BartForConditionalGeneration(PretrainedBartModel):
                     [generated_embeds, next_embeds.unsqueeze(-2)], dim=-2
                 )
 
-            generated_logits.append(next_logits.unsqueeze(-2))
-            generated_samples.append(next_samples.unsqueeze(-2))
+            generated_logits.append(next_logits)
+            generated_samples.append(next_samples)
 
             # update sequence length
             if eos_token_id is not None:
