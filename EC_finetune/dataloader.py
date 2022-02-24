@@ -299,7 +299,9 @@ class SingleLangXLMDataset(Dataset):
         self, datafile: str, batch_size: int, order: str = 'none'
     ) -> Dataset:
         super().__init__()
-        examples = [line.strip() for line in open(datafile, 'r') if line != '']
+        examples = [
+            line.strip() for line in open(datafile, 'r') if line.strip() != ''
+        ]
         if order == 'shuffle':
             random.shuffle(examples)
         elif order == 'sort':
