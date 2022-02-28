@@ -127,10 +127,10 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
             break
         translation_batch = batch["translation"]
         source_string_batch = [
-            x for x in translation_batch[source_id] if x != ''
+            x for x in translation_batch[source_id] if x.strip() != ''
         ]
         reference_string_batch = [
-            x for x in translation_batch[target_id] if x != ''
+            x for x in translation_batch[target_id] if x.strip() != ''
         ]
 
         source_batch = tokenizer.prepare_seq2seq_batch(
@@ -168,7 +168,63 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     return cumulative_score / total_translations, translation_lines
 
 
-def evaluate(args, backtranslation_pack, best_score, patience_count, step):
+def get_validation_loss(args, model, tokenizer, source_meta, target_meta):
+    reference_dataset = args.val_dataset
+    loss = 0
+
+    source_id, source_code, source_max_len = list(source_meta)
+    target_id, target_code, target_max_len = list(target_meta)
+
+    dataloader = torch.utils.data.DataLoader(
+        reference_dataset, batch_size=args.eval_batch_size
+    )
+    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
+    num_batch = min(num_batch, len(dataloader))
+
+    for i, batch in enumerate(
+        tqdm(
+            dataloader,
+            desc=f"val-{args.val_metric_name}:{source_id}->{target_id}"
+        )
+    ):
+        if i == num_batch:
+            break
+        translation_batch = batch["translation"]
+        source_string_batch = [
+            x for x in translation_batch[source_id] if x.strip() != ''
+        ]
+        reference_string_batch = [
+            x for x in translation_batch[target_id] if x.strip() != ''
+        ]
+
+        parallel_batch = tokenizer.prepare_seq2seq_batch(
+            source_string_batch,
+            src_lang=source_code,
+            tgt_lang=target_code,
+            tgt_texts=reference_string_batch,
+            max_length=source_max_len,
+            max_target_length=target_max_len,
+            return_tensors="pt"
+        )
+        parallel_batch = parallel_batch.to(args.device)
+        output = model(**parallel_batch)
+        batch_loss = output.loss.item()
+        loss += batch_loss / num_batch
+
+    return loss
+
+
+def evaluate(
+    args,
+    backtranslation_pack,
+    best_score,
+    patience_count,
+    step,
+    mode='translate'
+):
+    if mode not in ['translate', 'crossentropy']:
+        raise ValueError(f"Evaluation mode {mode} is not recognized")
+
     source2target_model, target2source_model = backtranslation_pack.models
     tokenizer = backtranslation_pack.tokenizer
     source_meta, target_meta = backtranslation_pack.metas
@@ -178,51 +234,71 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
     source2target_model.eval()
     target2source_model.eval()
 
-    source2target_score, source2target_translations = get_translation_score(
-        args, source2target_model, tokenizer, source_meta, target_meta
-    )
-    target2source_score, target2source_translations = get_translation_score(
-        args, target2source_model, tokenizer, target_meta, source_meta
-    )
+    if mode == 'translate':
+        source2target_score, source2target_translations = get_translation_score(
+            args, source2target_model, tokenizer, source_meta, target_meta
+        )
+        target2source_score, target2source_translations = get_translation_score(
+            args, target2source_model, tokenizer, target_meta, source_meta
+        )
+        metric_name = 'bleu'
+    else:
+        source2target_score = get_validation_loss(
+            args, source2target_model, tokenizer, source_meta, target_meta
+        )
+        target2source_score = get_validation_loss(
+            args, target2source_model, tokenizer, target_meta, source_meta
+        )
+        metric_name = 'loss'
 
-    mean_score = round(mean([source2target_score, target2source_score]), 2)
+    mean_score = round(mean([source2target_score, target2source_score]), 4)
     stats = {
         'step': step + 1,
         'mode': 'validation',
-        f'{target_id} bleu': round(source2target_score, 2),
-        f'{source_id} bleu': round(target2source_score, 2),
-        'mean bleu': mean_score
+        f'{target_id} {metric_name}': round(source2target_score, 4),
+        f'{source_id} {metric_name}': round(target2source_score, 4),
+        f'mean {metric_name}': mean_score
     }
     logger.info(statbar_string(stats))
 
-    data_file = os.path.join(args.output_dir, args.output_data_filename)
-    metrics = [
-        step + 1,
-        round(source2target_score, 2),
-        round(target2source_score, 2)
-    ]
-    with open(data_file, 'a') as f:
-        print(", ".join([str(x) for x in metrics]), file=f)
+    if mode == 'translate':
+        data_file = os.path.join(args.output_dir, args.output_data_filename)
+        metrics = [
+            step + 1,
+            round(source2target_score, 2),
+            round(target2source_score, 2)
+        ]
+        with open(data_file, 'a') as f:
+            print(", ".join([str(x) for x in metrics]), file=f)
 
-    if mean_score > best_score:
+    new_score_best = (
+        (mean_score > best_score) if mode == 'translate' else
+        (mean_score < best_score)
+    )
+
+    if new_score_best:
         # if we encounter a better model, we restart patience counting
         # and save the model
         patience_count = 0
         best_score = mean_score
         logger.info(
-            f"New best mean score {mean_score} at step {step + 1}, saving"
+            f"New best mean {metric_name} {mean_score}"
+            f" at step {step + 1}, saving"
         )
-        save_model(args, backtranslation_pack, saved_model_name="best")
-        source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
-        target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
-        source_file = os.path.join(args.output_dir, source_filename)
-        target_file = os.path.join(args.output_dir, target_filename)
-        with open(source_file, 'w+') as f:
-            for line in source2target_translations:
-                print(line, file=f)
-        with open(target_file, 'w+') as f:
-            for line in target2source_translations:
-                print(line, file=f)
+        save_model(
+            args, backtranslation_pack, saved_model_name=f"best_{metric_name}"
+        )
+        if mode == 'translate':
+            source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
+            target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
+            source_file = os.path.join(args.output_dir, source_filename)
+            target_file = os.path.join(args.output_dir, target_filename)
+            with open(source_file, 'w+') as f:
+                for line in source2target_translations:
+                    print(line, file=f)
+            with open(target_file, 'w+') as f:
+                for line in target2source_translations:
+                    print(line, file=f)
     else:
         if step >= args.early_stop_start_time:
             # we start counting the early stopping after some 'warmup period'
@@ -233,8 +309,10 @@ def evaluate(args, backtranslation_pack, best_score, patience_count, step):
 
 def main(args, backtranslation_pack):
     checkpoint_stats = defaultdict(list)
-    best_score = 0.0
-    patience_count = 0
+    best_translation_score = 0.0
+    best_crossentropy = float('inf')
+    translation_patience_count = 0
+    crossent_patience_count = 0
 
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the
@@ -349,13 +427,6 @@ def main(args, backtranslation_pack):
                 output["loss"].detach().cpu().item()
             )
 
-        if args.do_validation and (step + 1) % args.validate_every == 0:
-            best_score, patience_count = evaluate(
-                args, backtranslation_pack, best_score, patience_count, step
-            )
-            if hasattr(args, 'patience') and patience_count > args.patience:
-                break
-
         if (step + 1) % args.print_every == 0:
             checkpoint_average_stats = {}
             checkpoint_average_stats['step'] = step + 1
@@ -373,7 +444,28 @@ def main(args, backtranslation_pack):
                         translation_results, args.num_printed_translation
                     )
                 )
-                
+
+        if args.do_crossent_eval and (step + 1) % args.eval_every == 0:
+            best_crossentropy, crossent_patience_count = evaluate(
+                args, backtranslation_pack, best_crossentropy,
+                crossent_patience_count, step, mode='crossentropy'
+            )
+            if (
+                hasattr(args, 'crossent_patience') and
+                crossent_patience_count > args.crossent_patience
+            ):
+                break
+        if args.do_translate_eval and (step + 1) % args.translate_every == 0:
+            best_translation_score, translation_patience_count = evaluate(
+                args, backtranslation_pack, best_translation_score,
+                translation_patience_count, step
+            )
+            if (
+                hasattr(args, 'translation_patience') and
+                translation_patience_count > args.translation_patience
+            ):
+                break
+
     save_model(args, backtranslation_pack, saved_model_name="last")
     logger.info("training complete; final model state saved")
 
@@ -614,7 +706,7 @@ if __name__ == "__main__":
         )
     )
 
-    if args.do_validation:
+    if args.do_crossent_eval or args.do_translate_eval:
         args.val_dataset = load_dataset(
             args.val_dataset_script, args.lang_pair, split="validation"
         )
