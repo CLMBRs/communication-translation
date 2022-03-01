@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from copy import deepcopy
 from functools import reduce
 from statistics import mean
 
@@ -28,7 +29,7 @@ class CommunicationAgent(Module):
 
     Sender and Receiver are passed in as arguments, and must meet the
     interfaces specified by the Sender and Receiver abstract classes,
-    respectively. Beholder (image embedding compoment) can either be shared
+    respectively. Reshaper (image embedding compoment) can either be shared
     between Sender and Receiver, or independent for both
     Args:
         sender: the sender/speaker module, subclassed from Sender
@@ -49,36 +50,35 @@ class CommunicationAgent(Module):
         self.padding_index = args.padding_index
         self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
+        self.reshaper_type = args.reshaper_type
 
-        # Initialize the image Beholder, and clone if there is to be a separate
-        # Beholder stack for both Sender and Receiver
-        self.beholder = Beholder(
-            image_dim=args.image_dim,
-            hidden_dim=self.hidden_dim,
-            dropout=args.dropout,
-            unit_norm=args.unit_norm,
-            two_ffwd=args.two_ffwd,
-            bypass=args.bypass_beholder
-        )
-        if args.no_share_bhd:
-            print("Not sharing visual system for each agent.")
-            self.beholder1 = self.beholder
-            self.beholder2 = Beholder(
-                image_dim=args.image_dim,
-                hidden_dim=self.hidden_dim,
+        # Initialize the image Reshaper, and clone if there is to be a separate
+        # Reshaper stack for both Sender and Receiver
+        if self.reshaper_type == 'identity':
+            self.reshaper = IdentityReshaper(args.image_dim, self.hidden_dim)
+        elif self.reshaper_type == 'pooler':
+            self.reshaper = PoolingReshaper(args.image_dim, self.hidden_dim)
+        else:
+            self.reshaper = LearnedLinearReshaper(
+                args.image_dim,
+                self.hidden_dim,
                 dropout=args.dropout,
                 unit_norm=args.unit_norm,
-                two_ffwd=args.two_ffwd,
-                bypass=args.bypass_beholder
+                two_ffwd=args.two_ffwd
             )
+
+        if (not args.share_reshaper) and self.reshaper_type == 'learned':
+            print("Not sharing reshaping adapter for each agent")
+            self.sender_reshaper = self.reshaper
+            self.receiver_reshaper = deepcopy(self.reshaper)
         else:
-            print("Sharing visual system for each agent.")
-            self.beholder1 = self.beholder2 = self.beholder
+            print("Sharing reshaping adapter for each agent")
+            self.sender_reshaper = self.receiver_reshaper = self.reshaper
 
     def freeze_adapters(self) -> None:
-        for param in self.beholder1.parameters():
+        for param in self.sender_reshaper.parameters():
             param.requires_grad = False
-        for param in self.beholder2.parameters():
+        for param in self.receiver_reshaper.parameters():
             param.requires_grad = False
         if self.sender.recurrent_unroll:
             for param in self.sender.lstm.parameters():
@@ -100,8 +100,8 @@ class CommunicationAgent(Module):
                 sender as kwargs
         """
 
-        # Embed the Sender's image using the Beholder
-        image_embedding = self.beholder1(batch["sender_image"])
+        # Embed the Sender's image using the Reshaper
+        image_embedding = self.sender_reshaper(batch["sender_image"])
         # Generate the Sender's message/caption about the image
         return self.sender(image_embedding, **batch)
 
@@ -124,9 +124,9 @@ class CommunicationAgent(Module):
         """
         num_image_choices = receiver_images.size(1)
 
-        # Embed the Receiver's candidate images using the Beholder
+        # Embed the Receiver's candidate images using the Reshaper
         # (batch_size, num_image_choices, hidden_dim)
-        receiver_image_embeddings = self.beholder2(receiver_images)
+        receiver_image_embeddings = self.receiver_reshaper(receiver_images)
 
         # Encode the Sender's message to a hidden state to be used to select
         # a candidate image
@@ -331,7 +331,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
             # Mask out the logits corresponding to the language ID
             bad_logit_mask = torch.clone(message_dict["attention_mask"])
             for seq in range(batch_size):
-                bad_logit_mask[seq, lengths[seq]-1] = 0
+                bad_logit_mask[seq, lengths[seq] - 1] = 0
             bad_logit_mask = bad_logit_mask.unsqueeze(-1)
             lm_logits *= bad_logit_mask
             generated_logits = message_dict["message_logits"] * bad_logit_mask
@@ -356,7 +356,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict["message_samples"] = self.prepend_cls_logit(
             message_dict["message_samples"], self.cls_index
         )
-        
+
         # The receiver does not have `message_logits` as one of its arguments
         del message_dict["message_logits"]
 
@@ -504,13 +504,75 @@ class ImageCaptionGrounder(CommunicationAgent):
         }
 
 
-class Beholder(Module):
+class Reshaper(Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super().__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+    @abstractmethod
+    def forward(self, image: Tensor) -> Tensor:
+        raise NotImplementedError
+
+
+class IdentityReshaper(Reshaper):
+    def __init__(self, input_dim, output_dim):
+        """
+        Reshaper subclass that simply passes the input image vectors to the
+        output (no reshaping needed)
+        Args:
+            input_dim: The dimension of the input image representation
+            output_dim: The dimension of the output image representation
+        """
+        super().__init__(input_dim, output_dim)
+        assert self.input_dim == self.output_dim
+
+    def forward(self, image: Tensor) -> Tensor:
+        """
+        Return the unaltered image representation
+        Args:
+            image: a Tensor embedding of image data
+        Returns:
+            downsampled_image: the returned image representation
+        """
+        return image
+
+
+class PoolingReshaper(Reshaper):
     """
-    A "Beholder" module for embedding image data. Consists of one or two
-    feedforward layers with optional dropout and unit norm
+    Reshaper subclass for reshaping image vectors by downsampling to
+    `output_dim` using max pooling
     Args:
-        image_dim: The dimension of the input image embedding
-        hidden_dim: The dimension of the hidden representation for the image
+        input_dim: The dimension of the input image representation
+        output_dim: The dimension of the output image representation
+    """
+    def __init__(self, input_dim, output_dim):
+        super().__init__(input_dim, output_dim)
+        self.kernel_size = self.input_dim / self.output_dim
+        assert self.kernel_size % 1 == 0
+        self.pooler = nn.MaxPool1d(self.kernel_size)
+
+    def forward(self, image: Tensor) -> Tensor:
+        """
+        Return the downsampled representation of the image
+        Args:
+            image: a Tensor embedding of image data
+        Returns:
+            downsampled_image: the downsampled image embedding
+        """
+        downsampled_image = self.pooler(image)
+        assert downsampled_image.size(-1) == self.output_dim
+        return downsampled_image
+
+
+class LearnedLinearReshaper(Reshaper):
+    """
+    Reshaper subclass for reshaping image vectors using a learned linear
+    transformation. Consists of one or two feedforward layers with optional
+    dropout and unit norm
+    Args:
+        input_dim: The dimension of the input image representation
+        output_dim: The dimension of the learned output image representation
         dropout: The dropout rate after the first feedforward layer
         two_ffwd: Whether to use two feedforward layers. Default: ``False``
         unit_norm: Whether to divide the output by the unit norm. Default:
@@ -518,41 +580,35 @@ class Beholder(Module):
     """
     def __init__(
         self,
-        image_dim: int,
-        hidden_dim: int,
+        input_dim: int,
+        output_dim: int,
         dropout: float,
         unit_norm: bool = False,
-        two_ffwd: bool = False,
-        bypass: bool = False
+        two_ffwd: bool = False
     ):
-        super().__init__()
+        super().__init__(input_dim, output_dim)
         self.unit_norm = unit_norm
         self.dropout = nn.Dropout(p=dropout)
         self.two_ffwd = two_ffwd
-        self.bypass = bypass
-        if bypass:
-            assert image_dim == hidden_dim
-        else:
-            self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)   
-            if self.two_ffwd:
-                self.hidden_to_hidden = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.image_to_hidden = torch.nn.Linear(self.input_dim, self.output_dim)
+        if self.two_ffwd:
+            self.hidden_to_hidden = torch.nn.Linear(
+                self.output_dim, self.output_dim
+            )
 
     def forward(self, image: Tensor) -> Tensor:
         """
-        Return the embedding of the input image data
+        Return the learned embedding of the input image data
         Args:
             image: a Tensor embedding of image data
         Returns:
             h_image: The hidden representation of the image(s)
         """
-        if self.bypass:
-            return image
-        else:
-            h_image = self.image_to_hidden(image)
-            h_image = self.dropout(h_image)
-            if self.two_ffwd:
-                h_image = self.hidden_to_hidden(F.relu(h_image))
-            if self.unit_norm:
-                norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
-                h_image = h_image / norm.expand_as(h_image)
-            return h_image
+        h_image = self.image_to_hidden(image)
+        h_image = self.dropout(h_image)
+        if self.two_ffwd:
+            h_image = self.hidden_to_hidden(F.relu(h_image))
+        if self.unit_norm:
+            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
+            h_image = h_image / norm.expand_as(h_image)
+        return h_image
