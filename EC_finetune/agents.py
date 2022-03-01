@@ -37,42 +37,43 @@ class CommunicationAgent(Module):
     """
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__()
-
-        # Initialize the image Beholder, and clone if there is to be a separate
-        # Beholder stack for both Sender and Receiver
-        self.beholder = Beholder(
-            image_dim=args.image_dim,
-            hidden_dim=args.hidden_dim,
-            dropout=args.dropout,
-            unit_norm=args.unit_norm,
-            two_ffwd=args.two_ffwd,
-        )
-        if args.no_share_bhd:
-            print("Not sharing visual system for each agent.")
-            self.beholder1 = self.beholder
-            self.beholder2 = Beholder(
-                image_dim=args.image_dim,
-                hidden_dim=args.hidden_dim,
-                dropout=args.dropout,
-                unit_norm=args.unit_norm,
-                two_ffwd=args.two_ffwd,
-            )
-        else:
-            print("Sharing visual system for each agent.")
-            self.beholder1 = self.beholder2 = self.beholder
-
         self.sender = sender
         self.receiver = receiver
         self.tokenizer = args.tokenizer
 
         self.image_dim = args.image_dim
-        self.hidden_dim = args.hidden_dim
+        self.hidden_dim = self.sender.embedding_dim
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
         self.no_share_bhd = args.no_share_bhd
         self.padding_index = args.padding_index
         self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
+
+        # Initialize the image Beholder, and clone if there is to be a separate
+        # Beholder stack for both Sender and Receiver
+        self.beholder = Beholder(
+            image_dim=args.image_dim,
+            hidden_dim=self.hidden_dim,
+            dropout=args.dropout,
+            unit_norm=args.unit_norm,
+            two_ffwd=args.two_ffwd,
+            bypass=args.bypass_beholder
+        )
+        if args.no_share_bhd:
+            print("Not sharing visual system for each agent.")
+            self.beholder1 = self.beholder
+            self.beholder2 = Beholder(
+                image_dim=args.image_dim,
+                hidden_dim=self.hidden_dim,
+                dropout=args.dropout,
+                unit_norm=args.unit_norm,
+                two_ffwd=args.two_ffwd,
+                bypass=args.bypass_beholder
+            )
+        else:
+            print("Sharing visual system for each agent.")
+            self.beholder1 = self.beholder2 = self.beholder
 
     def freeze_adapters(self) -> None:
         for param in self.beholder1.parameters():
@@ -521,15 +522,20 @@ class Beholder(Module):
         hidden_dim: int,
         dropout: float,
         unit_norm: bool = False,
-        two_ffwd: bool = False
+        two_ffwd: bool = False,
+        bypass: bool = False
     ):
         super().__init__()
-        self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)
         self.unit_norm = unit_norm
         self.dropout = nn.Dropout(p=dropout)
         self.two_ffwd = two_ffwd
-        if self.two_ffwd:
-            self.hidden_to_hidden = torch.nn.Linear(hidden_dim, hidden_dim)
+        self.bypass = bypass
+        if bypass:
+            assert image_dim == hidden_dim
+        else:
+            self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)   
+            if self.two_ffwd:
+                self.hidden_to_hidden = torch.nn.Linear(hidden_dim, hidden_dim)
 
     def forward(self, image: Tensor) -> Tensor:
         """
@@ -539,14 +545,14 @@ class Beholder(Module):
         Returns:
             h_image: The hidden representation of the image(s)
         """
-        h_image = self.image_to_hidden(image)
-        h_image = self.dropout(h_image)
-
-        if self.two_ffwd:
-            h_image = self.hidden_to_hidden(F.relu(h_image))
-
-        if self.unit_norm:
-            norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
-            h_image = h_image / norm.expand_as(h_image)
-
-        return h_image
+        if self.bypass:
+            return image
+        else:
+            h_image = self.image_to_hidden(image)
+            h_image = self.dropout(h_image)
+            if self.two_ffwd:
+                h_image = self.hidden_to_hidden(F.relu(h_image))
+            if self.unit_norm:
+                norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
+                h_image = h_image / norm.expand_as(h_image)
+            return h_image

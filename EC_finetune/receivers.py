@@ -60,7 +60,6 @@ class MBartReceiver(Receiver):
     def __init__(
         self,
         model: MBartForConditionalGeneration,
-        output_dim: int,
         recurrent_aggregation: bool = False,
         dropout: float = 0.0,
         unit_norm: bool = False
@@ -75,10 +74,8 @@ class MBartReceiver(Receiver):
 
         if self.recurrent_aggregation:
             self.hidden_to_output = nn.LSTM(
-                self.embedding_dim, output_dim, batch_first=True
+                self.embedding_dim, self.embedding_dim, batch_first=True
             )
-        else:
-            self.hidden_to_output = nn.Linear(self.embedding_dim, output_dim)
 
     def forward(
         self,
@@ -129,7 +126,7 @@ class MBartReceiver(Receiver):
             # ).squeeze()
 
             # Use the initial CLS token as the sentence representation
-            output = self.hidden_to_output(hidden[:, 0, :])
+            output = hidden[:, 0, :]
         return output
 
 

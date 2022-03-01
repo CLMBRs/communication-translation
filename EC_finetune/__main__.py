@@ -365,7 +365,6 @@ def main():
 
         sender = MBartSender(
             comm_model,
-            args.hidden_dim,
             seq_len=args.max_seq_length,
             recurrent_unroll=args.recurrent_image_unroll,
             unroll_length=args.image_unroll_length,
@@ -377,7 +376,6 @@ def main():
         )
         receiver = MBartReceiver(
             comm_model,
-            args.hidden_dim,
             recurrent_aggregation=args.recurrent_hidden_aggregation,
             dropout=args.dropout,
             unit_norm=args.unit_norm

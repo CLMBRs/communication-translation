@@ -48,7 +48,6 @@ class MBartSender(Sender):
     def __init__(
         self,
         model: MBartForConditionalGeneration,
-        input_dim: int,
         seq_len: int = None,
         recurrent_unroll: bool = False,
         unroll_length: int = 4,
@@ -65,7 +64,6 @@ class MBartSender(Sender):
         Args:
             model: a BartForConditionalGeneration object to be used as the main
                 decoder stack
-            input_dim: the dimension of the input image representations
             seq_len: the maximum sequence length for the generations
             temperature: the distribution temperature for generation
             hard: whether generation should produce one-hot logits
@@ -75,7 +73,6 @@ class MBartSender(Sender):
         self.decoder = model.model.decoder
         self.embedding = model.model.shared
         self.output_bias = model.final_logits_bias
-        self.input_dim = input_dim
         self.embedding_dim = model.model.shared.weight.size(1)
         self.recurrent_unroll = recurrent_unroll
         self.unroll_length = unroll_length
@@ -85,8 +82,6 @@ class MBartSender(Sender):
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
-
-        self.projection = nn.Linear(self.input_dim, self.embedding_dim)
 
         if self.recurrent_unroll:
             self.lstm = nn.LSTM(
@@ -128,10 +123,6 @@ class MBartSender(Sender):
         assert len(image_hidden.shape) == 2
         # (batch_size, 1, image_hidden_dim)
         image_hidden = image_hidden.unsqueeze(1)
-
-        # Embed the image hidden states to the sender's embedding dim
-        # (batch_size, 1, embedding_dim)
-        image_hidden = self.projection(image_hidden)
 
         if self.recurrent_unroll:
             unrolled_hidden = []
