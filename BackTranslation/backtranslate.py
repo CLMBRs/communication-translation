@@ -132,24 +132,24 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
         reference_string_batch = [
             x for x in translation_batch[target_id] if x.strip() != ''
         ]
-
-        source_batch = tokenizer.prepare_seq2seq_batch(
-            src_texts=source_string_batch,
-            src_lang=source_code,
-            tgt_lang=target_code,
-            max_length=source_max_len,
-            return_tensors="pt"
-        )
-        source_batch = source_batch.to(args.device)
-        translated_ids = model.generate(
-            **source_batch,
-            decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-            num_beams=args.num_beams,
-            max_length=target_max_len
-        )
-        translation_str = tokenizer.batch_decode(
-            translated_ids, skip_special_tokens=True
-        )
+        with torch.no_grad():
+            source_batch = tokenizer.prepare_seq2seq_batch(
+                src_texts=source_string_batch,
+                src_lang=source_code,
+                tgt_lang=target_code,
+                max_length=source_max_len,
+                return_tensors="pt"
+            )
+            source_batch = source_batch.to(args.device)
+            translated_ids = model.generate(
+                **source_batch,
+                decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
+                num_beams=args.num_beams,
+                max_length=target_max_len
+            )
+            translation_str = tokenizer.batch_decode(
+                translated_ids, skip_special_tokens=True
+            )
         translation_lines += [line for line in translation_str]
 
         if target_id in TOKENIZER_MAP:
@@ -196,20 +196,20 @@ def get_validation_loss(args, model, tokenizer, source_meta, target_meta):
         reference_string_batch = [
             x for x in translation_batch[target_id] if x.strip() != ''
         ]
-
-        parallel_batch = tokenizer.prepare_seq2seq_batch(
-            source_string_batch,
-            src_lang=source_code,
-            tgt_lang=target_code,
-            tgt_texts=reference_string_batch,
-            max_length=source_max_len,
-            max_target_length=target_max_len,
-            return_tensors="pt"
-        )
-        parallel_batch = parallel_batch.to(args.device)
-        output = model(**parallel_batch)
-        batch_loss = output.loss.item()
-        loss += batch_loss / num_batch
+        with torch.no_grad():
+            parallel_batch = tokenizer.prepare_seq2seq_batch(
+                source_string_batch,
+                src_lang=source_code,
+                tgt_lang=target_code,
+                tgt_texts=reference_string_batch,
+                max_length=source_max_len,
+                max_target_length=target_max_len,
+                return_tensors="pt"
+            )
+            parallel_batch = parallel_batch.to(args.device)
+            output = model(**parallel_batch)
+            batch_loss = output.loss.item()
+            loss += batch_loss / num_batch
 
     return loss
 
@@ -281,13 +281,14 @@ def evaluate(
         # and save the model
         patience_count = 0
         best_score = mean_score
-        logger.info(
-            f"New best mean {metric_name} {mean_score}"
-            f" at step {step + 1}, saving"
-        )
-        save_model(
-            args, backtranslation_pack, saved_model_name=f"best_{metric_name}"
-        )
+        if step > 0:
+            logger.info(
+                f"New best mean {metric_name} {mean_score}"
+                f" at step {step + 1}, saving"
+            )
+            save_model(
+                args, backtranslation_pack, saved_model_name=f"best_{metric_name}"
+            )
         if mode == 'translate':
             source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
             target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
@@ -313,6 +314,13 @@ def main(args, backtranslation_pack):
     best_crossentropy = float('inf')
     translation_patience_count = 0
     crossent_patience_count = 0
+    
+    if args.do_initial_eval:
+        best_crossentropy, crossent_patience_count = evaluate(
+            args, backtranslation_pack, best_crossentropy,
+            crossent_patience_count, 0, mode='crossentropy'
+        )
+        crossent_patience_count = 0
 
     for step in range(args.num_steps):
         # we might want to randomly decide the order, because we don't want the
@@ -351,41 +359,42 @@ def main(args, backtranslation_pack):
             # 1. we use source2target_model to generate synthetic text in target
             # language
             source2target_model.eval()
-            # get a batched string input
-            source_string_batch = get_next_batch(
-                source_dataloader, source_data_iter
-            )["text"]
-            source_batch = tokenizer.prepare_seq2seq_batch(
-                src_texts=source_string_batch,
-                src_lang=source_code,
-                tgt_lang=target_code,
-                max_length=source_max_len,
-                return_tensors="pt"
-            )
-            source_batch = source_batch.to(args.device)
-            if step < args.num_constrained_steps:
-                translated_tokens = source2target_model.generate(
-                    **source_batch,
-                    decoder_start_token_id=tokenizer.
-                    lang_code_to_id[target_code],
-                    max_length=target_max_len,
-                    lang_mask=target_vocab_constraint
+            with torch.no_grad():
+                # get a batched string input
+                source_string_batch = get_next_batch(
+                    source_dataloader, source_data_iter
+                )["text"]
+                source_batch = tokenizer.prepare_seq2seq_batch(
+                    src_texts=source_string_batch,
+                    src_lang=source_code,
+                    tgt_lang=target_code,
+                    max_length=source_max_len,
+                    return_tensors="pt"
                 )
-            elif target_secondary_constraint is not None:
-                translated_tokens = source2target_model.generate(
-                    **source_batch,
-                    decoder_start_token_id=tokenizer.
-                    lang_code_to_id[target_code],
-                    max_length=target_max_len,
-                    lang_mask=target_secondary_constraint
-                )
-            else:
-                translated_tokens = source2target_model.generate(
-                    **source_batch,
-                    decoder_start_token_id=tokenizer.
-                    lang_code_to_id[target_code],
-                    max_length=target_max_len,
-                )
+                source_batch = source_batch.to(args.device)
+                if step < args.num_constrained_steps:
+                    translated_tokens = source2target_model.generate(
+                        **source_batch,
+                        decoder_start_token_id=tokenizer.
+                        lang_code_to_id[target_code],
+                        max_length=target_max_len,
+                        lang_mask=target_vocab_constraint
+                    )
+                elif target_secondary_constraint is not None:
+                    translated_tokens = source2target_model.generate(
+                        **source_batch,
+                        decoder_start_token_id=tokenizer.
+                        lang_code_to_id[target_code],
+                        max_length=target_max_len,
+                        lang_mask=target_secondary_constraint
+                    )
+                else:
+                    translated_tokens = source2target_model.generate(
+                        **source_batch,
+                        decoder_start_token_id=tokenizer.
+                        lang_code_to_id[target_code],
+                        max_length=target_max_len,
+                    )
 
             # turn the predicted subtokens into sentence in string
             translation = tokenizer.batch_decode(
