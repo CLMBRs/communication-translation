@@ -46,11 +46,11 @@ class CommunicationAgent(Module):
         self.hidden_dim = self.sender.embedding_dim
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
-        self.no_share_bhd = args.no_share_bhd
         self.padding_index = args.padding_index
         self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
         self.reshaper_type = args.reshaper_type
+        self.share_reshaper = args.share_reshaper
 
         # Initialize the image Reshaper, and clone if there is to be a separate
         # Reshaper stack for both Sender and Receiver
@@ -67,7 +67,7 @@ class CommunicationAgent(Module):
                 two_ffwd=args.two_ffwd
             )
 
-        if (not args.share_reshaper) and self.reshaper_type == 'learned':
+        if (not self.share_reshaper) and self.reshaper_type == 'learned':
             print("Not sharing reshaping adapter for each agent")
             self.sender_reshaper = self.reshaper
             self.receiver_reshaper = deepcopy(self.reshaper)
@@ -548,7 +548,7 @@ class PoolingReshaper(Reshaper):
     """
     def __init__(self, input_dim, output_dim):
         super().__init__(input_dim, output_dim)
-        self.kernel_size = self.input_dim / self.output_dim
+        self.kernel_size = int(self.input_dim / self.output_dim)
         assert self.kernel_size % 1 == 0
         self.pooler = nn.MaxPool1d(self.kernel_size)
 
@@ -560,7 +560,12 @@ class PoolingReshaper(Reshaper):
         Returns:
             downsampled_image: the downsampled image embedding
         """
+        two_dims = (len(image.size()) == 2)
+        if two_dims:
+            image = image.unsqueeze(-2)
         downsampled_image = self.pooler(image)
+        if two_dims:
+            downsampled_image = downsampled_image.squeeze(-2)
         assert downsampled_image.size(-1) == self.output_dim
         return downsampled_image
 
