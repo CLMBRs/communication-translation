@@ -83,6 +83,8 @@ def main():
     parser = argparse.ArgumentParser(description="MBart Translation Script")
 
     parser.add_argument('--config', type=str)
+    parser.add_argument('--model_path', type=str)
+    parser.add_argument('--output_dir', type=str)
 
     args = parser.parse_args()
     args_dict = vars(args)
