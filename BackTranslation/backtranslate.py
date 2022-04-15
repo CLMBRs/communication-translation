@@ -129,9 +129,16 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
         source_string_batch = [
             x for x in translation_batch[source_id] if x.strip() != ''
         ]
+        empty_source_indices = [
+            idx for idx, x in enumerate(translation_batch[source_id]) if x.strip() == ''
+        ]
         reference_string_batch = [
             x for x in translation_batch[target_id] if x.strip() != ''
         ]
+        empty_reference_indices = [
+            idx for idx, x in enumerate(translation_batch[target_id]) if x.strip() == ''
+        ]
+        assert empty_source_indices == empty_reference_indices
         with torch.no_grad():
             source_batch = tokenizer.prepare_seq2seq_batch(
                 src_texts=source_string_batch,
