@@ -72,6 +72,7 @@ if __name__ == "__main__":
     def split_cb(f, s):
         print("file: {0}, size: {1}".format(f, s))
 
+    # split the input file
     fs = Filesplit()
     fs.split(file=source_filepath, split_size=splitted_file_size_in_byte, output_dir=target_dir)
     splitted_files = glob.glob(os.path.join(target_dir, f"*.{args.extension}"))
@@ -81,17 +82,17 @@ if __name__ == "__main__":
     # start parallel processing
     pool = mp.Pool(processes=args.n_process)
     inputs = [(args, file, tokenizer) for file in splitted_files]
-
     results = pool.starmap(tokenize_and_count, inputs)
     pool.close()
     pool.join()
     accumulative_ids_counter = Counter()
     accumulative_tokens_counter = Counter()
+    # aggregate counts
     for c in results:
         tokens_ret, ids_ret = c
         accumulative_tokens_counter += tokens_ret
         accumulative_ids_counter += ids_ret
-    # bp()
+    # save 
     json.dump(accumulative_tokens_counter,
               open(f"{args.source_dir}/{args.lang}_{args.corpus_name}_token2count_dict.{tokenizer_name.replace('/', '-')}.json", "w"))
     json.dump(accumulative_ids_counter,
