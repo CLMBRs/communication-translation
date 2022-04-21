@@ -9,6 +9,7 @@ __pycache__
 *.swp
 *.tar
 *.tar.gz
+*.code-workspace
 
 # Data/**
 DataLink/
