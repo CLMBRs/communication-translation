@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from copy import deepcopy
 from functools import reduce
 from statistics import mean
 
@@ -18,7 +19,7 @@ def rgetattr(obj, attr, *args):
     def _getattr(obj, attr):
         return getattr(obj, attr, *args)
 
-    return reduce(_getattr, [obj] + attr.split('.'))
+    return reduce(_getattr, [obj] + attr.split("."))
 
 
 class CommunicationAgent(Module):
@@ -28,7 +29,7 @@ class CommunicationAgent(Module):
 
     Sender and Receiver are passed in as arguments, and must meet the
     interfaces specified by the Sender and Receiver abstract classes,
-    respectively. Beholder (image embedding compoment) can either be shared
+    respectively. Reshaper (image embedding compoment) can either be shared
     between Sender and Receiver, or independent for both
     Args:
         sender: the sender/speaker module, subclassed from Sender
@@ -37,47 +38,47 @@ class CommunicationAgent(Module):
     """
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__()
-
-        # Initialize the image Beholder, and clone if there is to be a separate
-        # Beholder stack for both Sender and Receiver
-        self.beholder = Beholder(
-            image_dim=args.image_dim,
-            hidden_dim=args.hidden_dim,
-            dropout=args.dropout,
-            unit_norm=args.unit_norm,
-            two_ffwd=args.two_ffwd
-        )
-        if args.no_share_bhd:
-            print("Not sharing visual system for each agent.")
-            self.beholder1 = self.beholder
-            self.beholder2 = Beholder(
-                image_dim=args.image_dim,
-                hidden_dim=args.hidden_dim,
-                dropout=args.dropout,
-                unit_norm=args.unit_norm,
-                two_ffwd=args.two_ffwd
-            )
-        else:
-            print("Sharing visual system for each agent.")
-            self.beholder1 = self.beholder2 = self.beholder
-
         self.sender = sender
         self.receiver = receiver
         self.tokenizer = args.tokenizer
 
         self.image_dim = args.image_dim
-        self.hidden_dim = args.hidden_dim
+        self.hidden_dim = self.sender.embedding_dim
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
-        self.no_share_bhd = args.no_share_bhd
         self.padding_index = args.padding_index
         self.cls_index = args.cls_index
         self.max_seq_length = args.max_seq_length
+        self.reshaper_type = args.reshaper_type
+        self.share_reshaper = args.share_reshaper
+
+        # Initialize the image Reshaper, and clone if there is to be a separate
+        # Reshaper stack for both Sender and Receiver
+        if self.reshaper_type == 'identity':
+            self.reshaper = IdentityReshaper(args.image_dim, self.hidden_dim)
+        elif self.reshaper_type == 'pooler':
+            self.reshaper = PoolingReshaper(args.image_dim, self.hidden_dim)
+        else:
+            self.reshaper = LearnedLinearReshaper(
+                args.image_dim,
+                self.hidden_dim,
+                dropout=args.dropout,
+                unit_norm=args.unit_norm,
+                two_ffwd=args.two_ffwd
+            )
+
+        if (not self.share_reshaper) and self.reshaper_type == 'learned':
+            print("Not sharing reshaping adapter for each agent")
+            self.sender_reshaper = self.reshaper
+            self.receiver_reshaper = deepcopy(self.reshaper)
+        else:
+            print("Sharing reshaping adapter for each agent")
+            self.sender_reshaper = self.receiver_reshaper = self.reshaper
 
     def freeze_adapters(self) -> None:
-        for param in self.beholder1.parameters():
+        for param in self.sender_reshaper.parameters():
             param.requires_grad = False
-        for param in self.beholder2.parameters():
+        for param in self.receiver_reshaper.parameters():
             param.requires_grad = False
         if self.sender.recurrent_unroll:
             for param in self.sender.lstm.parameters():
@@ -99,8 +100,8 @@ class CommunicationAgent(Module):
                 sender as kwargs
         """
 
-        # Embed the Sender's image using the Beholder
-        image_embedding = self.beholder1(batch['sender_image'])
+        # Embed the Sender's image using the Reshaper
+        image_embedding = self.sender_reshaper(batch["sender_image"])
         # Generate the Sender's message/caption about the image
         return self.sender(image_embedding, **batch)
 
@@ -123,9 +124,9 @@ class CommunicationAgent(Module):
         """
         num_image_choices = receiver_images.size(1)
 
-        # Embed the Receiver's candidate images using the Beholder
+        # Embed the Receiver's candidate images using the Reshaper
         # (batch_size, num_image_choices, hidden_dim)
-        receiver_image_embeddings = self.beholder2(receiver_images)
+        receiver_image_embeddings = self.receiver_reshaper(receiver_images)
 
         # Encode the Sender's message to a hidden state to be used to select
         # a candidate image
@@ -137,9 +138,11 @@ class CommunicationAgent(Module):
 
         # Get the Mean Squared Error between the final receiver representation
         # and all of the candidate images
-        image_candidate_errors = F.mse_loss(
-            receiver_hidden, receiver_image_embeddings, reduction='none'
-        ).mean(dim=2).squeeze(-1)
+        image_candidate_errors = (
+            F.mse_loss(
+                receiver_hidden, receiver_image_embeddings, reduction="none"
+            ).mean(dim=2).squeeze(-1)
+        )
 
         # Transform this to the inverted MSE (for use as scores)
         image_candidate_logits = 1 / (image_candidate_errors + 1e-10)
@@ -282,74 +285,90 @@ class ECImageIdentificationAgent(CommunicationAgent):
         message_dict = self.image_to_message(batch)
 
         # Create the padding mask
-        lengths = message_dict['message_lengths'].tolist()
+        lengths = message_dict["message_lengths"].tolist()
         batch_size = len(lengths)
         max_length = min(max(lengths), self.max_seq_length)
-        device = message_dict['message_ids'].device
+        device = message_dict["message_ids"].device
 
         padding_mask = np.ones((batch_size, max_length))
         for seq in range(batch_size):
             padding_mask[seq][lengths[seq]:max_length] = 0
         padding_mask = torch.tensor(padding_mask)
-        message_dict['attention_mask'] = padding_mask.to(device)
+        message_dict["attention_mask"] = padding_mask.to(device)
 
         if self.language_model_lambda:
-            lm_ids = message_dict['message_ids']
-            lm_logits = message_dict['message_logits']
-            lm_padding_mask = message_dict['attention_mask']
+            lm_input_ids = message_dict["message_ids"]
+            lm_input_samples = message_dict["message_samples"]
+            lm_padding_mask = message_dict["attention_mask"]
 
         # Move the language id to the end of each sequence. We don't prepend
         # the CLS token now since the LM component will use the sequence
         # without the CLS as the targets
-        message_dict['message_ids'] = self.lang_id_to_end(
-            message_dict['message_ids'], message_dict['message_lengths'],
-            self.padding_index
+        message_dict["message_ids"] = self.lang_id_to_end(
+            message_dict["message_ids"],
+            message_dict["message_lengths"],
+            self.padding_index,
         )
-        message_dict['message_logits'] = self.lang_id_logit_to_end(
-            message_dict['message_logits'], message_dict['message_lengths']
+        message_dict["message_logits"] = self.lang_id_logit_to_end(
+            message_dict["message_logits"], message_dict["message_lengths"]
+        )
+        message_dict["message_samples"] = self.lang_id_logit_to_end(
+            message_dict["message_samples"], message_dict["message_lengths"]
         )
 
         # Optional language model loss block
         lm_loss = 0
         if self.language_model_lambda:
             lm_embeds = torch.matmul(
-                lm_logits, self.language_model.shared.weight
+                lm_input_samples, self.language_model.shared.weight
             )
-            lm_targets = message_dict['message_ids'].long()
             lm_padding_mask = lm_padding_mask.to(device)
             lm_logits = self.language_model(
-                decoder_input_ids=lm_ids,
+                decoder_input_ids=lm_input_ids,
                 input_embeds=lm_embeds,
                 attention_mask=lm_padding_mask,
             )
-            lm_loss = F.cross_entropy(
-                lm_logits.transpose(1, 2),
-                lm_targets.to(device),
-                ignore_index=self.padding_index
+            # Mask out the logits corresponding to the language ID
+            bad_logit_mask = torch.clone(message_dict["attention_mask"])
+            for seq in range(batch_size):
+                bad_logit_mask[seq, lengths[seq] - 1] = 0
+            bad_logit_mask = bad_logit_mask.unsqueeze(-1)
+            lm_logits *= bad_logit_mask
+            generated_logits = message_dict["message_logits"] * bad_logit_mask
+            # Take the KL divergence of the softmaxed logits
+            lm_loss = F.kl_div(
+                F.log_softmax(generated_logits, dim=-1),
+                F.log_softmax(lm_logits, dim=-1),
+                log_target=True,
+                reduction="sum"
             )
+            lm_loss /= sum([length - 1 for length in lengths])
             lm_loss *= self.language_model_lambda
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
-        message_dict['attention_mask'] = self.prepend_non_pad_to_mask(
-            message_dict['attention_mask']
+        message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
+            message_dict["attention_mask"]
         )
-        message_dict['message_ids'] = self.prepend_cls(
-            message_dict['message_ids'], self.cls_index
+        message_dict["message_ids"] = self.prepend_cls(
+            message_dict["message_ids"], self.cls_index
         )
-        message_dict['message_logits'] = self.prepend_cls_logit(
-            message_dict['message_logits'], self.cls_index
+        message_dict["message_samples"] = self.prepend_cls_logit(
+            message_dict["message_samples"], self.cls_index
         )
+
+        # The receiver does not have `message_logits` as one of its arguments
+        del message_dict["message_logits"]
 
         # Get the logits for the image choice candidates based on the sender's
         # message
         image_candidate_logits = self.choose_image_from_message(
-            message_dict, batch['receiver_images']
+            message_dict, batch["receiver_images"]
         )
 
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
+        target_image = batch["target"]
         communication_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
@@ -366,7 +385,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
                 weight_drift_loss += F.mse_loss(
                     rgetattr(self.sender.top, key),
                     rgetattr(self.orig_model, key),
-                    reduction='sum'
+                    reduction="sum",
                 )
             if weight_drift_loss.item() > 0.0:
                 weight_drift_loss = torch.pow(weight_drift_loss, 0.5)
@@ -380,21 +399,17 @@ class ECImageIdentificationAgent(CommunicationAgent):
         accuracy = float(eq.sum().data) / float(eq.nelement())
 
         return_dict = {
-            'loss': overall_loss,
-            'communication loss': communication_loss.item(),
-            'accuracy': 100 * accuracy,
-            'message': message_dict['message_ids'],
-            'mean_length': mean(lengths)
+            "loss": overall_loss,
+            "communication loss": communication_loss.item(),
+            "accuracy": 100 * accuracy,
+            "message": message_dict["message_ids"],
+            "mean_length": mean(lengths),
         }
 
         if self.language_model_lambda:
-            return_dict.update(
-                {'lm loss': lm_loss.item()}
-            )
+            return_dict.update({"lm loss": lm_loss.item()})
         if self.weight_drift_lambda:
-            return_dict.update(
-                {'drift loss': weight_drift_loss.item()}
-            )
+            return_dict.update({"drift loss": weight_drift_loss.item()})
         return return_dict
 
 
@@ -405,7 +420,7 @@ class ImageCaptionGrounder(CommunicationAgent):
     """
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__(sender, receiver, args)
-        if hasattr(args, 'image_selection_lambda'):
+        if hasattr(args, "image_selection_lambda"):
             self.image_selection_lambda = args.image_selection_lambda
 
     def forward(self, batch):
@@ -436,37 +451,37 @@ class ImageCaptionGrounder(CommunicationAgent):
         # based on the input image and calculate loss with the gold caption.
         # Adding the caption ids as `decoder_input_ids` puts the caption
         # generation into a supervised mode rather than free generation
-        batch['decoder_input_ids'] = batch['caption_ids']
+        batch["decoder_input_ids"] = batch["caption_ids"]
         message_dict = self.image_to_message(batch)
         caption_generation_loss = F.cross_entropy(
-            message_dict['message_logits'].transpose(1, 2),
-            batch['caption_ids'],
-            ignore_index=self.padding_index
+            message_dict["message_logits"].transpose(1, 2),
+            batch["caption_ids"],
+            ignore_index=self.padding_index,
         )
 
         # Get the logits for the image choice candidates based on the gold
         # caption (NOT the sender's message)
         caption = {
-            'message_ids': batch['caption_ids'],
-            'attention_mask': batch['caption_mask'],
-            'message_lengths': batch['caption_mask'].float().sum(dim=1).long()
+            "message_ids": batch["caption_ids"],
+            "attention_mask": batch["caption_mask"],
+            "message_lengths": batch["caption_mask"].float().sum(dim=1).long(),
         }
 
         # Prepend the CLS id to the beginning of the sequence, and adjust the
         # padding mask properly
-        caption['attention_mask'] = self.prepend_non_pad_to_mask(
-            caption['attention_mask']
+        caption["attention_mask"] = self.prepend_non_pad_to_mask(
+            caption["attention_mask"]
         )
-        caption['message_ids'] = self.prepend_cls(
-            caption['message_ids'], self.cls_index
+        caption["message_ids"] = self.prepend_cls(
+            caption["message_ids"], self.cls_index
         )
 
         image_candidate_logits = self.choose_image_from_message(
-            caption, batch['receiver_images']
+            caption, batch["receiver_images"]
         )
         # Get final cross-entropy loss between the candidates and the target
         # images
-        target_image = batch['target']
+        target_image = batch["target"]
         image_selection_loss = F.cross_entropy(
             image_candidate_logits, target_image
         )
@@ -481,21 +496,88 @@ class ImageCaptionGrounder(CommunicationAgent):
         loss = caption_generation_loss + image_selection_loss
 
         return {
-            'loss': loss,
-            'caption generation loss': caption_generation_loss.item(),
-            'image selection loss': image_selection_loss.item(),
-            'accuracy': 100 * accuracy,
-            'message': message_dict['message_ids']
+            "loss": loss,
+            "caption generation loss": caption_generation_loss.item(),
+            "image selection loss": image_selection_loss.item(),
+            "accuracy": 100 * accuracy,
+            "message": message_dict["message_ids"],
         }
 
 
-class Beholder(Module):
+class Reshaper(Module):
+    def __init__(self, input_dim: int, output_dim: int):
+        super().__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+    @abstractmethod
+    def forward(self, image: Tensor) -> Tensor:
+        raise NotImplementedError
+
+
+class IdentityReshaper(Reshaper):
+    def __init__(self, input_dim, output_dim):
+        """
+        Reshaper subclass that simply passes the input image vectors to the
+        output (no reshaping needed)
+        Args:
+            input_dim: The dimension of the input image representation
+            output_dim: The dimension of the output image representation
+        """
+        super().__init__(input_dim, output_dim)
+        assert self.input_dim == self.output_dim
+
+    def forward(self, image: Tensor) -> Tensor:
+        """
+        Return the unaltered image representation
+        Args:
+            image: a Tensor embedding of image data
+        Returns:
+            downsampled_image: the returned image representation
+        """
+        return image
+
+
+class PoolingReshaper(Reshaper):
     """
-    A "Beholder" module for embedding image data. Consists of one or two
-    feedforward layers with optional dropout and unit norm
+    Reshaper subclass for reshaping image vectors by downsampling to
+    `output_dim` using max pooling
     Args:
-        image_dim: The dimension of the input image embedding
-        hidden_dim: The dimension of the hidden representation for the image
+        input_dim: The dimension of the input image representation
+        output_dim: The dimension of the output image representation
+    """
+    def __init__(self, input_dim, output_dim):
+        super().__init__(input_dim, output_dim)
+        self.kernel_size = int(self.input_dim / self.output_dim)
+        assert self.kernel_size % 1 == 0
+        self.pooler = nn.MaxPool1d(self.kernel_size)
+
+    def forward(self, image: Tensor) -> Tensor:
+        """
+        Return the downsampled representation of the image
+        Args:
+            image: a Tensor embedding of image data
+        Returns:
+            downsampled_image: the downsampled image embedding
+        """
+        two_dims = (len(image.size()) == 2)
+        if two_dims:
+            image = image.unsqueeze(-2)
+        downsampled_image = self.pooler(image)
+        if two_dims:
+            downsampled_image = downsampled_image.squeeze(-2)
+        assert downsampled_image.size(-1) == self.output_dim
+        return downsampled_image
+
+
+class LearnedLinearReshaper(Reshaper):
+    """
+    Reshaper subclass for reshaping image vectors using a learned linear
+    transformation. Consists of one or two feedforward layers with optional
+    dropout and unit norm
+    Args:
+        input_dim: The dimension of the input image representation
+        output_dim: The dimension of the learned output image representation
         dropout: The dropout rate after the first feedforward layer
         two_ffwd: Whether to use two feedforward layers. Default: ``False``
         unit_norm: Whether to divide the output by the unit norm. Default:
@@ -503,23 +585,25 @@ class Beholder(Module):
     """
     def __init__(
         self,
-        image_dim: int,
-        hidden_dim: int,
+        input_dim: int,
+        output_dim: int,
         dropout: float,
         unit_norm: bool = False,
         two_ffwd: bool = False
     ):
-        super().__init__()
-        self.image_to_hidden = torch.nn.Linear(image_dim, hidden_dim)
+        super().__init__(input_dim, output_dim)
         self.unit_norm = unit_norm
         self.dropout = nn.Dropout(p=dropout)
         self.two_ffwd = two_ffwd
+        self.image_to_hidden = torch.nn.Linear(self.input_dim, self.output_dim)
         if self.two_ffwd:
-            self.hidden_to_hidden = torch.nn.Linear(hidden_dim, hidden_dim)
+            self.hidden_to_hidden = torch.nn.Linear(
+                self.output_dim, self.output_dim
+            )
 
     def forward(self, image: Tensor) -> Tensor:
         """
-        Return the embedding of the input image data
+        Return the learned embedding of the input image data
         Args:
             image: a Tensor embedding of image data
         Returns:
@@ -527,12 +611,9 @@ class Beholder(Module):
         """
         h_image = self.image_to_hidden(image)
         h_image = self.dropout(h_image)
-
         if self.two_ffwd:
             h_image = self.hidden_to_hidden(F.relu(h_image))
-
         if self.unit_norm:
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)
-
         return h_image

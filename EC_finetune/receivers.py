@@ -20,10 +20,10 @@ class Receiver(Module):
     """
     @abstractmethod
     def forward(
-        self, message_ids: Tensor, message_logits: Tensor = None
+        self, message_ids: Tensor, message_samples: Tensor = None
     ) -> Tensor:
         """
-        Convert a gumbel-generated sequence of natural language logits and ids
+        Convert a gumbel-generated sequence of natural language samples and ids
         to a hidden representation
 
         This hidden state is often used in EC games to pick out an image from
@@ -33,8 +33,9 @@ class Receiver(Module):
         Args:
             message_ids: the batch of generated sentences as indices.
                 `(batch_size, sequence_length)`
-            message_logits: the batch of generated sentences as logits over the
-                vocabulary at each position.
+            message_samples: the batch of generated sentences as samples over
+                the vocabulary at each position (i.e. the output of
+                gumbel-softmax). 
                 `(batch_size, sequence_length, vocab_size)`
         Returns:
             The batch of hidden states representing each sequence.
@@ -59,7 +60,6 @@ class MBartReceiver(Receiver):
     def __init__(
         self,
         model: MBartForConditionalGeneration,
-        output_dim: int,
         recurrent_aggregation: bool = False,
         dropout: float = 0.0,
         unit_norm: bool = False
@@ -74,17 +74,15 @@ class MBartReceiver(Receiver):
 
         if self.recurrent_aggregation:
             self.hidden_to_output = nn.LSTM(
-                self.embedding_dim, output_dim, batch_first=True
+                self.embedding_dim, self.embedding_dim, batch_first=True
             )
-        else:
-            self.hidden_to_output = nn.Linear(self.embedding_dim, output_dim)
 
     def forward(
         self,
         message_ids: Tensor,
         attention_mask: Tensor,
         message_lengths: Tensor,
-        message_logits: Tensor = None
+        message_samples: Tensor = None
     ) -> Tensor:
         """
         Return the pooled representation of the Bart encoder stack over the
@@ -95,16 +93,17 @@ class MBartReceiver(Receiver):
                 `(batch_size, sequence_length)`
             attn_mask: the attention/padding mask for the batch.
                 `(batch_size, sequence_length)`
-            message_logits: the batch of generated sentences as logits over the
-                vocabulary at each position. 
+            message_samples: the batch of generated sentences as samples over
+                the vocabulary at each position (i.e. the output of
+                gumbel-softmax). 
                 `(batch_size, sequence_length, vocab_size)`
         Returns:
             The batch of hidden states representing each sequence.
                 `(batch_size, output_dim)`
         """
         message_embedding = torch.matmul(
-            message_logits, self.embedding.weight
-        ) if message_logits is not None else self.embedding(message_ids)
+            message_samples, self.embedding.weight
+        ) if message_samples is not None else self.embedding(message_ids)
 
         if self.dropout:
             message_embedding = self.dropout(message_embedding)
@@ -127,7 +126,7 @@ class MBartReceiver(Receiver):
             # ).squeeze()
 
             # Use the initial CLS token as the sentence representation
-            output = self.hidden_to_output(hidden[:, 0, :])
+            output = hidden[:, 0, :]
         return output
 
 
@@ -182,7 +181,7 @@ class RnnReceiver(Receiver):
         self,
         message_ids: Tensor,
         message_lengths: Tensor,
-        message_logits: Tensor = None
+        message_samples: Tensor = None
     ):
         """
         Return the final representation of the RNN encoder stack over the
@@ -191,8 +190,9 @@ class RnnReceiver(Receiver):
         Args:
             message_ids: the batch of generated sentences as indices.
                 `(batch_size, sequence_length)`
-            message_logits: the batch of generated sentences as logits over the
-                vocabulary at each position. 
+            message_samples: the batch of generated sentences as samples over
+                the vocabulary at each position (i.e. the output of
+                gumbel-softmax). 
                 `(batch_size, sequence_length, vocab_size)`
             message_lengths: the batch of lengths for the generated sentences.
                 `(batch_size)`
@@ -201,8 +201,8 @@ class RnnReceiver(Receiver):
                 `(batch_size, output_dim)`
         """
         message_embedding = torch.matmul(
-            message_logits, self.embedding.weight
-        ) if message_logits is not None else self.embedding(message_ids)
+            message_samples, self.embedding.weight
+        ) if message_samples is not None else self.embedding(message_ids)
 
         if self.dropout:
             message_embedding = self.dropout(message_embedding)

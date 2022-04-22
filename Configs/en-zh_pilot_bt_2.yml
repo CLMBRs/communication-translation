@@ -1,0 +1,48 @@
+# Path to load model for generation
+model_path: Output/en-zh_pilot_2/best_loss
+
+# training config
+num_steps: 1024
+lr: 2.0e-05
+grad_clip: 1.0
+num_warmup_steps: 0
+schedule: constant_w_warmup
+batch_size: 32
+seed: 1
+n_gpu: 1
+print_every: 32
+do_initial_eval: true
+do_crossent_eval: true
+eval_every: 64
+crossent_patience: 8
+do_translate_eval: true
+translate_every: 512
+validation_set_size: 4096
+eval_batch_size: 64
+num_beams: 5
+val_metric_name: bleu
+num_constrained_steps: 1024
+vocab_constraint_threshold: 0.99
+secondary_threshold: 0.99
+early_stop_start_time: 0
+
+# script to load validation datasets
+val_dataset_script: BackTranslation/wmt19/wmt19.py
+lang_pair: zh-en
+# dir to save model
+models_shared: true
+output_dir: Output/en-zh_pilot_2/
+
+# data config
+# backtranslation language
+data_dir: ./DataLink/cc
+output_data_filename: bt_en+zh.csv
+lang1_data_file: en_500k.txt
+lang1_id: en
+lang1_max_len: 64
+lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+
+lang2_data_file: zh_500k.txt
+lang2_id: zh
+lang2_max_len: 64
+lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json

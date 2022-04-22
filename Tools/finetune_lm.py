@@ -164,7 +164,7 @@ def main():
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
 
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
