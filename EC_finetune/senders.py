@@ -22,7 +22,7 @@ class Sender(Module):
     docstring for the CommunicationAgent to work
     """
     @abstractmethod
-    def forward(self, image_hidden: Tensor) -> Dict[str, Tensor]:
+    def forward(self, sender_image: Tensor) -> Dict[str, Tensor]:
         """
         Convert a hidden representation of an image to a natural language
         sequence
@@ -31,8 +31,8 @@ class Sender(Module):
         constraints
 
         Args:
-            image_hidden: a Tensor batch of image representations for the
-                Sender to caption/describe. `(batch_size, image_hidden_dim)`
+            sender_image: a Tensor batch of image representations for the
+                Sender to caption/describe. `(batch_size, sender_image_dim)`
         Returns:
             a dictionary of Tensors with the following keys:
                 `message_ids`: the sequence of output indices.
@@ -55,7 +55,8 @@ class MBartSender(Sender):
         hard: bool = None,
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
-        generate_from_logits: bool = False
+        generate_from_logits: bool = False,
+        use_caption_crossattention: bool = False
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -70,11 +71,11 @@ class MBartSender(Sender):
         """
         super().__init__()
         self.top = model
+        self.encoder = model.model.encoder
         self.decoder = model.model.decoder
         self.embedding = model.model.shared
         self.output_bias = model.final_logits_bias
         self.embedding_dim = model.model.shared.weight.size(1)
-        self.recurrent_unroll = recurrent_unroll
         self.unroll_length = unroll_length
         self.top.temp = temperature
         self.top.hard = hard
@@ -82,14 +83,18 @@ class MBartSender(Sender):
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
-
-        if self.recurrent_unroll:
-            self.lstm = nn.LSTM(
-                self.embedding_dim, self.embedding_dim, batch_first=True
-            )
+        self.use_caption_crossattention = use_caption_crossattention
+        self.lstm = nn.LSTM(
+            self.embedding_dim, self.embedding_dim, batch_first=True
+        )
 
     def forward(
-        self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
+        self,
+        sender_image: Tensor = None,
+        sender_input_text: Tensor = None,
+        sender_attention_mask: Tensor = None,
+        decoder_input_ids: Tensor = None,
+        **kwargs
     ):
         """
         Convert an image representation to a natural language message/caption.
@@ -101,7 +106,7 @@ class MBartSender(Sender):
         original image from among distractors.
 
         Args:
-            image_hidden: batch of image representations for the Sender to
+            sender_image: batch of image representations for the Sender to
                 caption/describe. `(batch_size, image_hidden_dim)`
             decoder_input_ids: optional batch of decoder inputs for "supervised"
                 generation. `(batch_size, max_seq_length)`. Default: `None`
@@ -117,26 +122,47 @@ class MBartSender(Sender):
                 `message_lengths`: the length for each output. `(batch_size)`
         """
         device = self.embedding.weight.device
-        # Ensure the batch is the correct shape
-        # (batch_size, image_hidden_dim)
-        batch_size = image_hidden.size(0)
-        assert len(image_hidden.shape) == 2
-        # (batch_size, 1, image_hidden_dim)
-        image_hidden = image_hidden.unsqueeze(1)
 
-        if self.recurrent_unroll:
+        if sender_image is not None and not self.use_caption_crossattention:
+            # Ensure the batch is the correct shape
+            # (batch_size, image_hidden_dim)
+            batch_size = sender_image.size(0)
+            assert len(sender_image.shape) == 2
+            # (batch_size, 1, image_hidden_dim)
+            sender_image = sender_image.unsqueeze(1)
+
             unrolled_hidden = []
-            h = torch.zeros_like(image_hidden).transpose(0, 1).to(
-                image_hidden.device
+            h = torch.zeros_like(sender_image).transpose(0, 1).to(
+                sender_image.device
             )
-            c = torch.zeros_like(image_hidden).transpose(0, 1).to(
-                image_hidden.device
+            c = torch.zeros_like(sender_image).transpose(0, 1).to(
+                sender_image.device
             )
             for i in range(self.unroll_length):
-                next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
+                next_hidden, (h, c) = self.lstm(sender_image, (h, c))
                 unrolled_hidden.append(next_hidden)
-                image_hidden = next_hidden
-            image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
+                sender_image = next_hidden
+            sender_image = torch.stack(unrolled_hidden, dim=1).squeeze()
+            crossattention_input = sender_image
+        elif sender_input_text is not None:
+            # (batch_size, text_length, model_hidden_dim)
+            batch_size = sender_input_text.size(0)
+            sender_input_encodings = self.encoder(
+                input_ids=sender_input_text,
+                attention_mask=sender_attention_mask
+            ).last_hidden_state
+            crossattention_input = sender_input_encodings
+        elif decoder_input_ids is not None:
+            sender_input_encodings = self.encoder(
+                input_ids=decoder_input_ids,
+                attention_mask=kwargs['caption_mask']
+            ).last_hidden_state
+            crossattention_input = sender_input_encodings
+        else:
+            raise ValueError(
+                "Sender must receive either `sender_image` or"
+                " `sender_input_text` as input"
+            )
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:
@@ -147,7 +173,7 @@ class MBartSender(Sender):
             )
             output = self.decoder(
                 input_ids=decoder_input_ids,
-                encoder_hidden_states=image_hidden,
+                encoder_hidden_states=crossattention_input,
                 encoder_padding_mask=None,
                 decoder_padding_mask=decoder_padding_mask,
                 decoder_causal_mask=causal_mask
@@ -168,16 +194,16 @@ class MBartSender(Sender):
             if 'lang_id' in kwargs:
                 kwargs['lang_id'] = kwargs['lang_id'].view(batch_size, -1)
                 kwargs['lang_id'] = \
-                    kwargs['lang_id'].to(image_hidden.device)
+                    kwargs['lang_id'].to(crossattention_input.device)
             if 'lang_mask' in kwargs:
                 kwargs['lang_mask'] = \
-                    kwargs['lang_mask'].to(image_hidden.device)
+                    kwargs['lang_mask'].to(crossattention_input.device)
             if self.generate_from_logits:
                 kwargs['generate_from_logits'] = True
 
             # Get the sender model output and return
             output = self.top.gumbel_generate(
-                input_embeds=image_hidden,
+                input_embeds=crossattention_input,
                 num_beams=self.beam_width,
                 max_length=self.seq_len,
                 repetition_penalty=self.repetition_penalty,

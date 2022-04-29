@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import transformers
 import yaml
+from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
@@ -23,7 +24,9 @@ from .modelings.modeling_mbart import (
 )
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
-from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
+from .dataloader import (
+    CaptionTrainingDataset, XLImageIdentificationDataset, TextInputECDataset
+)
 from .util import set_seed, statbar_string
 
 EC_CSV_HEADERS = [
@@ -58,16 +61,15 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        batch['sender_image'] = batch['sender_image'].to(args.device)
-        batch['receiver_images'] = batch['receiver_images'].to(args.device)
-        batch['target'] = batch['target'].to(args.device)
-        if args.mode == 'image_grounding':
-            batch['caption_ids'] = batch['caption_ids'].to(args.device)
-            batch['caption_mask'] = batch['caption_mask'].to(args.device)
+        # Move data to GPU
+        for key, value in batch.items():
+            if isinstance(value, Tensor):
+                batch[key] = value.to(args.device)
 
         eval_return_dict = model(batch)
-
-        output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
+        
+        if 'message' in eval_return_dict:
+            output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
@@ -147,12 +149,9 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
         for batch in epoch_iterator:
             model.train()
             # Move data to the GPU
-            batch['sender_image'] = batch['sender_image'].to(args.device)
-            batch['receiver_images'] = batch['receiver_images'].to(args.device)
-            batch['target'] = batch['target'].to(args.device)
-            if args.mode == 'image_grounding':
-                batch['caption_ids'] = batch['caption_ids'].to(args.device)
-                batch['caption_mask'] = batch['caption_mask'].to(args.device)
+            for key, value in batch.items():
+                if isinstance(value, Tensor):
+                    batch[key] = value.to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -306,7 +305,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
-    if args.mode == 'image_grounding':
+    if args.mode == 'image_grounding' or args.ec_input_text:
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.train_captions, 'r').readlines()
@@ -377,7 +376,8 @@ def main():
             hard=args.hard,
             repetition_penalty=args.repetition_penalty,
             beam_width=args.beam_width,
-            generate_from_logits=args.generate_from_logits
+            generate_from_logits=args.generate_from_logits,
+            use_caption_crossattention=getattr(args, 'use_caption_crossattention', False)
         )
         receiver = MBartReceiver(
             comm_model,
@@ -413,12 +413,30 @@ def main():
             language_model=language_model,
             orig_model=orig_model
         )
-        training_set = XLImageIdentificationDataset(
-            train_images, args.num_distractors_train, args, tokenizer
-        )
-        valid_set = XLImageIdentificationDataset(
-            valid_images, args.num_distractors_valid, args, tokenizer
-        )
+        if args.ec_input_text:
+            training_set = TextInputECDataset(
+                train_images,
+                train_captions,
+                args.num_distractors_train,
+                tokenizer,
+                args,
+                max_length=128
+            )
+            valid_set = TextInputECDataset(
+                valid_images,
+                valid_captions,
+                args.num_distractors_valid,
+                tokenizer,
+                args,
+                max_length=128
+            )
+        else:
+            training_set = XLImageIdentificationDataset(
+                train_images, args.num_distractors_train, args, tokenizer
+            )
+            valid_set = XLImageIdentificationDataset(
+                valid_images, args.num_distractors_valid, args, tokenizer
+            )
 
     if args.load_entire_agent:
         state_dict = torch.load(args.model_name + "/model.pt")

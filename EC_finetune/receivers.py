@@ -115,7 +115,8 @@ class MBartReceiver(Receiver):
         hidden = hidden.last_hidden_state
 
         if self.recurrent_aggregation:
-            _, (output, _) = self.hidden_to_output(hidden)
+            # Hack: flip the sequential order in attempt to minimize effect of padding
+            _, (output, _) = self.hidden_to_output(torch.flip(hidden, (1,)))
             output = output.squeeze()
         else:
             # hidden_size = hidden.size(2)
