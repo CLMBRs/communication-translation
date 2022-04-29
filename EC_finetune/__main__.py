@@ -49,9 +49,14 @@ def ids_to_texts(output_ids, tokenizer):
 
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
     batchwise_stats = defaultdict(list)
+    max_eval_batches = None
+    if hasattr(args, "max_eval_batches"):
+        max_eval_batches = args.max_eval_batches
     epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
-    for batch in epoch_iterator:
+    for i, batch in enumerate(epoch_iterator):
+        if max_eval_batches and i >= max_eval_batches:
+            break
         model.eval()
         batch['sender_image'] = batch['sender_image'].to(args.device)
         batch['receiver_images'] = batch['receiver_images'].to(args.device)
@@ -303,11 +308,11 @@ def main():
 
     if args.mode == 'image_grounding':
         train_captions = [
-            json.loads(line)
+            [caption.strip() for caption in json.loads(line)]
             for line in open(args.train_captions, 'r').readlines()
         ]
         valid_captions = [
-            json.loads(line)
+            [caption.strip() for caption in json.loads(line)]
             for line in open(args.valid_captions, 'r').readlines()
         ]
     train_images = torch.load(args.train_images)
