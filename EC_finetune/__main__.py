@@ -305,7 +305,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
-    if args.mode == 'image_grounding' or args.ec_input_text:
+    if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.train_captions, 'r').readlines()
@@ -413,7 +413,7 @@ def main():
             language_model=language_model,
             orig_model=orig_model
         )
-        if args.ec_input_text:
+        if getattr(args, 'ec_input_text', False):
             training_set = TextInputECDataset(
                 train_images,
                 train_captions,
@@ -428,7 +428,8 @@ def main():
                 args.num_distractors_valid,
                 tokenizer,
                 args,
-                max_length=128
+                max_length=128,
+                max_captions_per_image=1
             )
         else:
             training_set = XLImageIdentificationDataset(
