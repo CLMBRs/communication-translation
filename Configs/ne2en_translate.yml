@@ -3,13 +3,13 @@ seed: 1
 n_gpu: 1
 batch_size: 64
 num_beams: 5
-translation_filename: zh-en.zh.test.en
+translation_filename: neen.ne.test.en
 
 # data config
-source_data_file: Output/translation_references/zh-en.zh.test
-lang_pair: zh-en
+dataset_script: BackTranslation/flores/flores.py
+lang_pair: neen
 dataset_split: test
-source_id: zh
+source_id: ne
 source_max_len: 64
 target_id: en
 target_max_len: 64
