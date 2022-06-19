@@ -58,7 +58,13 @@ class Wmt19(Wmt):
     @property
     def _subsets(self):
         return {
-            datasets.Split.TRAIN: [
+            datasets.Split.TRAIN: ["wikititles_v1"],
+            datasets.Split.VALIDATION: ["euelections_dev2019", "newsdev2019", "newstest2018"],
+            datasets.Split.TEST: ["newscommentary_v14"]
+        }
+        
+    '''
+    datasets.Split.TRAIN: [
                 "europarl_v9",
                 "europarl_v7_frde",
                 "paracrawl_v3",
@@ -66,7 +72,6 @@ class Wmt19(Wmt):
                 "paracrawl_v3_frde",
                 "commoncrawl",
                 "commoncrawl_frde",
-                "newscommentary_v14",
                 "newscommentary_v14_frde",
                 "czeng_17",
                 "yandexcorpus",
@@ -75,6 +80,4 @@ class Wmt19(Wmt):
                 "rapid_2016_ltfi",
                 "rapid_2019",
             ],
-            # + CWMT_SUBSET_NAMES,  # (Leo): url stored here is not valid. We are using WMT for valid/test, so...
-            datasets.Split.VALIDATION: ["euelections_dev2019", "newsdev2019", "newstest2018"],
-        }
+    '''
