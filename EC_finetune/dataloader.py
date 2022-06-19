@@ -128,7 +128,8 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         num_distractors: int,
         tokenizer,
         args,
-        max_length: int = 256
+        max_length: int = 256,
+        max_captions_per_image: int = float('inf')
     ) -> Dataset:
         # Initialize using the ImageIdentificationDataset constructor
         super().__init__(images, num_distractors)
@@ -144,7 +145,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         self.caption_lookup = {}
         caption_index = 0
         for image_index, caption_set in enumerate(self.captions):
-            for secondary_index in range(len(caption_set)):
+            for secondary_index in range(min(max_captions_per_image, len(caption_set))):
                 self.caption_lookup[caption_index] = (
                     image_index, secondary_index
                 )
