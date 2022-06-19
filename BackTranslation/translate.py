@@ -36,8 +36,16 @@ def translate(
     for batch in tqdm(
         dataloader, desc=f"translate:{args.source_id}->{args.target_id}"
     ):
-        translation_batch = batch["translation"]
-        source_string_batch = translation_batch[args.source_id]
+        if args.is_translation_dataset:
+            translation_batch = batch["translation"]
+            source_string_batch = [
+                x for x in translation_batch[args.source_id] if x.strip() != ''
+            ]
+        else:
+            source_string_batch = batch['text']
+            source_string_batch = [
+                x for x in source_string_batch if x.strip() != ''
+            ]
 
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
@@ -119,14 +127,16 @@ def main():
         f" target language code: {args.target_code}"
     )
 
-    if args.dataset_script:
+    if getattr(args, 'dataset_script', False):
         source_dataset = load_dataset(
             args.dataset_script, args.lang_pair, split=args.dataset_split
         )
-    elif args.source_data_file:
+        args.is_translation_dataset = True
+    elif getattr(args, 'source_data_file', False):
         source_dataset = load_dataset(
-            "text", data_files=os.path.join(args.data_dir, args.source_data_file)
-        )
+            "text", data_files=args.source_data_file
+        )['train']
+        args.is_translation_dataset = False
     else:
         raise ValueError(
             "Configuration must include either `dataset_script` or"
