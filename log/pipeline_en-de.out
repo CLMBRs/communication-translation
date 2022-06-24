@@ -1,0 +1,499 @@
+06-22-22 19:04:49 - Configuration:
+Namespace(backtranslated_dir='Output/', config='Configs/en-de_bt_initial.yml', seed_override=None, print_translation=False, num_printed_translation=3, model_path='facebook/mbart-large-cc25', num_steps=2048, lr=2e-05, grad_clip=1.0, num_warmup_steps=512, schedule='constant_w_warmup', batch_size=32, seed=1, n_gpu=1, print_every=32, do_initial_eval=False, do_crossent_eval=False, eval_every=128, crossent_patience=16, do_translate_eval=True, translate_every=512, validation_set_size=4096, eval_batch_size=64, num_beams=5, val_metric_name='bleu', num_constrained_steps=2048, vocab_constraint_threshold=0.9, secondary_threshold=0.99, early_stop_start_time=2048, val_dataset_script='BackTranslation/wmt19/wmt19.py', lang_pair='de-en', models_shared=True, output_dir='Output/en-de_pipeline/bt_init', data_dir='./Data/cc', output_data_filename='bt_en+de.csv', lang1_data_file='en_500k.txt', lang1_id='en', lang1_max_len=64, lang1_vocab_constrain_file='./Data/cc/en_cc_tokenID2count_dict.cc25.json', lang2_data_file='de_500k.txt', lang2_id='de', lang2_max_len=64, lang2_vocab_constrain_file='./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json', device=device(type='cuda'))
+06-22-22 19:04:52 - Total valid en tokens: 4572
+06-22-22 19:04:53 - Total valid de tokens: 5249
+06-22-22 19:04:53 - Total secondary en tokens: 17069
+06-22-22 19:04:54 - Total secondary de tokens: 17212
+06-22-22 19:05:23 - Source language code: en_XX, target language code: de_DE
+Downloading and preparing dataset text/default to /home2/xuhuizh.local/.cache/huggingface/datasets/text/default-90d6ff0f24edce32/0.0.0/acc32f2f2ef863c93c2f30c52f7df6cc9053a1c2230b8d7da0d210404683ca08...
+Dataset text downloaded and prepared to /home2/xuhuizh.local/.cache/huggingface/datasets/text/default-90d6ff0f24edce32/0.0.0/acc32f2f2ef863c93c2f30c52f7df6cc9053a1c2230b8d7da0d210404683ca08. Subsequent calls will reuse this data.
+Downloading and preparing dataset wmt19/de-en to /home2/xuhuizh.local/.cache/huggingface/datasets/wmt19/de-en/1.0.0/f2f7c5e2df5f67ba331f42df10ea232f296e83a13486239ef5c75918919a7bcf...
+Dataset wmt19 downloaded and prepared to /home2/xuhuizh.local/.cache/huggingface/datasets/wmt19/de-en/1.0.0/f2f7c5e2df5f67ba331f42df10ea232f296e83a13486239ef5c75918919a7bcf. Subsequent calls will reuse this data.
+06-22-22 19:10:44 - step 32 | mode train | lr 1.25e-06 | loss 40.334
+06-22-22 19:15:26 - step 64 | mode train | lr 2.5e-06 | loss 11.9429
+06-22-22 19:20:09 - step 96 | mode train | lr 3.75e-06 | loss 9.1794
+06-22-22 19:24:53 - step 128 | mode train | lr 5e-06 | loss 7.3798
+06-22-22 19:29:39 - step 160 | mode train | lr 6.25e-06 | loss 5.808
+06-22-22 19:34:24 - step 192 | mode train | lr 7.5e-06 | loss 4.1804
+06-22-22 19:39:01 - step 224 | mode train | lr 8.75e-06 | loss 3.196
+06-22-22 19:43:35 - step 256 | mode train | lr 1e-05 | loss 2.4518
+06-22-22 19:48:09 - step 288 | mode train | lr 1.125e-05 | loss 1.7406
+06-22-22 19:52:42 - step 320 | mode train | lr 1.25e-05 | loss 1.4015
+06-22-22 19:57:15 - step 352 | mode train | lr 1.375e-05 | loss 1.336
+06-22-22 20:01:48 - step 384 | mode train | lr 1.5e-05 | loss 1.2808
+06-22-22 20:06:22 - step 416 | mode train | lr 1.625e-05 | loss 1.2212
+06-22-22 20:10:55 - step 448 | mode train | lr 1.75e-05 | loss 1.1986
+06-22-22 20:15:29 - step 480 | mode train | lr 1.875e-05 | loss 1.1917
+06-22-22 20:20:03 - step 512 | mode train | lr 2e-05 | loss 1.1836
+06-22-22 20:28:36 - step 512 | mode validation | de bleu 14.784 | en bleu 23.3258 | mean bleu 19.0549
+06-22-22 20:28:36 - New best mean bleu 19.0549 at step 512, saving
+06-22-22 20:33:37 - step 544 | mode train | lr 2e-05 | loss 1.1476
+06-22-22 20:38:10 - step 576 | mode train | lr 2e-05 | loss 1.1182
+06-22-22 20:42:44 - step 608 | mode train | lr 2e-05 | loss 1.1465
+06-22-22 20:47:17 - step 640 | mode train | lr 2e-05 | loss 1.0915
+06-22-22 20:51:51 - step 672 | mode train | lr 2e-05 | loss 1.083
+06-22-22 20:56:24 - step 704 | mode train | lr 2e-05 | loss 1.0906
+06-22-22 21:00:58 - step 736 | mode train | lr 2e-05 | loss 1.0857
+06-22-22 21:05:32 - step 768 | mode train | lr 2e-05 | loss 1.0676
+06-22-22 21:10:06 - step 800 | mode train | lr 2e-05 | loss 1.0499
+06-22-22 21:14:41 - step 832 | mode train | lr 2e-05 | loss 1.0483
+06-22-22 21:19:15 - step 864 | mode train | lr 2e-05 | loss 1.0314
+06-22-22 21:23:50 - step 896 | mode train | lr 2e-05 | loss 1.0157
+06-22-22 21:28:24 - step 928 | mode train | lr 2e-05 | loss 1.0166
+06-22-22 21:32:59 - step 960 | mode train | lr 2e-05 | loss 1.0337
+06-22-22 21:37:33 - step 992 | mode train | lr 2e-05 | loss 1.0112
+06-22-22 21:42:06 - step 1024 | mode train | lr 2e-05 | loss 0.9829
+06-22-22 21:50:35 - step 1024 | mode validation | de bleu 20.7947 | en bleu 26.0238 | mean bleu 23.4092
+06-22-22 21:50:35 - New best mean bleu 23.4092 at step 1024, saving
+06-22-22 21:55:35 - step 1056 | mode train | lr 2e-05 | loss 0.9939
+06-22-22 22:00:10 - step 1088 | mode train | lr 2e-05 | loss 1.017
+06-22-22 22:04:45 - step 1120 | mode train | lr 2e-05 | loss 0.9943
+06-22-22 22:09:19 - step 1152 | mode train | lr 2e-05 | loss 0.9874
+06-22-22 22:13:53 - step 1184 | mode train | lr 2e-05 | loss 0.9495
+06-22-22 22:18:27 - step 1216 | mode train | lr 2e-05 | loss 0.9677
+06-22-22 22:23:01 - step 1248 | mode train | lr 2e-05 | loss 0.9713
+06-22-22 22:27:35 - step 1280 | mode train | lr 2e-05 | loss 0.9696
+06-22-22 22:32:09 - step 1312 | mode train | lr 2e-05 | loss 0.9505
+06-22-22 22:36:43 - step 1344 | mode train | lr 2e-05 | loss 0.9435
+06-22-22 22:41:16 - step 1376 | mode train | lr 2e-05 | loss 0.9656
+06-22-22 22:45:50 - step 1408 | mode train | lr 2e-05 | loss 0.9231
+06-22-22 22:50:23 - step 1440 | mode train | lr 2e-05 | loss 0.9573
+06-22-22 22:54:57 - step 1472 | mode train | lr 2e-05 | loss 0.9479
+06-22-22 22:59:31 - step 1504 | mode train | lr 2e-05 | loss 0.9274
+06-22-22 23:04:05 - step 1536 | mode train | lr 2e-05 | loss 0.9619
+06-22-22 23:12:34 - step 1536 | mode validation | de bleu 22.762 | en bleu 27.0031 | mean bleu 24.8825
+06-22-22 23:12:34 - New best mean bleu 24.8825 at step 1536, saving
+06-22-22 23:17:33 - step 1568 | mode train | lr 2e-05 | loss 0.9176
+06-22-22 23:22:07 - step 1600 | mode train | lr 2e-05 | loss 0.9365
+06-22-22 23:26:41 - step 1632 | mode train | lr 2e-05 | loss 0.9246
+06-22-22 23:31:16 - step 1664 | mode train | lr 2e-05 | loss 0.9654
+06-22-22 23:35:50 - step 1696 | mode train | lr 2e-05 | loss 0.9407
+06-22-22 23:40:24 - step 1728 | mode train | lr 2e-05 | loss 0.9372
+06-22-22 23:44:58 - step 1760 | mode train | lr 2e-05 | loss 0.9164
+06-22-22 23:49:32 - step 1792 | mode train | lr 2e-05 | loss 0.9723
+06-22-22 23:54:13 - step 1824 | mode train | lr 2e-05 | loss 5.4427
+06-22-22 23:58:49 - step 1856 | mode train | lr 2e-05 | loss 5.4448
+06-23-22 00:03:42 - step 1888 | mode train | lr 2e-05 | loss 4.754
+06-23-22 00:08:18 - step 1920 | mode train | lr 2e-05 | loss 2.9554
+06-23-22 00:12:52 - step 1952 | mode train | lr 2e-05 | loss 1.4254
+06-23-22 00:17:21 - step 1984 | mode train | lr 2e-05 | loss 1.2429
+06-23-22 00:21:51 - step 2016 | mode train | lr 2e-05 | loss 1.2631
+06-23-22 00:26:21 - step 2048 | mode train | lr 2e-05 | loss 1.2684
+06-23-22 00:34:58 - step 2048 | mode validation | de bleu 22.0926 | en bleu 25.432 | mean bleu 23.7623
+06-23-22 00:35:24 - training complete; final model state saved
+06-23-22 00:35:36 - Dataset Loaded
+06-23-22 00:35:36 - Configuration:
+Namespace(config='Configs/en-de_captions.yml', seed_override=None, lm_lambda_override=None, drift_lambda_override=None, adapter_freeze_override=False, model_name='Output/en-de_pipeline/bt_init/last', load_entire_agent=False, image_dim=2048, reshaper_type='learned', two_ffwd=False, unit_norm=False, dropout=0.0, share_reshaper=True, recurrent_image_unroll=True, image_unroll_length=32, recurrent_hidden_aggregation=False, freeze_adapters=False, beam_width=1, temperature=1.0, hard=True, max_seq_length=32, repetition_penalty=1.0, generate_from_logits=False, TransferH=False, seed=1, mode='image_grounding', image_selection_lambda=4.0, language_model_lambda=0.0, weight_drift_lambda=0.0, do_train=True, do_eval=True, n_gpu=1, num_games=30, max_global_step=2048, lr=4e-05, schedule='linear_w_warmup', num_warmup_steps=0, gradient_accumulation_steps=1, batch_size=16, grad_clip=1.0, valid_every=512, print_every=32, target_acc=85.0, stats_to_print=['loss', 'accuracy', 'caption generation loss', 'image selection loss'], num_distractors_train=15, num_distractors_valid=15, train_captions='./Data/captioning/en_captions_train.jsonl', valid_captions='./Data/captioning/en_captions_val.jsonl', train_images='./Data/captioning/images_train', valid_images='./Data/captioning/images_val', save_pretrain_seperately=True, output_dir='Output/en-de_pipeline/captions', save_output_txt=True, has_vocab_constraint=False, source_lang='en_XX', source_lang_vocab_constrain_file='/projects/unmt/communication-translation/en_cc_tokenID2count_dict.cc25.json', csv_headers=['mode', 'epoch', 'global step', 'loss', 'caption generation loss', 'image selection loss', 'accuracy'], device=device(type='cuda'))
+Sharing reshaping adapter for each agent
+06-23-22 00:36:33 - epoch 0 | global step 32 | mode train | loss 15.7305 | caption generation loss 3.3738 | image selection loss 12.3567 | accuracy 5.0781
+06-23-22 00:36:47 - epoch 0 | global step 64 | mode train | loss 14.0641 | caption generation loss 2.8923 | image selection loss 11.1718 | accuracy 6.0547
+06-23-22 00:37:00 - epoch 0 | global step 96 | mode train | loss 13.9156 | caption generation loss 2.7484 | image selection loss 11.1672 | accuracy 6.4453
+06-23-22 00:37:13 - epoch 0 | global step 128 | mode train | loss 13.8494 | caption generation loss 2.7119 | image selection loss 11.1375 | accuracy 6.8359
+06-23-22 00:37:27 - epoch 0 | global step 160 | mode train | loss 13.7764 | caption generation loss 2.6701 | image selection loss 11.1063 | accuracy 6.0547
+06-23-22 00:37:40 - epoch 0 | global step 192 | mode train | loss 13.7029 | caption generation loss 2.5979 | image selection loss 11.105 | accuracy 5.6641
+06-23-22 00:37:53 - epoch 0 | global step 224 | mode train | loss 13.6438 | caption generation loss 2.5448 | image selection loss 11.099 | accuracy 6.6406
+06-23-22 00:38:07 - epoch 0 | global step 256 | mode train | loss 13.5785 | caption generation loss 2.4624 | image selection loss 11.1161 | accuracy 7.0312
+06-23-22 00:38:20 - epoch 0 | global step 288 | mode train | loss 13.5016 | caption generation loss 2.4048 | image selection loss 11.0968 | accuracy 6.25
+06-23-22 00:38:34 - epoch 0 | global step 320 | mode train | loss 13.5395 | caption generation loss 2.4334 | image selection loss 11.1062 | accuracy 6.25
+06-23-22 00:38:47 - epoch 0 | global step 352 | mode train | loss 13.5901 | caption generation loss 2.4586 | image selection loss 11.1315 | accuracy 5.2734
+06-23-22 00:39:00 - epoch 0 | global step 384 | mode train | loss 13.4795 | caption generation loss 2.3729 | image selection loss 11.1066 | accuracy 5.4688
+06-23-22 00:39:14 - epoch 0 | global step 416 | mode train | loss 13.507 | caption generation loss 2.4094 | image selection loss 11.0977 | accuracy 8.2031
+06-23-22 00:39:27 - epoch 0 | global step 448 | mode train | loss 13.5388 | caption generation loss 2.4284 | image selection loss 11.1105 | accuracy 6.4453
+06-23-22 00:39:41 - epoch 0 | global step 480 | mode train | loss 13.4772 | caption generation loss 2.3723 | image selection loss 11.1048 | accuracy 4.6875
+06-23-22 00:39:54 - epoch 0 | global step 512 | mode train | loss 13.437 | caption generation loss 2.3557 | image selection loss 11.0813 | accuracy 7.0312
+06-23-22 00:40:27 - epoch 0 | global step 512 | mode validation | loss 13.3705 | caption generation loss 2.2723 | image selection loss 11.0982 | accuracy 6.1302
+06-23-22 00:40:27 - Saving model to Output/en-de_pipeline/captions
+Epoch: 0, Prediction Accuracy: 6.1302, Saved to Path: Output/en-de_pipeline/captions
+06-23-22 00:41:32 - epoch 0 | global step 544 | mode train | loss 13.4394 | caption generation loss 2.3427 | image selection loss 11.0968 | accuracy 5.6641
+06-23-22 00:41:45 - epoch 0 | global step 576 | mode train | loss 13.4678 | caption generation loss 2.3713 | image selection loss 11.0965 | accuracy 5.2734
+06-23-22 00:41:58 - epoch 0 | global step 608 | mode train | loss 13.3704 | caption generation loss 2.2693 | image selection loss 11.1011 | accuracy 7.6172
+06-23-22 00:42:12 - epoch 0 | global step 640 | mode train | loss 13.4479 | caption generation loss 2.3623 | image selection loss 11.0857 | accuracy 6.6406
+06-23-22 00:42:25 - epoch 0 | global step 672 | mode train | loss 13.4012 | caption generation loss 2.2859 | image selection loss 11.1154 | accuracy 6.4453
+06-23-22 00:42:39 - epoch 0 | global step 704 | mode train | loss 13.3761 | caption generation loss 2.2825 | image selection loss 11.0936 | accuracy 6.0547
+06-23-22 00:42:52 - epoch 0 | global step 736 | mode train | loss 14.1877 | caption generation loss 3.0761 | image selection loss 11.1116 | accuracy 6.8359
+06-23-22 00:43:05 - epoch 0 | global step 768 | mode train | loss 17.8811 | caption generation loss 6.7978 | image selection loss 11.0832 | accuracy 6.25
+06-23-22 00:43:19 - epoch 0 | global step 800 | mode train | loss 17.2989 | caption generation loss 6.1841 | image selection loss 11.1148 | accuracy 5.0781
+06-23-22 00:43:32 - epoch 0 | global step 832 | mode train | loss 16.9994 | caption generation loss 5.9195 | image selection loss 11.0799 | accuracy 6.4453
+06-23-22 00:43:45 - epoch 0 | global step 864 | mode train | loss 16.7979 | caption generation loss 5.7189 | image selection loss 11.079 | accuracy 6.0547
+06-23-22 00:43:59 - epoch 0 | global step 896 | mode train | loss 16.6624 | caption generation loss 5.5782 | image selection loss 11.0842 | accuracy 5.0781
+06-23-22 00:44:12 - epoch 0 | global step 928 | mode train | loss 16.6666 | caption generation loss 5.5949 | image selection loss 11.0717 | accuracy 6.6406
+06-23-22 00:44:26 - epoch 0 | global step 960 | mode train | loss 16.253 | caption generation loss 5.4607 | image selection loss 10.7922 | accuracy 9.375
+06-23-22 00:44:39 - epoch 0 | global step 992 | mode train | loss 15.3377 | caption generation loss 5.2933 | image selection loss 10.0443 | accuracy 12.6953
+06-23-22 00:44:52 - epoch 0 | global step 1024 | mode train | loss 13.7795 | caption generation loss 5.1958 | image selection loss 8.5837 | accuracy 25.5859
+06-23-22 00:45:25 - epoch 0 | global step 1024 | mode validation | loss 13.6104 | caption generation loss 5.1955 | image selection loss 8.4149 | accuracy 27.9553
+06-23-22 00:45:38 - epoch 0 | global step 1056 | mode train | loss 13.308 | caption generation loss 5.3119 | image selection loss 7.9961 | accuracy 32.0312
+06-23-22 00:45:52 - epoch 0 | global step 1088 | mode train | loss 12.3028 | caption generation loss 5.1929 | image selection loss 7.1099 | accuracy 38.0859
+06-23-22 00:46:05 - epoch 0 | global step 1120 | mode train | loss 11.6481 | caption generation loss 5.084 | image selection loss 6.5641 | accuracy 42.1875
+06-23-22 00:46:19 - epoch 0 | global step 1152 | mode train | loss 11.3635 | caption generation loss 4.9956 | image selection loss 6.3679 | accuracy 44.5312
+06-23-22 00:46:32 - epoch 0 | global step 1184 | mode train | loss 10.6657 | caption generation loss 4.9824 | image selection loss 5.6833 | accuracy 48.8281
+06-23-22 00:46:45 - epoch 0 | global step 1216 | mode train | loss 10.1011 | caption generation loss 4.8811 | image selection loss 5.22 | accuracy 53.3203
+06-23-22 00:46:59 - epoch 0 | global step 1248 | mode train | loss 9.9138 | caption generation loss 4.8548 | image selection loss 5.0589 | accuracy 56.0547
+06-23-22 00:47:12 - epoch 0 | global step 1280 | mode train | loss 9.5879 | caption generation loss 4.7982 | image selection loss 4.7897 | accuracy 59.5703
+06-23-22 00:47:26 - epoch 0 | global step 1312 | mode train | loss 9.2216 | caption generation loss 4.7495 | image selection loss 4.4721 | accuracy 59.9609
+06-23-22 00:47:39 - epoch 0 | global step 1344 | mode train | loss 9.4405 | caption generation loss 4.7272 | image selection loss 4.7133 | accuracy 58.0078
+06-23-22 00:47:53 - epoch 0 | global step 1376 | mode train | loss 9.08 | caption generation loss 4.6949 | image selection loss 4.385 | accuracy 61.9141
+06-23-22 00:48:06 - epoch 0 | global step 1408 | mode train | loss 8.6194 | caption generation loss 4.6402 | image selection loss 3.9792 | accuracy 66.2109
+06-23-22 00:48:20 - epoch 0 | global step 1440 | mode train | loss 8.8824 | caption generation loss 4.5968 | image selection loss 4.2856 | accuracy 61.9141
+06-23-22 00:48:33 - epoch 0 | global step 1472 | mode train | loss 8.0069 | caption generation loss 4.2373 | image selection loss 3.7696 | accuracy 67.3828
+06-23-22 00:48:46 - epoch 0 | global step 1504 | mode train | loss 7.5377 | caption generation loss 3.5712 | image selection loss 3.9666 | accuracy 65.0391
+06-23-22 00:49:00 - epoch 0 | global step 1536 | mode train | loss 6.6028 | caption generation loss 2.8494 | image selection loss 3.7534 | accuracy 65.0391
+06-23-22 00:49:33 - epoch 0 | global step 1536 | mode validation | loss 6.2854 | caption generation loss 2.4392 | image selection loss 3.8461 | accuracy 66.8331
+06-23-22 00:49:33 - Saving model to Output/en-de_pipeline/captions
+Epoch: 0, Prediction Accuracy: 66.8331, Saved to Path: Output/en-de_pipeline/captions
+06-23-22 00:50:39 - epoch 0 | global step 1568 | mode train | loss 6.0482 | caption generation loss 2.4541 | image selection loss 3.5942 | accuracy 69.5312
+06-23-22 00:50:52 - epoch 0 | global step 1600 | mode train | loss 5.7777 | caption generation loss 2.3741 | image selection loss 3.4036 | accuracy 73.0469
+06-23-22 00:51:05 - epoch 0 | global step 1632 | mode train | loss 6.1148 | caption generation loss 2.3614 | image selection loss 3.7534 | accuracy 67.9688
+06-23-22 00:51:19 - epoch 0 | global step 1664 | mode train | loss 6.0957 | caption generation loss 2.3245 | image selection loss 3.7712 | accuracy 67.5781
+06-23-22 00:51:32 - epoch 0 | global step 1696 | mode train | loss 6.0845 | caption generation loss 2.3457 | image selection loss 3.7388 | accuracy 66.2109
+06-23-22 00:51:46 - epoch 0 | global step 1728 | mode train | loss 5.5227 | caption generation loss 2.2723 | image selection loss 3.2505 | accuracy 72.8516
+06-23-22 00:51:59 - epoch 0 | global step 1760 | mode train | loss 5.5948 | caption generation loss 2.3101 | image selection loss 3.2848 | accuracy 72.4609
+06-23-22 00:52:12 - epoch 0 | global step 1792 | mode train | loss 5.5018 | caption generation loss 2.2626 | image selection loss 3.2393 | accuracy 71.875
+06-23-22 00:52:26 - epoch 0 | global step 1824 | mode train | loss 5.2612 | caption generation loss 2.2073 | image selection loss 3.0539 | accuracy 72.6562
+06-23-22 00:52:39 - epoch 0 | global step 1856 | mode train | loss 5.4971 | caption generation loss 2.3648 | image selection loss 3.1323 | accuracy 74.0234
+06-23-22 00:52:53 - epoch 0 | global step 1888 | mode train | loss 5.3535 | caption generation loss 2.24 | image selection loss 3.1135 | accuracy 73.6328
+06-23-22 00:53:06 - epoch 0 | global step 1920 | mode train | loss 5.684 | caption generation loss 2.2836 | image selection loss 3.4004 | accuracy 69.5312
+06-23-22 00:53:19 - epoch 0 | global step 1952 | mode train | loss 5.4304 | caption generation loss 2.2441 | image selection loss 3.1862 | accuracy 72.0703
+06-23-22 00:53:33 - epoch 0 | global step 1984 | mode train | loss 5.281 | caption generation loss 2.2329 | image selection loss 3.0481 | accuracy 73.2422
+06-23-22 00:53:46 - epoch 0 | global step 2016 | mode train | loss 5.3681 | caption generation loss 2.2103 | image selection loss 3.1578 | accuracy 74.6094
+06-23-22 00:54:00 - epoch 0 | global step 2048 | mode train | loss 5.0721 | caption generation loss 2.1679 | image selection loss 2.9042 | accuracy 75.1953
+06-23-22 00:54:32 - epoch 0 | global step 2048 | mode validation | loss 5.436 | caption generation loss 2.1607 | image selection loss 3.2752 | accuracy 71.6254
+06-23-22 00:54:32 - Saving model to Output/en-de_pipeline/captions
+Epoch: 0, Prediction Accuracy: 71.6254, Saved to Path: Output/en-de_pipeline/captions
+06-23-22 00:55:29 - Evaluate the following checkpoint: Output/en-de_pipeline/captions/model.pt
+06-23-22 00:56:23 - Best model stats: 
+06-23-22 00:56:23 - epoch 0 | global step 0 | mode validation | loss 5.4475 | caption generation loss 2.1607 | image selection loss 3.2868 | accuracy 71.4657
+06-23-22 00:56:35 - Dataset Loaded
+06-23-22 00:56:35 - Configuration:
+Namespace(config='Configs/en-de_ec.yml', seed_override=None, lm_lambda_override=None, drift_lambda_override=None, adapter_freeze_override=False, model_name='Output/en-de_pipeline/captions', load_entire_agent=True, image_dim=2048, reshaper_type='learned', two_ffwd=False, unit_norm=False, dropout=0.0, share_reshaper=True, recurrent_image_unroll=True, image_unroll_length=32, recurrent_hidden_aggregation=False, freeze_adapters=False, beam_width=1, temperature=1.0, hard=True, repetition_penalty=1.2, generate_from_logits=False, max_seq_length=32, TransferH=False, seed=1, mode='emergent_communication', language_model_lambda=0.125, language_model_path='Output/mbart_lm_lr6e-6', weight_drift_lambda=0.0, do_train=True, do_eval=False, n_gpu=1, num_games=30, max_global_step=2048, lr=6e-06, schedule='linear_w_warmup', num_warmup_steps=0, batch_size=12, gradient_accumulation_steps=1, grad_clip=1.0, valid_every=256, max_eval_batches=32, print_every=32, target_acc=85.0, stats_to_print=['loss', 'accuracy', 'lm loss', 'drift loss', 'communication loss', 'mean_length'], num_distractors_train=15, num_distractors_valid=15, train_images='./Data/ec_finetuning/images_train', valid_images='./Data/ec_finetuning/images_val', save_pretrain_seperately=True, output_dir='Output/en-de_pipeline/ec', save_output_txt=True, has_vocab_constraint=True, vocab_constraint_threshold=0.95, source_lang='en_XX', source_lang_vocab_constrain_file='./Data/cc/en_cc_tokenID2count_dict.cc25.json', target_lang='de_DE', target_lang_vocab_constrain_file='./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json', csv_headers=['mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length', 'communication loss', 'lm loss'], device=device(type='cuda'))
+Sharing reshaping adapter for each agent
+06-23-22 00:59:26 - epoch 0 | global step 32 | mode train | loss 1.918 | communication loss 1.4269 | accuracy 48.4375 | mean_length 16.1302 | lm loss 0.4911
+06-23-22 01:01:27 - epoch 0 | global step 64 | mode train | loss 1.5448 | communication loss 1.1497 | accuracy 60.9375 | mean_length 19.7005 | lm loss 0.3951
+06-23-22 01:03:34 - epoch 0 | global step 96 | mode train | loss 1.4507 | communication loss 1.0868 | accuracy 60.4167 | mean_length 21.6849 | lm loss 0.3639
+06-23-22 01:05:40 - epoch 0 | global step 128 | mode train | loss 1.3162 | communication loss 0.9752 | accuracy 64.5833 | mean_length 22.4557 | lm loss 0.341
+06-23-22 01:07:46 - epoch 0 | global step 160 | mode train | loss 1.2556 | communication loss 0.9315 | accuracy 66.4062 | mean_length 22.9297 | lm loss 0.324
+06-23-22 01:09:53 - epoch 0 | global step 192 | mode train | loss 1.1781 | communication loss 0.8774 | accuracy 66.6667 | mean_length 23.3932 | lm loss 0.3007
+06-23-22 01:11:58 - epoch 0 | global step 224 | mode train | loss 1.2028 | communication loss 0.9098 | accuracy 65.3646 | mean_length 23.0469 | lm loss 0.293
+06-23-22 01:14:05 - epoch 0 | global step 256 | mode train | loss 1.135 | communication loss 0.8571 | accuracy 67.7083 | mean_length 23.5234 | lm loss 0.2779
+06-23-22 01:14:54 - epoch 0 | global step 256 | mode validation | loss 1.089 | communication loss 0.8498 | accuracy 69.0104 | mean_length 24.224 | lm loss 0.2392
+06-23-22 01:14:54 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 69.0104, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 01:17:53 - epoch 0 | global step 288 | mode train | loss 1.1298 | communication loss 0.8591 | accuracy 68.2292 | mean_length 24.2318 | lm loss 0.2706
+06-23-22 01:20:01 - epoch 0 | global step 320 | mode train | loss 1.0585 | communication loss 0.7922 | accuracy 70.8333 | mean_length 24.1406 | lm loss 0.2663
+06-23-22 01:22:10 - epoch 0 | global step 352 | mode train | loss 0.9988 | communication loss 0.7433 | accuracy 71.3542 | mean_length 24.776 | lm loss 0.2555
+06-23-22 01:24:25 - epoch 0 | global step 384 | mode train | loss 1.0751 | communication loss 0.8294 | accuracy 68.4896 | mean_length 24.1667 | lm loss 0.2457
+06-23-22 01:26:34 - epoch 0 | global step 416 | mode train | loss 0.9047 | communication loss 0.6637 | accuracy 76.8229 | mean_length 24.9115 | lm loss 0.2411
+06-23-22 01:28:45 - epoch 0 | global step 448 | mode train | loss 1.0079 | communication loss 0.7641 | accuracy 70.0521 | mean_length 25.2344 | lm loss 0.2438
+06-23-22 01:31:00 - epoch 0 | global step 480 | mode train | loss 0.998 | communication loss 0.7634 | accuracy 74.2188 | mean_length 23.9948 | lm loss 0.2345
+06-23-22 01:33:16 - epoch 0 | global step 512 | mode train | loss 0.9437 | communication loss 0.711 | accuracy 75.5208 | mean_length 23.7839 | lm loss 0.2326
+06-23-22 01:34:12 - epoch 0 | global step 512 | mode validation | loss 0.8994 | communication loss 0.6947 | accuracy 74.7396 | mean_length 23.4948 | lm loss 0.2047
+06-23-22 01:34:12 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 74.7396, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 01:37:20 - epoch 0 | global step 544 | mode train | loss 0.9321 | communication loss 0.7025 | accuracy 72.3958 | mean_length 24.4688 | lm loss 0.2296
+06-23-22 01:39:34 - epoch 0 | global step 576 | mode train | loss 0.9235 | communication loss 0.7001 | accuracy 76.3021 | mean_length 24.7188 | lm loss 0.2234
+06-23-22 01:41:49 - epoch 0 | global step 608 | mode train | loss 0.8913 | communication loss 0.67 | accuracy 74.4792 | mean_length 26.0182 | lm loss 0.2214
+06-23-22 01:44:02 - epoch 0 | global step 640 | mode train | loss 0.9699 | communication loss 0.7495 | accuracy 72.1354 | mean_length 24.8125 | lm loss 0.2204
+06-23-22 01:46:17 - epoch 0 | global step 672 | mode train | loss 0.9899 | communication loss 0.7735 | accuracy 71.875 | mean_length 25.7734 | lm loss 0.2164
+06-23-22 01:48:32 - epoch 0 | global step 704 | mode train | loss 0.8114 | communication loss 0.5887 | accuracy 78.6458 | mean_length 25.8177 | lm loss 0.2227
+06-23-22 01:50:43 - epoch 0 | global step 736 | mode train | loss 0.8745 | communication loss 0.6532 | accuracy 76.8229 | mean_length 22.6667 | lm loss 0.2213
+06-23-22 01:52:56 - epoch 0 | global step 768 | mode train | loss 0.9068 | communication loss 0.6873 | accuracy 74.7396 | mean_length 24.763 | lm loss 0.2196
+06-23-22 01:53:51 - epoch 0 | global step 768 | mode validation | loss 0.8095 | communication loss 0.628 | accuracy 77.3438 | mean_length 25.7917 | lm loss 0.1816
+06-23-22 01:53:51 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 77.3438, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 01:56:57 - epoch 0 | global step 800 | mode train | loss 0.9437 | communication loss 0.7285 | accuracy 70.8333 | mean_length 25.1823 | lm loss 0.2153
+06-23-22 01:59:11 - epoch 0 | global step 832 | mode train | loss 0.9447 | communication loss 0.7354 | accuracy 72.6562 | mean_length 26.2266 | lm loss 0.2093
+06-23-22 02:01:25 - epoch 0 | global step 864 | mode train | loss 0.8862 | communication loss 0.6717 | accuracy 74.2188 | mean_length 25.1823 | lm loss 0.2145
+06-23-22 02:03:40 - epoch 0 | global step 896 | mode train | loss 0.881 | communication loss 0.6725 | accuracy 74.2188 | mean_length 25.6849 | lm loss 0.2085
+06-23-22 02:05:55 - epoch 0 | global step 928 | mode train | loss 0.8302 | communication loss 0.6249 | accuracy 75.0 | mean_length 24.7109 | lm loss 0.2053
+06-23-22 02:08:10 - epoch 0 | global step 960 | mode train | loss 0.7994 | communication loss 0.5954 | accuracy 78.6458 | mean_length 25.5573 | lm loss 0.204
+06-23-22 02:10:25 - epoch 0 | global step 992 | mode train | loss 0.9089 | communication loss 0.7014 | accuracy 74.2188 | mean_length 25.5651 | lm loss 0.2075
+06-23-22 02:12:37 - epoch 0 | global step 1024 | mode train | loss 0.8048 | communication loss 0.5929 | accuracy 79.1667 | mean_length 25.8151 | lm loss 0.2119
+06-23-22 02:13:31 - epoch 0 | global step 1024 | mode validation | loss 0.7164 | communication loss 0.544 | accuracy 81.5104 | mean_length 26.7448 | lm loss 0.1724
+06-23-22 02:13:32 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 81.5104, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 02:16:40 - epoch 0 | global step 1056 | mode train | loss 0.7829 | communication loss 0.578 | accuracy 79.9479 | mean_length 25.8047 | lm loss 0.2049
+06-23-22 02:18:54 - epoch 0 | global step 1088 | mode train | loss 0.7925 | communication loss 0.5899 | accuracy 77.6042 | mean_length 25.0208 | lm loss 0.2025
+06-23-22 02:21:07 - epoch 0 | global step 1120 | mode train | loss 0.7735 | communication loss 0.5742 | accuracy 79.9479 | mean_length 24.8359 | lm loss 0.1992
+06-23-22 02:23:22 - epoch 0 | global step 1152 | mode train | loss 0.8558 | communication loss 0.6508 | accuracy 73.9583 | mean_length 26.2943 | lm loss 0.205
+06-23-22 02:25:37 - epoch 0 | global step 1184 | mode train | loss 0.7488 | communication loss 0.5432 | accuracy 80.9896 | mean_length 26.7135 | lm loss 0.2056
+06-23-22 02:27:50 - epoch 0 | global step 1216 | mode train | loss 0.8206 | communication loss 0.6218 | accuracy 76.3021 | mean_length 24.5964 | lm loss 0.1988
+06-23-22 02:30:03 - epoch 0 | global step 1248 | mode train | loss 0.8388 | communication loss 0.6356 | accuracy 77.3438 | mean_length 24.6849 | lm loss 0.2032
+06-23-22 02:32:16 - epoch 0 | global step 1280 | mode train | loss 0.7854 | communication loss 0.5822 | accuracy 77.8646 | mean_length 23.9401 | lm loss 0.2032
+06-23-22 02:33:10 - epoch 0 | global step 1280 | mode validation | loss 0.7948 | communication loss 0.6299 | accuracy 76.3021 | mean_length 23.6406 | lm loss 0.1648
+06-23-22 02:35:23 - epoch 0 | global step 1312 | mode train | loss 0.7719 | communication loss 0.5756 | accuracy 77.8646 | mean_length 24.6042 | lm loss 0.1963
+06-23-22 02:37:37 - epoch 0 | global step 1344 | mode train | loss 0.8734 | communication loss 0.6713 | accuracy 72.6562 | mean_length 24.5911 | lm loss 0.2021
+06-23-22 02:39:50 - epoch 0 | global step 1376 | mode train | loss 0.8559 | communication loss 0.6545 | accuracy 76.5625 | mean_length 24.6615 | lm loss 0.2014
+06-23-22 02:42:03 - epoch 0 | global step 1408 | mode train | loss 0.7788 | communication loss 0.5759 | accuracy 79.1667 | mean_length 24.888 | lm loss 0.2029
+06-23-22 02:44:18 - epoch 0 | global step 1440 | mode train | loss 0.7382 | communication loss 0.542 | accuracy 80.4688 | mean_length 26.0964 | lm loss 0.1962
+06-23-22 02:46:33 - epoch 0 | global step 1472 | mode train | loss 0.7509 | communication loss 0.5544 | accuracy 81.5104 | mean_length 26.151 | lm loss 0.1966
+06-23-22 02:48:46 - epoch 0 | global step 1504 | mode train | loss 0.7687 | communication loss 0.5692 | accuracy 78.3854 | mean_length 24.7188 | lm loss 0.1995
+06-23-22 02:51:00 - epoch 0 | global step 1536 | mode train | loss 0.7608 | communication loss 0.5652 | accuracy 79.4271 | mean_length 25.5521 | lm loss 0.1956
+06-23-22 02:51:55 - epoch 0 | global step 1536 | mode validation | loss 0.6831 | communication loss 0.5181 | accuracy 80.7292 | mean_length 25.8672 | lm loss 0.1651
+06-23-22 02:51:55 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 80.7292, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 02:55:02 - epoch 0 | global step 1568 | mode train | loss 0.7602 | communication loss 0.5628 | accuracy 76.8229 | mean_length 25.6589 | lm loss 0.1974
+06-23-22 02:57:16 - epoch 0 | global step 1600 | mode train | loss 0.7212 | communication loss 0.526 | accuracy 81.5104 | mean_length 25.0208 | lm loss 0.1952
+06-23-22 02:59:29 - epoch 0 | global step 1632 | mode train | loss 0.7336 | communication loss 0.5421 | accuracy 80.2083 | mean_length 25.0677 | lm loss 0.1915
+06-23-22 03:01:43 - epoch 0 | global step 1664 | mode train | loss 0.7462 | communication loss 0.5491 | accuracy 79.4271 | mean_length 25.1224 | lm loss 0.1971
+06-23-22 03:03:58 - epoch 0 | global step 1696 | mode train | loss 0.7895 | communication loss 0.595 | accuracy 76.3021 | mean_length 26.2292 | lm loss 0.1945
+06-23-22 03:06:14 - epoch 0 | global step 1728 | mode train | loss 0.7283 | communication loss 0.5401 | accuracy 79.6875 | mean_length 26.6016 | lm loss 0.1882
+06-23-22 03:08:29 - epoch 0 | global step 1760 | mode train | loss 0.7483 | communication loss 0.5547 | accuracy 80.2083 | mean_length 26.3438 | lm loss 0.1936
+06-23-22 03:10:43 - epoch 0 | global step 1792 | mode train | loss 0.8266 | communication loss 0.6333 | accuracy 75.5208 | mean_length 25.3724 | lm loss 0.1933
+06-23-22 03:11:39 - epoch 0 | global step 1792 | mode validation | loss 0.6192 | communication loss 0.4596 | accuracy 81.5104 | mean_length 26.3151 | lm loss 0.1596
+06-23-22 03:11:39 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 81.5104, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 03:14:46 - epoch 0 | global step 1824 | mode train | loss 0.7154 | communication loss 0.5248 | accuracy 80.7292 | mean_length 26.6354 | lm loss 0.1906
+06-23-22 03:17:01 - epoch 0 | global step 1856 | mode train | loss 0.7175 | communication loss 0.5264 | accuracy 79.6875 | mean_length 26.375 | lm loss 0.1911
+06-23-22 03:19:15 - epoch 0 | global step 1888 | mode train | loss 0.8157 | communication loss 0.6244 | accuracy 77.6042 | mean_length 25.8672 | lm loss 0.1914
+06-23-22 03:21:30 - epoch 0 | global step 1920 | mode train | loss 0.7191 | communication loss 0.5269 | accuracy 81.7708 | mean_length 25.7839 | lm loss 0.1922
+06-23-22 03:23:45 - epoch 0 | global step 1952 | mode train | loss 0.72 | communication loss 0.5279 | accuracy 80.9896 | mean_length 25.5469 | lm loss 0.1921
+06-23-22 03:26:00 - epoch 0 | global step 1984 | mode train | loss 0.7508 | communication loss 0.5586 | accuracy 80.7292 | mean_length 25.3151 | lm loss 0.1923
+06-23-22 03:28:16 - epoch 0 | global step 2016 | mode train | loss 0.7437 | communication loss 0.5516 | accuracy 81.5104 | mean_length 24.9896 | lm loss 0.1921
+06-23-22 03:30:31 - epoch 0 | global step 2048 | mode train | loss 0.749 | communication loss 0.557 | accuracy 79.4271 | mean_length 25.5208 | lm loss 0.192
+06-23-22 03:31:26 - epoch 0 | global step 2048 | mode validation | loss 0.6171 | communication loss 0.4573 | accuracy 83.3333 | mean_length 25.901 | lm loss 0.1598
+06-23-22 03:31:26 - Saving model to Output/en-de_pipeline/ec
+Epoch: 0, Prediction Accuracy: 83.3333, Saved to Path: Output/en-de_pipeline/ec
+06-23-22 03:33:14 - Source language code: en_XX, target language code: de_DE
+06-23-22 03:33:43 - Source language code: de_DE, target language code: en_XX
+en to de score: ; de to en score: 
+06-23-22 03:33:49 - Configuration:
+Namespace(backtranslated_dir='Output/', config='Configs/en-de_bt_secondary.yml', seed_override=2, print_translation=False, num_printed_translation=3, model_path='Output/en-de_pipeline/ec', num_steps=6144, lr=2e-05, grad_clip=1.0, num_warmup_steps=512, schedule='constant_w_warmup', batch_size=32, seed=2, n_gpu=1, print_every=32, do_initial_eval=False, do_crossent_eval=False, eval_every=128, crossent_patience=8, do_translate_eval=True, translate_every=256, validation_set_size=4096, eval_batch_size=64, num_beams=5, val_metric_name='bleu', num_constrained_steps=0, vocab_constraint_threshold=0.99, secondary_threshold=0.99, early_stop_start_time=2048, val_dataset_script='BackTranslation/wmt19/wmt19.py', lang_pair='de-en', models_shared=True, output_dir='Output/en-de_pipeline', data_dir='./Data/cc', output_data_filename='bt_en+de.csv', lang1_data_file='en_500k.txt', lang1_id='en', lang1_max_len=64, lang1_vocab_constrain_file='./Data/cc/en_cc_tokenID2count_dict.cc25.json', lang2_data_file='de_500k.txt', lang2_id='de', lang2_max_len=64, lang2_vocab_constrain_file='./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json', device=device(type='cuda'))
+06-23-22 03:33:52 - Total valid en tokens: 17069
+06-23-22 03:33:52 - Total valid de tokens: 17212
+06-23-22 03:33:53 - Total secondary en tokens: 17069
+06-23-22 03:33:53 - Total secondary de tokens: 17212
+06-23-22 03:34:12 - Source language code: en_XX, target language code: de_DE
+06-23-22 03:38:54 - step 32 | mode train | lr 1.25e-06 | loss 6.3328
+06-23-22 03:43:33 - step 64 | mode train | lr 2.5e-06 | loss 3.8303
+06-23-22 03:48:07 - step 96 | mode train | lr 3.75e-06 | loss 2.7058
+06-23-22 03:52:39 - step 128 | mode train | lr 5e-06 | loss 1.8945
+06-23-22 03:57:06 - step 160 | mode train | lr 6.25e-06 | loss 1.3263
+06-23-22 04:01:34 - step 192 | mode train | lr 7.5e-06 | loss 1.2226
+06-23-22 04:05:59 - step 224 | mode train | lr 8.75e-06 | loss 1.2555
+06-23-22 04:10:22 - step 256 | mode train | lr 1e-05 | loss 1.2016
+06-23-22 04:19:03 - step 256 | mode validation | de bleu 22.6443 | en bleu 25.851 | mean bleu 24.2476
+06-23-22 04:19:03 - New best mean bleu 24.2476 at step 256, saving
+06-23-22 04:23:54 - step 288 | mode train | lr 1.125e-05 | loss 1.2376
+06-23-22 04:28:20 - step 320 | mode train | lr 1.25e-05 | loss 1.2262
+06-23-22 04:32:46 - step 352 | mode train | lr 1.375e-05 | loss 1.224
+06-23-22 04:37:11 - step 384 | mode train | lr 1.5e-05 | loss 1.3267
+06-23-22 04:41:38 - step 416 | mode train | lr 1.625e-05 | loss 1.2475
+06-23-22 04:46:06 - step 448 | mode train | lr 1.75e-05 | loss 1.1494
+06-23-22 04:50:33 - step 480 | mode train | lr 1.875e-05 | loss 1.1379
+06-23-22 04:55:00 - step 512 | mode train | lr 2e-05 | loss 1.1617
+06-23-22 05:03:38 - step 512 | mode validation | de bleu 23.6777 | en bleu 26.8181 | mean bleu 25.2479
+06-23-22 05:03:38 - New best mean bleu 25.2479 at step 512, saving
+06-23-22 05:08:30 - step 544 | mode train | lr 2e-05 | loss 1.1599
+06-23-22 05:12:59 - step 576 | mode train | lr 2e-05 | loss 1.1317
+06-23-22 05:17:27 - step 608 | mode train | lr 2e-05 | loss 1.1373
+06-23-22 05:21:55 - step 640 | mode train | lr 2e-05 | loss 1.1773
+06-23-22 05:26:22 - step 672 | mode train | lr 2e-05 | loss 1.1271
+06-23-22 05:30:52 - step 704 | mode train | lr 2e-05 | loss 1.1219
+06-23-22 05:35:22 - step 736 | mode train | lr 2e-05 | loss 1.0777
+06-23-22 05:39:50 - step 768 | mode train | lr 2e-05 | loss 1.0655
+06-23-22 05:48:26 - step 768 | mode validation | de bleu 23.8383 | en bleu 27.6775 | mean bleu 25.7579
+06-23-22 05:48:26 - New best mean bleu 25.7579 at step 768, saving
+06-23-22 05:53:22 - step 800 | mode train | lr 2e-05 | loss 1.075
+06-23-22 05:57:51 - step 832 | mode train | lr 2e-05 | loss 1.0423
+06-23-22 06:02:22 - step 864 | mode train | lr 2e-05 | loss 1.0113
+06-23-22 06:06:52 - step 896 | mode train | lr 2e-05 | loss 1.0284
+06-23-22 06:11:21 - step 928 | mode train | lr 2e-05 | loss 1.0173
+06-23-22 06:15:52 - step 960 | mode train | lr 2e-05 | loss 1.0766
+06-23-22 06:20:23 - step 992 | mode train | lr 2e-05 | loss 1.0008
+06-23-22 06:24:55 - step 1024 | mode train | lr 2e-05 | loss 0.9707
+06-23-22 06:33:32 - step 1024 | mode validation | de bleu 24.4343 | en bleu 28.5325 | mean bleu 26.4834
+06-23-22 06:33:32 - New best mean bleu 26.4834 at step 1024, saving
+06-23-22 06:38:29 - step 1056 | mode train | lr 2e-05 | loss 0.9426
+06-23-22 06:43:00 - step 1088 | mode train | lr 2e-05 | loss 0.9414
+06-23-22 06:47:32 - step 1120 | mode train | lr 2e-05 | loss 0.9222
+06-23-22 06:52:04 - step 1152 | mode train | lr 2e-05 | loss 0.9599
+06-23-22 06:56:37 - step 1184 | mode train | lr 2e-05 | loss 0.7841
+06-23-22 07:01:13 - step 1216 | mode train | lr 2e-05 | loss 0.7364
+06-23-22 07:05:47 - step 1248 | mode train | lr 2e-05 | loss 0.7265
+06-23-22 07:10:22 - step 1280 | mode train | lr 2e-05 | loss 0.6835
+06-23-22 07:18:55 - step 1280 | mode validation | de bleu 24.7526 | en bleu 28.7779 | mean bleu 26.7652
+06-23-22 07:18:55 - New best mean bleu 26.7652 at step 1280, saving
+06-23-22 07:23:57 - step 1312 | mode train | lr 2e-05 | loss 0.7262
+06-23-22 07:28:32 - step 1344 | mode train | lr 2e-05 | loss 0.7046
+06-23-22 07:33:07 - step 1376 | mode train | lr 2e-05 | loss 0.6997
+06-23-22 07:37:41 - step 1408 | mode train | lr 2e-05 | loss 0.6874
+06-23-22 07:42:15 - step 1440 | mode train | lr 2e-05 | loss 0.7096
+06-23-22 07:46:50 - step 1472 | mode train | lr 2e-05 | loss 0.6968
+06-23-22 07:51:24 - step 1504 | mode train | lr 2e-05 | loss 0.6953
+06-23-22 07:55:59 - step 1536 | mode train | lr 2e-05 | loss 0.7109
+06-23-22 08:04:31 - step 1536 | mode validation | de bleu 25.7132 | en bleu 29.0567 | mean bleu 27.385
+06-23-22 08:04:31 - New best mean bleu 27.385 at step 1536, saving
+06-23-22 08:09:32 - step 1568 | mode train | lr 2e-05 | loss 0.6982
+06-23-22 08:14:06 - step 1600 | mode train | lr 2e-05 | loss 0.6883
+06-23-22 08:18:40 - step 1632 | mode train | lr 2e-05 | loss 0.7054
+06-23-22 08:23:15 - step 1664 | mode train | lr 2e-05 | loss 0.699
+06-23-22 08:27:49 - step 1696 | mode train | lr 2e-05 | loss 0.6887
+06-23-22 08:32:23 - step 1728 | mode train | lr 2e-05 | loss 0.6628
+06-23-22 08:36:56 - step 1760 | mode train | lr 2e-05 | loss 0.6811
+06-23-22 08:41:30 - step 1792 | mode train | lr 2e-05 | loss 0.6802
+06-23-22 08:50:03 - step 1792 | mode validation | de bleu 25.4528 | en bleu 29.2874 | mean bleu 27.3701
+06-23-22 08:54:37 - step 1824 | mode train | lr 2e-05 | loss 0.6866
+06-23-22 08:59:11 - step 1856 | mode train | lr 2e-05 | loss 0.6737
+06-23-22 09:03:45 - step 1888 | mode train | lr 2e-05 | loss 0.6699
+06-23-22 09:08:19 - step 1920 | mode train | lr 2e-05 | loss 0.6874
+06-23-22 09:12:53 - step 1952 | mode train | lr 2e-05 | loss 0.6923
+06-23-22 09:17:28 - step 1984 | mode train | lr 2e-05 | loss 0.7294
+06-23-22 09:22:04 - step 2016 | mode train | lr 2e-05 | loss 0.7363
+06-23-22 09:26:39 - step 2048 | mode train | lr 2e-05 | loss 0.766
+06-23-22 09:35:13 - step 2048 | mode validation | de bleu 25.9801 | en bleu 29.2645 | mean bleu 27.6223
+06-23-22 09:35:13 - New best mean bleu 27.6223 at step 2048, saving
+06-23-22 09:40:14 - step 2080 | mode train | lr 2e-05 | loss 0.7019
+06-23-22 09:44:48 - step 2112 | mode train | lr 2e-05 | loss 0.6779
+06-23-22 09:49:23 - step 2144 | mode train | lr 2e-05 | loss 0.6698
+06-23-22 09:53:58 - step 2176 | mode train | lr 2e-05 | loss 0.6802
+06-23-22 09:58:32 - step 2208 | mode train | lr 2e-05 | loss 0.6648
+06-23-22 10:03:07 - step 2240 | mode train | lr 2e-05 | loss 0.689
+06-23-22 10:07:41 - step 2272 | mode train | lr 2e-05 | loss 0.7026
+06-23-22 10:12:15 - step 2304 | mode train | lr 2e-05 | loss 0.6913
+06-23-22 10:20:44 - step 2304 | mode validation | de bleu 25.7303 | en bleu 29.7113 | mean bleu 27.7208
+06-23-22 10:20:44 - New best mean bleu 27.7208 at step 2304, saving
+06-23-22 10:25:45 - step 2336 | mode train | lr 2e-05 | loss 0.6856
+06-23-22 10:30:18 - step 2368 | mode train | lr 2e-05 | loss 0.6803
+06-23-22 10:34:52 - step 2400 | mode train | lr 2e-05 | loss 0.6705
+06-23-22 10:39:26 - step 2432 | mode train | lr 2e-05 | loss 0.6906
+06-23-22 10:44:00 - step 2464 | mode train | lr 2e-05 | loss 0.6997
+06-23-22 10:48:35 - step 2496 | mode train | lr 2e-05 | loss 0.7068
+06-23-22 10:53:15 - step 2528 | mode train | lr 2e-05 | loss 0.6766
+06-23-22 10:57:50 - step 2560 | mode train | lr 2e-05 | loss 0.7076
+06-23-22 11:06:22 - step 2560 | mode validation | de bleu 26.0756 | en bleu 29.3882 | mean bleu 27.7319
+06-23-22 11:06:22 - New best mean bleu 27.7319 at step 2560, saving
+06-23-22 11:11:23 - step 2592 | mode train | lr 2e-05 | loss 0.7178
+06-23-22 11:15:56 - step 2624 | mode train | lr 2e-05 | loss 0.6687
+06-23-22 11:20:30 - step 2656 | mode train | lr 2e-05 | loss 0.7077
+06-23-22 11:25:04 - step 2688 | mode train | lr 2e-05 | loss 0.7069
+06-23-22 11:29:38 - step 2720 | mode train | lr 2e-05 | loss 0.7496
+06-23-22 11:34:11 - step 2752 | mode train | lr 2e-05 | loss 0.7107
+06-23-22 11:38:44 - step 2784 | mode train | lr 2e-05 | loss 0.7199
+06-23-22 11:43:17 - step 2816 | mode train | lr 2e-05 | loss 0.7039
+06-23-22 11:51:44 - step 2816 | mode validation | de bleu 27.0021 | en bleu 30.091 | mean bleu 28.5465
+06-23-22 11:51:44 - New best mean bleu 28.5465 at step 2816, saving
+06-23-22 11:56:43 - step 2848 | mode train | lr 2e-05 | loss 0.6926
+06-23-22 12:01:16 - step 2880 | mode train | lr 2e-05 | loss 0.6741
+06-23-22 12:05:49 - step 2912 | mode train | lr 2e-05 | loss 0.6827
+06-23-22 12:10:23 - step 2944 | mode train | lr 2e-05 | loss 0.684
+06-23-22 12:14:56 - step 2976 | mode train | lr 2e-05 | loss 0.6262
+06-23-22 12:19:29 - step 3008 | mode train | lr 2e-05 | loss 0.6563
+06-23-22 12:24:03 - step 3040 | mode train | lr 2e-05 | loss 0.6632
+06-23-22 12:28:37 - step 3072 | mode train | lr 2e-05 | loss 0.7032
+06-23-22 12:37:08 - step 3072 | mode validation | de bleu 26.2505 | en bleu 29.5886 | mean bleu 27.9195
+06-23-22 12:41:41 - step 3104 | mode train | lr 2e-05 | loss 0.7284
+06-23-22 12:46:18 - step 3136 | mode train | lr 2e-05 | loss 0.6573
+06-23-22 12:50:51 - step 3168 | mode train | lr 2e-05 | loss 0.6709
+06-23-22 12:55:25 - step 3200 | mode train | lr 2e-05 | loss 0.6929
+06-23-22 12:59:59 - step 3232 | mode train | lr 2e-05 | loss 0.6898
+06-23-22 13:04:32 - step 3264 | mode train | lr 2e-05 | loss 0.6919
+06-23-22 13:09:06 - step 3296 | mode train | lr 2e-05 | loss 0.7173
+06-23-22 13:13:43 - step 3328 | mode train | lr 2e-05 | loss 0.7024
+06-23-22 13:22:13 - step 3328 | mode validation | de bleu 26.4586 | en bleu 29.7772 | mean bleu 28.1179
+06-23-22 13:26:47 - step 3360 | mode train | lr 2e-05 | loss 0.6683
+06-23-22 13:31:23 - step 3392 | mode train | lr 2e-05 | loss 0.6759
+06-23-22 13:35:57 - step 3424 | mode train | lr 2e-05 | loss 0.6879
+06-23-22 13:40:33 - step 3456 | mode train | lr 2e-05 | loss 0.6786
+06-23-22 13:45:07 - step 3488 | mode train | lr 2e-05 | loss 0.6726
+06-23-22 13:49:42 - step 3520 | mode train | lr 2e-05 | loss 0.6626
+06-23-22 13:54:17 - step 3552 | mode train | lr 2e-05 | loss 0.6426
+06-23-22 13:58:51 - step 3584 | mode train | lr 2e-05 | loss 0.6499
+06-23-22 14:07:22 - step 3584 | mode validation | de bleu 27.4561 | en bleu 30.5908 | mean bleu 29.0235
+06-23-22 14:07:22 - New best mean bleu 29.0235 at step 3584, saving
+06-23-22 14:12:21 - step 3616 | mode train | lr 2e-05 | loss 0.6301
+06-23-22 14:16:55 - step 3648 | mode train | lr 2e-05 | loss 0.6283
+06-23-22 14:21:29 - step 3680 | mode train | lr 2e-05 | loss 0.6604
+06-23-22 14:26:03 - step 3712 | mode train | lr 2e-05 | loss 0.6503
+06-23-22 14:30:39 - step 3744 | mode train | lr 2e-05 | loss 0.6602
+06-23-22 14:35:16 - step 3776 | mode train | lr 2e-05 | loss 0.6245
+06-23-22 14:39:52 - step 3808 | mode train | lr 2e-05 | loss 0.6463
+06-23-22 14:44:26 - step 3840 | mode train | lr 2e-05 | loss 0.6292
+06-23-22 14:52:58 - step 3840 | mode validation | de bleu 26.9482 | en bleu 30.8732 | mean bleu 28.9107
+06-23-22 14:57:32 - step 3872 | mode train | lr 2e-05 | loss 0.6634
+06-23-22 15:02:08 - step 3904 | mode train | lr 2e-05 | loss 0.6277
+06-23-22 15:06:43 - step 3936 | mode train | lr 2e-05 | loss 0.6642
+06-23-22 15:11:20 - step 3968 | mode train | lr 2e-05 | loss 0.653
+06-23-22 15:15:54 - step 4000 | mode train | lr 2e-05 | loss 0.6573
+06-23-22 15:20:29 - step 4032 | mode train | lr 2e-05 | loss 0.6313
+06-23-22 15:25:04 - step 4064 | mode train | lr 2e-05 | loss 0.6498
+06-23-22 15:29:41 - step 4096 | mode train | lr 2e-05 | loss 0.6762
+06-23-22 15:38:11 - step 4096 | mode validation | de bleu 26.9376 | en bleu 31.1818 | mean bleu 29.0597
+06-23-22 15:38:11 - New best mean bleu 29.0597 at step 4096, saving
+06-23-22 15:43:12 - step 4128 | mode train | lr 2e-05 | loss 0.6625
+06-23-22 15:47:47 - step 4160 | mode train | lr 2e-05 | loss 0.6378
+06-23-22 15:52:22 - step 4192 | mode train | lr 2e-05 | loss 0.6505
+06-23-22 15:56:56 - step 4224 | mode train | lr 2e-05 | loss 0.621
+06-23-22 16:01:31 - step 4256 | mode train | lr 2e-05 | loss 0.6585
+06-23-22 16:06:06 - step 4288 | mode train | lr 2e-05 | loss 0.6389
+06-23-22 16:10:41 - step 4320 | mode train | lr 2e-05 | loss 0.6263
+06-23-22 16:15:16 - step 4352 | mode train | lr 2e-05 | loss 0.6063
+06-23-22 16:23:50 - step 4352 | mode validation | de bleu 28.0878 | en bleu 30.8605 | mean bleu 29.4741
+06-23-22 16:23:50 - New best mean bleu 29.4741 at step 4352, saving
+06-23-22 16:28:51 - step 4384 | mode train | lr 2e-05 | loss 0.6343
+06-23-22 16:33:26 - step 4416 | mode train | lr 2e-05 | loss 0.6258
+06-23-22 16:38:01 - step 4448 | mode train | lr 2e-05 | loss 0.6295
+06-23-22 16:42:36 - step 4480 | mode train | lr 2e-05 | loss 0.6107
+06-23-22 16:47:11 - step 4512 | mode train | lr 2e-05 | loss 0.606
+06-23-22 16:51:46 - step 4544 | mode train | lr 2e-05 | loss 0.6089
+06-23-22 16:56:22 - step 4576 | mode train | lr 2e-05 | loss 0.5982
+06-23-22 17:00:59 - step 4608 | mode train | lr 2e-05 | loss 0.6059
+06-23-22 17:09:28 - step 4608 | mode validation | de bleu 28.6472 | en bleu 31.2535 | mean bleu 29.9503
+06-23-22 17:09:28 - New best mean bleu 29.9503 at step 4608, saving
+06-23-22 17:14:29 - step 4640 | mode train | lr 2e-05 | loss 0.5877
+06-23-22 17:19:03 - step 4672 | mode train | lr 2e-05 | loss 0.5842
+06-23-22 17:23:38 - step 4704 | mode train | lr 2e-05 | loss 0.6085
+06-23-22 17:28:12 - step 4736 | mode train | lr 2e-05 | loss 0.6036
+06-23-22 17:32:46 - step 4768 | mode train | lr 2e-05 | loss 0.6089
+06-23-22 17:37:20 - step 4800 | mode train | lr 2e-05 | loss 0.5768
+06-23-22 17:41:54 - step 4832 | mode train | lr 2e-05 | loss 0.5986
+06-23-22 17:46:43 - step 4864 | mode train | lr 2e-05 | loss 0.587
+06-23-22 17:55:45 - step 4864 | mode validation | de bleu 28.793 | en bleu 31.5573 | mean bleu 30.1752
+06-23-22 17:55:45 - New best mean bleu 30.1752 at step 4864, saving
+06-23-22 18:00:48 - step 4896 | mode train | lr 2e-05 | loss 0.6
+06-23-22 18:05:23 - step 4928 | mode train | lr 2e-05 | loss 0.5954
+06-23-22 18:09:55 - step 4960 | mode train | lr 2e-05 | loss 0.5757
+06-23-22 18:14:29 - step 4992 | mode train | lr 2e-05 | loss 0.588
+06-23-22 18:19:03 - step 5024 | mode train | lr 2e-05 | loss 0.5948
+06-23-22 18:23:36 - step 5056 | mode train | lr 2e-05 | loss 0.6017
+06-23-22 18:28:09 - step 5088 | mode train | lr 2e-05 | loss 0.5777
+06-23-22 18:32:42 - step 5120 | mode train | lr 2e-05 | loss 0.5611
+06-23-22 18:41:11 - step 5120 | mode validation | de bleu 28.6167 | en bleu 31.4705 | mean bleu 30.0436
+06-23-22 18:45:44 - step 5152 | mode train | lr 2e-05 | loss 0.5634
+06-23-22 18:50:18 - step 5184 | mode train | lr 2e-05 | loss 0.574
+06-23-22 18:54:52 - step 5216 | mode train | lr 2e-05 | loss 0.5683
+06-23-22 18:59:26 - step 5248 | mode train | lr 2e-05 | loss 0.5515
+06-23-22 19:03:59 - step 5280 | mode train | lr 2e-05 | loss 0.5737
+06-23-22 19:08:33 - step 5312 | mode train | lr 2e-05 | loss 0.5676
+06-23-22 19:13:06 - step 5344 | mode train | lr 2e-05 | loss 0.5633
+06-23-22 19:17:40 - step 5376 | mode train | lr 2e-05 | loss 0.577
+06-23-22 19:26:10 - step 5376 | mode validation | de bleu 29.6265 | en bleu 31.7665 | mean bleu 30.6965
+06-23-22 19:26:10 - New best mean bleu 30.6965 at step 5376, saving
+06-23-22 19:31:09 - step 5408 | mode train | lr 2e-05 | loss 0.57
+06-23-22 19:35:43 - step 5440 | mode train | lr 2e-05 | loss 0.5407
+06-23-22 19:40:24 - step 5472 | mode train | lr 2e-05 | loss 0.5737
+06-23-22 19:44:58 - step 5504 | mode train | lr 2e-05 | loss 0.5829
+06-23-22 19:49:32 - step 5536 | mode train | lr 2e-05 | loss 0.5636
+06-23-22 19:54:05 - step 5568 | mode train | lr 2e-05 | loss 0.5529
+06-23-22 19:58:39 - step 5600 | mode train | lr 2e-05 | loss 0.5532
+06-23-22 20:03:12 - step 5632 | mode train | lr 2e-05 | loss 0.5826
+06-23-22 20:11:43 - step 5632 | mode validation | de bleu 29.5206 | en bleu 32.1085 | mean bleu 30.8145
+06-23-22 20:11:43 - New best mean bleu 30.8145 at step 5632, saving
+06-23-22 20:16:45 - step 5664 | mode train | lr 2e-05 | loss 0.56
+06-23-22 20:21:18 - step 5696 | mode train | lr 2e-05 | loss 0.5509
+06-23-22 20:25:52 - step 5728 | mode train | lr 2e-05 | loss 0.5663
+06-23-22 20:30:26 - step 5760 | mode train | lr 2e-05 | loss 0.5597
+06-23-22 20:34:59 - step 5792 | mode train | lr 2e-05 | loss 0.5551
+06-23-22 20:39:33 - step 5824 | mode train | lr 2e-05 | loss 0.5504
+06-23-22 20:44:07 - step 5856 | mode train | lr 2e-05 | loss 0.5487
+06-23-22 20:48:41 - step 5888 | mode train | lr 2e-05 | loss 0.5508
+06-23-22 20:57:09 - step 5888 | mode validation | de bleu 29.4631 | en bleu 32.0265 | mean bleu 30.7448
+06-23-22 21:01:42 - step 5920 | mode train | lr 2e-05 | loss 0.5426
+06-23-22 21:06:16 - step 5952 | mode train | lr 2e-05 | loss 0.5571
+06-23-22 21:10:50 - step 5984 | mode train | lr 2e-05 | loss 0.5688
+06-23-22 21:15:25 - step 6016 | mode train | lr 2e-05 | loss 0.5421
+06-23-22 21:19:59 - step 6048 | mode train | lr 2e-05 | loss 0.5201
+06-23-22 21:24:33 - step 6080 | mode train | lr 2e-05 | loss 0.5406
+06-23-22 21:29:08 - step 6112 | mode train | lr 2e-05 | loss 0.5495
+06-23-22 21:33:42 - step 6144 | mode train | lr 2e-05 | loss 0.5386
+06-23-22 21:42:13 - step 6144 | mode validation | de bleu 29.9158 | en bleu 31.9723 | mean bleu 30.9441
+06-23-22 21:42:13 - New best mean bleu 30.9441 at step 6144, saving
+06-23-22 21:43:07 - training complete; final model state saved

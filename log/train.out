@@ -1,0 +1,42 @@
+06-21-22 19:00:43 - Dataset Loaded
+06-21-22 19:00:43 - Configuration:
+Namespace(config='Configs/en-zh_pilot_ec.yml', seed_override=None, lm_lambda_override=None, drift_lambda_override=None, adapter_freeze_override=False, model_name='Output/en-zh_pilot_2/best_loss', load_entire_agent=True, image_dim=2048, reshaper_type='learned', two_ffwd=False, unit_norm=False, dropout=0.1, share_reshaper=True, recurrent_image_unroll=True, image_unroll_length=32, recurrent_hidden_aggregation=False, freeze_adapters=False, beam_width=1, temperature=1.0, hard=True, repetition_penalty=1.2, generate_from_logits=False, max_seq_length=32, TransferH=False, seed=1, mode='emergent_communication', language_model_lambda=0.125, language_model_path='Output/mbart_lm_lr6e-6', weight_drift_lambda=0.0, do_train=True, do_eval=False, n_gpu=1, num_games=30, max_global_step=1024, lr=4e-06, schedule='linear_w_warmup', num_warmup_steps=0, batch_size=12, gradient_accumulation_steps=1, grad_clip=0.5, valid_every=512, print_every=32, target_acc=85.0, stats_to_print=['loss', 'accuracy', 'lm loss', 'drift loss', 'communication loss', 'mean_length'], num_distractors_train=15, num_distractors_valid=15, train_images='./Data/ec_finetuning/images_train', valid_images='./Data/ec_finetuning/images_val', save_pretrain_seperately=True, output_dir='Output/en-zh_pilot_2/best_loss', save_output_txt=True, has_vocab_constraint=True, vocab_constraint_threshold=0.95, source_lang='en_XX', source_lang_vocab_constrain_file='./Data/cc/en_cc_tokenID2count_dict.cc25.json', target_lang='zh_CN', target_lang_vocab_constrain_file='./Data/cc/zh_cc_tokenID2count_dict.cc25.json', csv_headers=['mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length', 'communication loss', 'lm loss'], device=device(type='cuda'))
+Sharing reshaping adapter for each agent
+06-21-22 19:04:16 - epoch 0 | global step 32 | mode train | loss 0.9499 | communication loss 0.722 | accuracy 74.2188 | mean_length 26.1667 | lm loss 0.2279
+06-21-22 19:06:29 - epoch 0 | global step 64 | mode train | loss 0.8907 | communication loss 0.6691 | accuracy 74.7396 | mean_length 27.3932 | lm loss 0.2216
+06-21-22 19:08:41 - epoch 0 | global step 96 | mode train | loss 0.8769 | communication loss 0.664 | accuracy 73.9583 | mean_length 27.9219 | lm loss 0.213
+06-21-22 19:10:57 - epoch 0 | global step 128 | mode train | loss 0.8966 | communication loss 0.6773 | accuracy 77.3438 | mean_length 27.8125 | lm loss 0.2192
+06-21-22 19:13:15 - epoch 0 | global step 160 | mode train | loss 0.8458 | communication loss 0.6324 | accuracy 80.2083 | mean_length 28.4766 | lm loss 0.2134
+06-21-22 19:15:29 - epoch 0 | global step 192 | mode train | loss 0.771 | communication loss 0.5597 | accuracy 78.6458 | mean_length 27.5417 | lm loss 0.2114
+06-21-22 19:17:45 - epoch 0 | global step 224 | mode train | loss 0.8635 | communication loss 0.6581 | accuracy 76.0417 | mean_length 26.9167 | lm loss 0.2053
+06-21-22 19:20:04 - epoch 0 | global step 256 | mode train | loss 0.8366 | communication loss 0.6368 | accuracy 76.0417 | mean_length 28.1901 | lm loss 0.1998
+06-21-22 19:22:19 - epoch 0 | global step 288 | mode train | loss 0.767 | communication loss 0.5688 | accuracy 80.2083 | mean_length 28.099 | lm loss 0.1982
+06-21-22 19:24:37 - epoch 0 | global step 320 | mode train | loss 0.7378 | communication loss 0.5386 | accuracy 81.25 | mean_length 29.4661 | lm loss 0.1991
+06-21-22 19:26:53 - epoch 0 | global step 352 | mode train | loss 0.7522 | communication loss 0.555 | accuracy 80.2083 | mean_length 28.6302 | lm loss 0.1972
+06-21-22 19:29:11 - epoch 0 | global step 384 | mode train | loss 0.8283 | communication loss 0.6341 | accuracy 78.3854 | mean_length 28.8958 | lm loss 0.1942
+06-21-22 19:31:29 - epoch 0 | global step 416 | mode train | loss 0.7426 | communication loss 0.5425 | accuracy 79.9479 | mean_length 28.6771 | lm loss 0.2001
+06-21-22 19:33:47 - epoch 0 | global step 448 | mode train | loss 0.7429 | communication loss 0.5414 | accuracy 80.9896 | mean_length 28.9635 | lm loss 0.2016
+06-21-22 19:36:04 - epoch 0 | global step 480 | mode train | loss 0.7694 | communication loss 0.5683 | accuracy 79.1667 | mean_length 28.3906 | lm loss 0.2011
+06-21-22 19:38:17 - epoch 0 | global step 512 | mode train | loss 0.6959 | communication loss 0.4984 | accuracy 83.0729 | mean_length 28.375 | lm loss 0.1975
+06-21-22 19:50:03 - epoch 0 | global step 512 | mode validation | loss 0.6735 | communication loss 0.5095 | accuracy 83.2734 | mean_length 27.7527 | lm loss 0.164
+06-21-22 19:50:03 - Saving model to Output/en-zh_pilot_2/best_loss
+Epoch: 0, Prediction Accuracy: 83.2734, Saved to Path: Output/en-zh_pilot_2/best_loss
+06-21-22 19:53:10 - epoch 0 | global step 544 | mode train | loss 0.7402 | communication loss 0.5469 | accuracy 80.9896 | mean_length 27.6146 | lm loss 0.1933
+06-21-22 19:55:21 - epoch 0 | global step 576 | mode train | loss 0.7029 | communication loss 0.5121 | accuracy 83.3333 | mean_length 28.2865 | lm loss 0.1907
+06-21-22 19:57:38 - epoch 0 | global step 608 | mode train | loss 0.76 | communication loss 0.5638 | accuracy 79.9479 | mean_length 28.3099 | lm loss 0.1962
+06-21-22 19:59:52 - epoch 0 | global step 640 | mode train | loss 0.7441 | communication loss 0.5498 | accuracy 78.6458 | mean_length 27.8984 | lm loss 0.1943
+06-21-22 20:02:06 - epoch 0 | global step 672 | mode train | loss 0.7381 | communication loss 0.546 | accuracy 79.1667 | mean_length 27.3125 | lm loss 0.1921
+06-21-22 20:04:18 - epoch 0 | global step 704 | mode train | loss 0.7633 | communication loss 0.569 | accuracy 79.6875 | mean_length 27.2344 | lm loss 0.1942
+06-21-22 20:06:34 - epoch 0 | global step 736 | mode train | loss 0.7325 | communication loss 0.5409 | accuracy 81.5104 | mean_length 27.0208 | lm loss 0.1916
+06-21-22 20:08:52 - epoch 0 | global step 768 | mode train | loss 0.8281 | communication loss 0.6386 | accuracy 75.7812 | mean_length 27.1797 | lm loss 0.1895
+06-21-22 20:11:14 - epoch 0 | global step 800 | mode train | loss 0.7014 | communication loss 0.5085 | accuracy 82.2917 | mean_length 26.9688 | lm loss 0.1929
+06-21-22 20:13:32 - epoch 0 | global step 832 | mode train | loss 0.747 | communication loss 0.555 | accuracy 79.9479 | mean_length 26.6719 | lm loss 0.192
+06-21-22 20:15:48 - epoch 0 | global step 864 | mode train | loss 0.7514 | communication loss 0.5577 | accuracy 79.6875 | mean_length 26.862 | lm loss 0.1936
+06-21-22 20:18:04 - epoch 0 | global step 896 | mode train | loss 0.6687 | communication loss 0.4776 | accuracy 82.0312 | mean_length 27.3411 | lm loss 0.1911
+06-21-22 20:20:22 - epoch 0 | global step 928 | mode train | loss 0.7275 | communication loss 0.5328 | accuracy 81.25 | mean_length 26.5052 | lm loss 0.1947
+06-21-22 20:22:43 - epoch 0 | global step 960 | mode train | loss 0.7013 | communication loss 0.5113 | accuracy 83.3333 | mean_length 27.0547 | lm loss 0.19
+06-21-22 20:25:05 - epoch 0 | global step 992 | mode train | loss 0.7592 | communication loss 0.5672 | accuracy 79.4271 | mean_length 27.7708 | lm loss 0.192
+06-21-22 20:27:25 - epoch 0 | global step 1024 | mode train | loss 0.6631 | communication loss 0.4716 | accuracy 83.3333 | mean_length 27.1562 | lm loss 0.1915
+06-21-22 20:40:08 - epoch 0 | global step 1024 | mode validation | loss 0.6519 | communication loss 0.4912 | accuracy 83.4033 | mean_length 26.6687 | lm loss 0.1607
+06-21-22 20:40:08 - Saving model to Output/en-zh_pilot_2/best_loss
+Epoch: 0, Prediction Accuracy: 83.4033, Saved to Path: Output/en-zh_pilot_2/best_loss

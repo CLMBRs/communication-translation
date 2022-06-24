@@ -50,8 +50,8 @@ num_distractors_valid: 15
 # Loading and saving data:
 train_captions: ./Data/captioning/en_captions_train.jsonl
 valid_captions: ./Data/captioning/en_captions_val.jsonl
-train_images: ./Data/captioning/images_train.pt
-valid_images: ./Data/captioning/images_val.pt
+train_images: ./Data/captioning/images_train
+valid_images: ./Data/captioning/images_val
 save_pretrain_seperately: true
 output_dir: Output/en-de_pipeline/captions
 save_output_txt: true

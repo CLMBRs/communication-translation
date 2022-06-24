@@ -25,11 +25,13 @@ Data/cc/si.txt
 Data/cc/vi.txt
 Data/cc/zh-Hans.txt
 Data/cc/*.txt.xz
+Data/cc
 Data/captioning/
 Data/coco
 Data/ec_finetuning/
 slurm_logs/
 Output/**/pytorch_model.bin
+Output/**/*.bin
 Output/**/model.pt
 Output/**/sentencepiece.bpe.model
 
