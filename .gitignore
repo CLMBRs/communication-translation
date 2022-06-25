@@ -29,6 +29,8 @@ Data/cc
 Data/captioning/
 Data/coco
 Data/ec_finetuning/
+Data/beit_captioning/
+Data/beit_ec_finetuning
 slurm_logs/
 Output/**/pytorch_model.bin
 Output/**/*.bin
