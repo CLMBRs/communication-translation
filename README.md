@@ -57,6 +57,14 @@ ones)
 ## Data
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
 
+## Pipeline
+To obtain the latest results of this project, go to the `communication-translation` folder and 
+submit the job to condor using `condor_sbumit unmt_de.cmd`. Use `condor_sbumit unmt_de.cmd --interactive`
+if you want to debug the code.
+
+For other languages, the naming convention for the `executable` and `arguments` should be the same.
+
+
 ## Acknowledgements
 Part of the code is based on 
 [Translagent](https://github.com/facebookresearch/translagent). 
