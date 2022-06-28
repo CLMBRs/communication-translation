@@ -49,6 +49,8 @@ class MBartSender(Sender):
         self,
         model: MBartForConditionalGeneration,
         seq_len: int = None,
+        image_dim: int = 1024,
+        input_sequence: bool = False,
         recurrent_unroll: bool = False,
         unroll_length: int = 4,
         temperature: float = None,
@@ -79,6 +81,8 @@ class MBartSender(Sender):
         self.top.temp = temperature
         self.top.hard = hard
         self.seq_len = seq_len
+        self.image_dim = image_dim
+        self.input_sequence = input_sequence
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
@@ -87,6 +91,14 @@ class MBartSender(Sender):
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
+
+        # If the input is a sequence, simply project the image hidden space to
+        # the embedding space
+        if self.input_sequence:
+            # Make sure the unroll is disabled
+            self.recurrent_unroll = False
+            self.project = nn.Linear(self.image_dim, self.embedding_dim)
+
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -120,7 +132,10 @@ class MBartSender(Sender):
         # Ensure the batch is the correct shape
         # (batch_size, image_hidden_dim)
         batch_size = image_hidden.size(0)
-        assert len(image_hidden.shape) == 2
+        if self.input_sequence:
+            assert len(image_hidden.shape) == 3
+        else:
+            assert len(image_hidden.shape) == 2
         # (batch_size, 1, image_hidden_dim)
         image_hidden = image_hidden.unsqueeze(1)
 
@@ -137,6 +152,9 @@ class MBartSender(Sender):
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden
             image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
+
+        if self.input_sequence:
+            image_hidden = self.project(image_hidden)            
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:

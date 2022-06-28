@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from builtins import breakpoint
 from copy import deepcopy
 from functools import reduce
 from statistics import mean
@@ -44,6 +45,7 @@ class CommunicationAgent(Module):
 
         self.image_dim = args.image_dim
         self.hidden_dim = self.sender.embedding_dim
+        self.input_sequence = args.input_sequence
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
         self.padding_index = args.padding_index
@@ -126,6 +128,8 @@ class CommunicationAgent(Module):
 
         # Embed the Receiver's candidate images using the Reshaper
         # (batch_size, num_image_choices, hidden_dim)
+        if self.input_sequence:
+            receiver_images = torch.mean(receiver_images, dim=-2)
         receiver_image_embeddings = self.receiver_reshaper(receiver_images)
 
         # Encode the Sender's message to a hidden state to be used to select
@@ -494,6 +498,7 @@ class ImageCaptionGrounder(CommunicationAgent):
         if self.image_selection_lambda:
             image_selection_loss *= self.image_selection_lambda
         loss = caption_generation_loss + image_selection_loss
+        #loss = image_selection_loss
 
         return {
             "loss": loss,

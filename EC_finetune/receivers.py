@@ -126,7 +126,8 @@ class MBartReceiver(Receiver):
             # ).squeeze()
 
             # Use the initial CLS token as the sentence representation
-            output = hidden[:, 0, :]
+            #output = hidden[:, 0, :]
+            output = torch.mean(hidden, dim=1)
         return output
 
 

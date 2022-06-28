@@ -64,6 +64,9 @@ if you want to debug the code.
 
 For other languages, the naming convention for the `executable` and `arguments` should be the same.
 
+Note that you need to establish the enviroment to be the same as the dependencies and change the `source activate [env_name]` command to your own established environment. Also check the data path parameter in 
+each `.yml` file. This is somewhat messed, which might cause errors.
+
 
 ## Acknowledgements
 Part of the code is based on 
