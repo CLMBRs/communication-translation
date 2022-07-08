@@ -40,3 +40,5 @@ Output/**/model.pt
 Output/**/sentencepiece.bpe.model
 
 Models/
+
+temp/
