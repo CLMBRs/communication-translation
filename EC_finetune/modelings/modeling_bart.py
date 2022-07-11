@@ -341,7 +341,6 @@ class BartEncoder(nn.Module):
                 config.max_position_embeddings,
                 embed_dim,
                 self.padding_idx,
-                config.extra_pos_embeddings,
             )
         self.layers = nn.ModuleList(
             [EncoderLayer(config) for _ in range(config.encoder_layers)]
@@ -464,7 +463,6 @@ class BartGumbelEncoder(nn.Module):
                 config.max_position_embeddings,
                 embed_dim,
                 self.padding_idx,
-                config.extra_pos_embeddings,
             )
         self.layers = nn.ModuleList(
             [EncoderLayer(config) for _ in range(config.encoder_layers)]
@@ -666,7 +664,6 @@ class BartDecoder(nn.Module):
         super().__init__()
         self.dropout = config.dropout
         self.layerdrop = config.decoder_layerdrop
-        self.do_blenderbot_90_layernorm = config.do_blenderbot_90_layernorm  # layernorm variant
         self.padding_idx = embed_tokens.padding_idx
         self.max_target_positions = config.max_position_embeddings
         self.embed_scale = math.sqrt(
@@ -683,7 +680,6 @@ class BartDecoder(nn.Module):
                 config.max_position_embeddings,
                 config.d_model,
                 self.padding_idx,
-                config.extra_pos_embeddings,
             )
         self.layers = nn.ModuleList(
             [DecoderLayer(config) for _ in range(config.decoder_layers)]
@@ -745,12 +741,8 @@ class BartDecoder(nn.Module):
 
         x = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
         x = x * self.embed_scale
-        if self.do_blenderbot_90_layernorm:
-            x = self.layernorm_embedding(x)
-            x += positions
-        else:
-            x += positions
-            x = self.layernorm_embedding(x)
+        x += positions
+        x = self.layernorm_embedding(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
 
         # Convert to Bart output format: (BS, seq_len, model_dim) ->  (seq_len, BS, model_dim)
@@ -1006,13 +998,13 @@ class LearnedPositionalEmbedding(nn.Embedding):
     the forward function.
     """
     def __init__(
-        self, num_embeddings: int, embedding_dim: int, padding_idx: int, offset
+        self, num_embeddings: int, embedding_dim: int, padding_idx: int
     ):
         # Bart is set up so that if padding_idx is specified then offset the embedding ids by 2
         # and adjust num_embeddings appropriately. Other models dont have this hack
-        self.offset = offset
+        self.offset = 2
         assert padding_idx is not None
-        num_embeddings += offset
+        num_embeddings += self.offset
         super().__init__(num_embeddings, embedding_dim, padding_idx=padding_idx)
 
     def forward(self, input_ids, use_cache=False):
@@ -1071,7 +1063,7 @@ class BartModel(PretrainedBartModel):
 
     @add_start_docstrings_to_model_forward(BART_INPUTS_DOCSTRING)
     @add_code_sample_docstrings(
-        tokenizer_class=_TOKENIZER_FOR_DOC,
+        processor_class=_TOKENIZER_FOR_DOC,
         checkpoint="facebook/bart-large",
         output_type=Seq2SeqModelOutput,
         config_class=_CONFIG_FOR_DOC,
@@ -1376,7 +1368,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
         return decoder_input_ids
 
     def adjust_logits_during_generation(self, logits, cur_len, max_length):
-        if cur_len == 1 and self.config.force_bos_token_to_be_generated:
+        """
+        custom logits adjustment for BART, not force the bos token for now.
+        """
+        if cur_len == -1:
             self._force_token_id_to_be_generated(
                 logits, self.config.bos_token_id
             )
@@ -1824,7 +1819,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 break
 
         decoded = beam_scorer.finalize(
-            input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id
+            input_ids, beam_scores, next_tokens, next_indices, pad_token_id=pad_token_id, eos_token_id=eos_token_id, max_length=max_length
         )
         return decoded
 

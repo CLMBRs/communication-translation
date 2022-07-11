@@ -30,7 +30,7 @@ early_stop_start_time: 2048
 val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: de-en
 models_shared: true
-output_dir: Output/en-de_pipeline/bt_init
+output_dir: temp/Output/en-de_pipeline_debug/bt_init
 
 # data config
 # backtranslation language
