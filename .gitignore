@@ -33,6 +33,7 @@ Data/beit_captioning/
 Data/beit_ec_finetuning/
 Data/beit_ft_captioning/
 Data/beit_ft_ec_finetuning/
+Data/
 slurm_logs/
 Output/**/pytorch_model.bin
 Output/**/*.bin

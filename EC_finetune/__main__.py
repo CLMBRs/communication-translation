@@ -289,8 +289,9 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_lambda or args.weight_drift_lambda: 
-            args.csv_headers += ['communication loss']
+        # We should have communication loss either way
+        # if args.language_model_lambda or args.weight_drift_lambda: 
+        args.csv_headers += ['communication loss']
         if args.language_model_lambda:
             args.csv_headers += ['lm loss']
         if args.weight_drift_lambda:

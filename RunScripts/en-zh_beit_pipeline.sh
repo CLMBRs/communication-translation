@@ -4,17 +4,17 @@ source activate unmt_old
 OUTPUT_DIR=Output/en-zh_beit_pipeline
 BT_INIT_CONFIG=en-zh_bt_initial
 CAPTIONS_CONFIG=en-zh_beit_captions
-EC_CONFIG=en-zh_beit_ec
+EC_CONFIG=en-zh_beit_ec_debug
 BT_SECONDARY_CONFIG=en-zh_bt_secondary
 
 # # Do initial (short) backtranslation
 # python -u BackTranslation/backtranslate.py --config Configs/beit/${BT_INIT_CONFIG}.yml
 
 # Do caption training
-python -u -m EC_finetune --config Configs/beit/${CAPTIONS_CONFIG}.yml
+# python -u -m EC_finetune --config Configs/beit/${CAPTIONS_CONFIG}.yml
 
 # # Do EC
-# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
+python -u -m EC_finetune --config Configs/beit/${EC_CONFIG}.yml
 
 # cp ${OUTPUT_DIR}/bt_init/zh-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/zh-en.de.val ${OUTPUT_DIR}
