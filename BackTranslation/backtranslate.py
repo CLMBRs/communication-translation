@@ -155,7 +155,7 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
                 max_length=target_max_len
             )
             translation_str = tokenizer.batch_decode(
-                translated_ids, skip_special_tokens=True
+                translated_ids['sequences'], skip_special_tokens=True
             )
         translation_lines += [line for line in translation_str]
 
@@ -404,9 +404,8 @@ def main(args, backtranslation_pack):
                     )
 
             # turn the predicted subtokens into sentence in string
-            breakpoint()
             translation = tokenizer.batch_decode(
-                translated_tokens, skip_special_tokens=True
+                translated_tokens['sequences'], skip_special_tokens=True
             )
             if (step + 1) % args.print_every == 0 and args.print_translation:
                 translation_results[target_id] = list(

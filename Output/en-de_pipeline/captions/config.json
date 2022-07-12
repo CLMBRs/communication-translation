@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "Output/en-de_pipeline/bt_init/last",
+  "_name_or_path": "temp/Output/en-de_pipeline_debug/bt_init/last",
   "_num_labels": 3,
   "activation_dropout": 0.0,
   "activation_function": "gelu",
@@ -17,15 +17,13 @@
   "decoder_ffn_dim": 4096,
   "decoder_layerdrop": 0.0,
   "decoder_layers": 12,
-  "do_blenderbot_90_layernorm": false,
   "dropout": 0.1,
   "encoder_attention_heads": 16,
   "encoder_ffn_dim": 4096,
   "encoder_layerdrop": 0.0,
   "encoder_layers": 12,
   "eos_token_id": 2,
-  "extra_pos_embeddings": 2,
-  "force_bos_token_to_be_generated": false,
+  "forced_eos_token_id": 2,
   "id2label": {
     "0": "LABEL_0",
     "1": "LABEL_1",
@@ -54,6 +52,8 @@
       "decoder_start_token_id": 250020
     }
   },
+  "torch_dtype": "float32",
+  "transformers_version": "4.12.5",
   "use_cache": true,
   "vocab_size": 250027
 }

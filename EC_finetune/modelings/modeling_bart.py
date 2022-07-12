@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PyTorch BART model, ported from the fairseq repo."""
+from builtins import breakpoint
 import math
 import random
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
@@ -1398,6 +1399,33 @@ class BartForConditionalGeneration(PretrainedBartModel):
             }
             reordered_past.append(layer_past_new)
         return reordered_past
+    
+    # Functions from HF 4.0.1 generation_utils
+    @staticmethod
+    def _init_sequence_length_for_generation(
+        input_ids: torch.LongTensor, max_length: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, int]:
+        unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+        sequence_lengths = input_ids.new(input_ids.shape[0]).fill_(max_length)
+
+        cur_len = input_ids.shape[-1]
+        return sequence_lengths, unfinished_sequences, cur_len
+    
+    # Functions from HF 4.0.1 generation_utils
+    @staticmethod
+    def _update_seq_length_for_generation(
+        sequence_lengths: torch.LongTensor,
+        unfinished_sequences: torch.LongTensor,
+        cur_len: int,
+        is_eos_in_next_token: torch.BoolTensor,
+    ) -> Tuple[torch.LongTensor, torch.LongTensor]:
+        # check if sentence is not finished yet
+        is_sent_unfinished = unfinished_sequences.mul(is_eos_in_next_token.long()).bool()
+
+        # update sentence length
+        sequence_lengths = sequence_lengths.masked_fill(is_sent_unfinished, cur_len)
+        unfinished_sequences = unfinished_sequences.mul((~is_eos_in_next_token).long())
+        return sequence_lengths, unfinished_sequences
 
     def get_encoder(self):
         return self.model.encoder
@@ -1423,11 +1451,24 @@ class BartForConditionalGeneration(PretrainedBartModel):
         eos_token_id: Optional[int] = None,
         length_penalty: Optional[float] = None,
         no_repeat_ngram_size: Optional[int] = None,
+        encoder_no_repeat_ngram_size: Optional[int] = None,
         num_return_sequences: Optional[int] = None,
+        max_time: Optional[float] = None,
+        max_new_tokens: Optional[int] = None,
         decoder_start_token_id: Optional[int] = None,
         use_cache: Optional[bool] = None,
+        num_beam_groups: Optional[int] = None,
+        diversity_penalty: Optional[float] = None,
         prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor],
                                                     List[int]]] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        output_scores: Optional[bool] = None,
+        return_dict_in_generate: Optional[bool] = None,
+        forced_bos_token_id: Optional[int] = None,
+        forced_eos_token_id: Optional[int] = None,
+        remove_invalid_values: Optional[bool] = None,
+        synced_gpus: Optional[bool] = None,
         **model_kwargs
     ) -> torch.LongTensor:
         r"""
@@ -1500,6 +1541,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 conditioned on the previously generated tokens :obj:`inputs_ids` and the batch ID :obj:`batch_id`. This
                 argument is useful for constrained generation conditioned on the prefix, as described in
                 `Autoregressive Entity Retrieval <https://arxiv.org/abs/2010.00904>`__.
+            other newly added parameters: not relevant to this project, set to None by default.
             model_kwargs:
                 Additional model specific kwargs will be forwarded to the :obj:`forward` function of the model. If the
                 model is an Encoder-Decoder model, encoder specific kwargs should not be prefixed and decoder specific
@@ -1571,11 +1613,19 @@ class BartForConditionalGeneration(PretrainedBartModel):
         logits_processor = self._get_logits_processor(
             repetition_penalty=repetition_penalty,
             no_repeat_ngram_size=no_repeat_ngram_size,
+            encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size,
+            encoder_input_ids=input_ids,
             bad_words_ids=bad_words_ids,
             min_length=min_length,
+            max_length=max_length,
             eos_token_id=eos_token_id,
+            forced_bos_token_id=forced_bos_token_id,
+            forced_eos_token_id=forced_eos_token_id,
             prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
             num_beams=num_beams,
+            num_beam_groups=num_beam_groups,
+            diversity_penalty=diversity_penalty,
+            remove_invalid_values=remove_invalid_values,
         )
 
         if is_greedy_gen_mode:
@@ -1995,7 +2045,6 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
         generated_logits = torch.stack(generated_logits, dim=-2)
         generated_samples = torch.stack(generated_samples, dim=-2)
-
         ret = {
             "generated_token_ids": generated_token_ids,
             "generated_logits": generated_logits,

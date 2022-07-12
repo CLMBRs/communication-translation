@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-de_pipeline/bt_init/last
+model_name: temp/Output/en-de_pipeline_debug/bt_init/last
 load_entire_agent: false
 image_dim: 2048
 reshaper_type: learned

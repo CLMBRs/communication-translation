@@ -7,14 +7,14 @@ CAPTIONS_CONFIG=en-de_captions
 EC_CONFIG=en-de_ec
 BT_SECONDARY_CONFIG=en-de_bt_secondary
 
-# Do initial (short) backtranslation
-python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
+# # Do initial (short) backtranslation
+# python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
 
 # # Do caption training
 # python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
 
-# # Do EC
-# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
+# Do EC
+python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}

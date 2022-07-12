@@ -265,6 +265,10 @@ def main():
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
+    
+    # Adaption for newly added parameters
+    if not hasattr(args, "input_sequence"):
+        args.input_sequence = False
 
     # set random seed
     if args.seed_override:
