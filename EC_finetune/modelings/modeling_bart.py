@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PyTorch BART model, ported from the fairseq repo."""
+import warnings
 from builtins import breakpoint
 import math
 import random
@@ -23,6 +24,7 @@ import numpy as np
 
 import torch
 import torch.nn.functional as F
+import torch.distributed as dist
 from torch import Tensor, nn
 from torch.nn import CrossEntropyLoss
 
@@ -49,6 +51,13 @@ from transformers.generation_logits_process import (
     LogitsProcessorList,
 )
 from transformers.file_utils import ModelOutput
+
+from transformers.generation_stopping_criteria import (
+    MaxLengthCriteria,
+    MaxTimeCriteria,
+    StoppingCriteriaList,
+    validate_stopping_criteria,
+)
 
 logger = logging.get_logger(__name__)
 
@@ -1635,7 +1644,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 )
 
             # greedy search
-            return self.gumbel_greedy_search(
+            return self.gumbel_greedy_search_new(
                 input_ids,
                 logits_processor=logits_processor,
                 max_length=max_length,
@@ -1937,6 +1946,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
         ).float().clone().detach()
         generated_logits = generated_logits.to(generated_token_ids.device)
         generated_logits = [generated_logits]
+        breakpoint()
 
         # Initialize the sequence of sample distributions (i.e. the output of gumbel-softmax) with
         # the one-hot vector(s) for the starting tokens
@@ -2047,6 +2057,289 @@ class BartForConditionalGeneration(PretrainedBartModel):
         generated_samples = torch.stack(generated_samples, dim=-2)
         ret = {
             "generated_token_ids": generated_token_ids,
+            "generated_logits": generated_logits,
+            "generated_samples": generated_samples,
+            "generated_sentence_len": generated_sentence_len
+        }
+        return ret
+    
+    def gumbel_greedy_search_new(
+        self,
+        input_ids: torch.LongTensor,
+        logits_processor: Optional[LogitsProcessorList] = None,
+        stopping_criteria: Optional[StoppingCriteriaList] = None,
+        max_length: Optional[int] = None,
+        pad_token_id: Optional[int] = None,
+        eos_token_id: Optional[int] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        output_scores: Optional[bool] = None,
+        return_dict_in_generate: Optional[bool] = None,
+        synced_gpus: Optional[bool] = None,
+        **model_kwargs,
+    ):
+        r"""
+        Generates sequences for models with a language modeling head using greedy decoding.
+
+        Parameters:
+
+            input_ids (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`):
+                The sequence used as a prompt for the generation.
+            logits_processor (:obj:`LogitsProcessorList`, `optional`):
+                An instance of :class:`~transformers.LogitsProcessorList`. List of instances of class derived from
+                :class:`~transformers.LogitsProcessor` used to modify the prediction scores of the language modeling
+                head applied at each generation step.
+            stopping_criteria (:obj:`StoppingCriteriaList`, `optional`):
+                An instance of :class:`~transformers.StoppingCriteriaList`. List of instances of class derived from
+                :class:`~transformers.StoppingCriteria` used to tell if the generation loop should stop.
+
+            max_length (:obj:`int`, `optional`, defaults to 20):
+                **DEPRECATED**. Use :obj:`logits_processor` or :obj:`stopping_criteria` directly to cap the number of
+                generated tokens. The maximum length of the sequence to be generated.
+            pad_token_id (:obj:`int`, `optional`):
+                The id of the `padding` token.
+            eos_token_id (:obj:`int`, `optional`):
+                The id of the `end-of-sequence` token.
+            output_attentions (:obj:`bool`, `optional`, defaults to `False`):
+                Whether or not to return the attentions tensors of all attention layers. See ``attentions`` under
+                returned tensors for more details.
+            output_hidden_states (:obj:`bool`, `optional`, defaults to `False`):
+                Whether or not to return the hidden states of all layers. See ``hidden_states`` under returned tensors
+                for more details.
+            output_scores (:obj:`bool`, `optional`, defaults to `False`):
+                Whether or not to return the prediction scores. See ``scores`` under returned tensors for more details.
+            return_dict_in_generate (:obj:`bool`, `optional`, defaults to `False`):
+                Whether or not to return a :class:`~transformers.file_utils.ModelOutput` instead of a plain tuple.
+            synced_gpus (:obj:`bool`, `optional`, defaults to :obj:`False`):
+                Whether to continue running the while loop until max_length (needed for ZeRO stage 3)
+            model_kwargs:
+                Additional model specific keyword arguments will be forwarded to the :obj:`forward` function of the
+                model. If model is an encoder-decoder model the kwargs should include :obj:`encoder_outputs`.
+
+        Return:
+            :class:`~transformers.generation_utils.GreedySearchDecoderOnlyOutput`,
+            :class:`~transformers.generation_utils.GreedySearchEncoderDecoderOutput` or obj:`torch.LongTensor`: A
+            :obj:`torch.LongTensor` containing the generated tokens (default behaviour) or a
+            :class:`~transformers.generation_utils.GreedySearchDecoderOnlyOutput` if
+            ``model.config.is_encoder_decoder=False`` and ``return_dict_in_generate=True`` or a
+            :class:`~transformers.generation_utils.GreedySearchEncoderDecoderOutput` if
+            ``model.config.is_encoder_decoder=True``.
+
+        Examples::
+
+            >>> from transformers import (
+            ... AutoTokenizer,
+            ... AutoModelForCausalLM,
+            ... LogitsProcessorList,
+            ... MinLengthLogitsProcessor,
+            ... )
+
+            >>> tokenizer = AutoTokenizer.from_pretrained("gpt2")
+            >>> model = AutoModelForCausalLM.from_pretrained("gpt2")
+
+            >>> # set pad_token_id to eos_token_id because GPT2 does not have a EOS token
+            >>> model.config.pad_token_id = model.config.eos_token_id
+
+            >>> input_prompt = "Today is a beautiful day, and"
+            >>> input_ids = tokenizer(input_prompt, return_tensors="pt").input_ids
+
+            >>> # instantiate logits processors
+            >>> logits_processor = LogitsProcessorList([
+            ...     MinLengthLogitsProcessor(15, eos_token_id=model.config.eos_token_id),
+            ... ])
+
+            >>> outputs = model.greedy_search(input_ids, logits_processor=logits_processor)
+
+            >>> print("Generated:", tokenizer.batch_decode(outputs, skip_special_tokens=True))
+        """
+        # init values
+        generate_from_logits = ("generate_from_logits" in model_kwargs and model_kwargs["generate_from_logits"])
+        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
+        stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
+        if max_length is not None:
+            warnings.warn(
+                "`max_length` is deprecated in this function, use `stopping_criteria=StoppingCriteriaList(MaxLengthCriteria(max_length=max_length))` instead.",
+                UserWarning,
+            )
+            stopping_criteria = validate_stopping_criteria(stopping_criteria, max_length)
+        pad_token_id = pad_token_id if pad_token_id is not None else self.config.pad_token_id
+        eos_token_id = eos_token_id if eos_token_id is not None else self.config.eos_token_id
+        output_scores = output_scores if output_scores is not None else self.config.output_scores
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict_in_generate = (
+            return_dict_in_generate if return_dict_in_generate is not None else self.config.return_dict_in_generate
+        )
+
+        # init attention / hidden states / scores tuples
+        scores = () if (return_dict_in_generate and output_scores) else None
+        decoder_attentions = () if (return_dict_in_generate and output_attentions) else None
+        cross_attentions = () if (return_dict_in_generate and output_attentions) else None
+        decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
+
+        # if model is an encoder-decoder, retrieve encoder attention weights and hidden states
+        if return_dict_in_generate and self.config.is_encoder_decoder:
+            encoder_attentions = model_kwargs["encoder_outputs"].get("attentions") if output_attentions else None
+            encoder_hidden_states = (
+                model_kwargs["encoder_outputs"].get("hidden_states") if output_hidden_states else None
+            )
+
+        # keep track of which sequences are already finished
+        unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+        cur_len = input_ids.shape[-1]
+
+        # gumbel init
+        # Get the embedding for the padding token
+        pad_token_embed = self.model.shared(
+            torch.tensor(pad_token_id, device=input_ids.device)
+        )
+
+        # Get the one-hot vector for the padding token
+        pad_token_onehot = (torch.arange(0, self.embed_tokens_size) == pad_token_id).float().clone().detach()
+        pad_token_onehot = pad_token_onehot.to(input_ids.device)
+
+        # Initialize the sequence of logits with the one-hot vector(s) for the starting tokens
+        generated_logits = (
+            torch.arange(0, self.embed_tokens_size, device=input_ids.device).unsqueeze(0)
+            == input_ids
+        ).float().clone().detach()
+        generated_logits = generated_logits.to(input_ids.device)
+        generated_logits = [generated_logits]
+
+        # Initialize the sequence of sample distributions (i.e. the output of gumbel-softmax) with
+        # the one-hot vector(s) for the starting tokens
+        generated_samples = (
+            torch.arange(0, self.embed_tokens_size, device=input_ids.device).unsqueeze(0) 
+            == input_ids
+        ).float().clone().detach()
+        generated_samples = generated_samples.to(input_ids.device)
+        generated_samples = [generated_samples]
+
+        # If iteratively generating from the logits of the previous timestep, also keep track of the
+        # generated embedding sequence (logits * embedding matrix)
+        if generate_from_logits:
+            generated_embeds = torch.matmul(
+                generated_logits, self.model.shared.weight
+            )
+
+        this_peer_finished = False  # used by synced_gpus only
+        while True:
+
+            if synced_gpus:
+                # Under synced_gpus the `forward` call must continue until all gpus complete their sequence.
+                # The following logic allows an early break if all peers finished generating their sequence
+                this_peer_finished_flag = torch.tensor(0.0 if this_peer_finished else 1.0).to(input_ids.device)
+                # send 0.0 if we finished, 1.0 otherwise
+                dist.all_reduce(this_peer_finished_flag, op=dist.ReduceOp.SUM)
+                # did all peers finish? the reduced sum will be 0.0 then
+                if this_peer_finished_flag.item() == 0.0:
+                    break
+
+            # prepare model inputs
+            if generate_from_logits:
+                model_inputs = self.prepare_inputs_for_generation(
+                    input_ids, decoder_input_embeds=generated_embeds, **model_kwargs
+                )
+            else:
+                model_inputs = self.prepare_inputs_for_generation(
+                    input_ids, **model_kwargs
+                )
+
+            # forward pass to get next token
+            outputs = self(
+                **model_inputs,
+                return_dict=True,
+                output_attentions=output_attentions,
+                output_hidden_states=output_hidden_states,
+            )
+
+            if synced_gpus and this_peer_finished:
+                cur_len = cur_len + 1
+                continue  # don't waste resources running the code we don't need
+
+            next_token_logits = outputs.logits[:, -1, :]
+            if "lang_mask" in model_kwargs:
+                # here, the place we don't want have value of -inf
+                next_token_logits = next_token_logits + model_kwargs["lang_mask"]
+
+            # Store scores, attentions and hidden_states when required
+            if return_dict_in_generate:
+                if output_scores:
+                    scores += (next_token_logits,)
+                if output_attentions:
+                    decoder_attentions += (
+                        (outputs.decoder_attentions,) if self.config.is_encoder_decoder else (outputs.attentions,)
+                    )
+                    if self.config.is_encoder_decoder:
+                        cross_attentions += (outputs.cross_attentions,)
+
+                if output_hidden_states:
+                    decoder_hidden_states += (
+                        (outputs.decoder_hidden_states,)
+                        if self.config.is_encoder_decoder
+                        else (outputs.hidden_states,)
+                    )
+
+            # pre-process distribution
+            next_logits = logits_processor(input_ids, next_token_logits)
+
+            # argmax
+            next_tokens = torch.argmax(next_logits, dim=-1)
+            next_samples = F.gumbel_softmax(
+                next_logits, tau=self.temp, hard=self.hard
+            )
+            if generate_from_logits:
+                next_embeds = torch.matmul(
+                    next_samples, self.model.shared.weight
+                )
+
+            # finished sentences should have their next token be a padding token
+            if eos_token_id is not None:
+                if pad_token_id is None:
+                    raise ValueError("If `eos_token_id` is defined, make sure that `pad_token_id` is defined.")
+                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+                next_logits = next_logits.T * unfinished_sequences + \
+                (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                next_logits = next_logits.T
+
+                next_samples = next_samples.T * unfinished_sequences + \
+                (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                next_samples = next_samples.T
+                
+                if generate_from_logits:
+                    next_embeds = next_embeds.T * unfinished_sequences + \
+                    (pad_token_embed.unsqueeze(dim=1)) * (1 - unfinished_sequences)
+                    next_embeds = next_embeds.T
+
+            # update generated ids, model inputs, and length for next step
+            input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
+            model_kwargs = self._update_model_kwargs_for_generation(
+                outputs, model_kwargs, is_encoder_decoder=self.config.is_encoder_decoder
+            )
+            cur_len = cur_len + 1
+
+            generated_logits.append(next_logits)
+            generated_samples.append(next_samples)
+            generated_sentence_len = (~(input_ids == pad_token_id)).sum(
+            dim=1)
+
+            # if eos_token was found in one sentence, set sentence to finished
+            if eos_token_id is not None:
+                unfinished_sequences = unfinished_sequences.mul((next_tokens != eos_token_id).long())
+
+            # stop when each sentence is finished, or if we exceed the maximum length
+            if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
+                if not synced_gpus:
+                    break
+                else:
+                    this_peer_finished = True
+
+        generated_logits = torch.stack(generated_logits, dim=-2)
+        generated_samples = torch.stack(generated_samples, dim=-2)
+        ret = {
+            "generated_token_ids": input_ids,
             "generated_logits": generated_logits,
             "generated_samples": generated_samples,
             "generated_sentence_len": generated_sentence_len
