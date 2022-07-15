@@ -16,7 +16,7 @@ freeze_adapters: false
 beam_width: 1
 temperature: 1.0
 hard: true
-repetition_penalty: 1.2
+repetition_penalty: 1.0
 generate_from_logits: false
 max_seq_length: 32
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
@@ -24,7 +24,7 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 # Train and eval:
 seed: 1
 mode: emergent_communication
-language_model_lambda: 0.125
+language_model_lambda: 0
 language_model_path: Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true

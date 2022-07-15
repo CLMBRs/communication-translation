@@ -2294,15 +2294,20 @@ class BartForConditionalGeneration(PretrainedBartModel):
                 next_embeds = torch.matmul(
                     next_samples, self.model.shared.weight
                 )
-
             # finished sentences should have their next token be a padding token
             if eos_token_id is not None:
                 if pad_token_id is None:
                     raise ValueError("If `eos_token_id` is defined, make sure that `pad_token_id` is defined.")
                 next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+
+                print(next_logits)
+                print(unfinished_sequences)
+                print(pad_token_onehot)
+                pre_next_logits = next_logits.clone()
                 next_logits = next_logits.T * unfinished_sequences + \
                 (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
                 next_logits = next_logits.T
+                print(next_logits)
 
                 next_samples = next_samples.T * unfinished_sequences + \
                 (pad_token_onehot.unsqueeze(dim=1)) * (1 - unfinished_sequences)
@@ -2338,6 +2343,7 @@ class BartForConditionalGeneration(PretrainedBartModel):
 
         generated_logits = torch.stack(generated_logits, dim=-2)
         generated_samples = torch.stack(generated_samples, dim=-2)
+        breakpoint()
         ret = {
             "generated_token_ids": input_ids,
             "generated_logits": generated_logits,

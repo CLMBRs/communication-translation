@@ -55,7 +55,7 @@ class MBartSender(Sender):
         unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,
-        repetition_penalty: float = 1.0,
+        repetition_penalty: float = 0.0,
         beam_width: int = 1,
         generate_from_logits: bool = False
     ):
