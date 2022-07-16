@@ -63,10 +63,10 @@ def write_validation_splits(args, source_id, target_id):
     target_file = os.path.join(args.output_dir, target_filename)
     with open(source_file, 'w+') as f:
         for line in source_lines:
-            print(line, file=f)
+            print(line.encode('utf8'), file=f)
     with open(target_file, 'w+') as f:
         for line in target_lines:
-            print(line, file=f)
+            print(line.encode('utf8'), file=f)
 
 
 def save_model(args, backtranslation_pack, saved_model_name):
