@@ -4,17 +4,17 @@ source activate unmt
 OUTPUT_DIR=$1
 BT_INIT_CONFIG=en-de_bt_initial
 CAPTIONS_CONFIG=$3
-EC_CONFIG=$4
+EC_CONFIG=beit/en-zh_beit_ec_debug
 BT_SECONDARY_CONFIG=$5
 
-# Do initial (short) backtranslation
-python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
+# # Do initial (short) backtranslation
+# python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
 
 # # Do caption training
 # python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
 
-# # Do EC
-# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
+# Do EC
+python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
