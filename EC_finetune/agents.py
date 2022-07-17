@@ -47,6 +47,7 @@ class CommunicationAgent(Module):
         self.image_dim = args.image_dim
         self.hidden_dim = self.sender.embedding_dim
         self.input_sequence = args.input_sequence
+        self.input_image = args.input_image
         self.unit_norm = args.unit_norm
         self.beam_width = args.beam_width
         self.padding_index = args.padding_index
@@ -78,6 +79,10 @@ class CommunicationAgent(Module):
             print("Sharing reshaping adapter for each agent")
             self.sender_reshaper = self.receiver_reshaper = self.reshaper
 
+        # Initialize the image encoder
+        if self.input_image:
+            self.image_encoder = VisionEncode(args)
+
     def freeze_adapters(self) -> None:
         for param in self.sender_reshaper.parameters():
             param.requires_grad = False
@@ -102,7 +107,7 @@ class CommunicationAgent(Module):
                 generate the message. The rest of the batch is passed to the
                 sender as kwargs
         """
-        if hasattr(self, 'image_encoder'):
+        if self.input_image:
             batch["sender_image"] = self.image_encoder(batch["sender_image"])
         # Embed the Sender's image using the Reshaper
         image_embedding = self.sender_reshaper(batch["sender_image"])
@@ -126,7 +131,7 @@ class CommunicationAgent(Module):
                 choose between. `(batch_size, num_image_choices, image_dim)`
         Returns: a Tensor of logits over the image choices for the batch
         """
-        if hasattr(self, 'image_encoder'):
+        if self.input_image:
             receiver_images = self.image_encoder(receiver_images)
             # receiver_images (batch_size, num_choices, sequence_length, embedding_size)
             receiver_images = torch.mean(receiver_images, dim=-2)
@@ -344,7 +349,7 @@ class ECImageIdentificationAgent(CommunicationAgent):
             for seq in range(batch_size):
                 bad_logit_mask[seq, lengths[seq] - 1] = 0
             bad_logit_mask = bad_logit_mask.unsqueeze(-1)
-            lm_logits *= bad_logit_mask 
+            lm_logits *= bad_logit_mask
             generated_logits = message_dict["message_logits"] * bad_logit_mask
             # Take the KL divergence of the softmaxed logits
             lm_loss = F.kl_div(
@@ -514,7 +519,8 @@ class ImageCaptionGrounder(CommunicationAgent):
             "accuracy": 100 * accuracy,
             "message": message_dict["message_ids"],
         }
-        
+
+
 class VisionEncodeGrounder(CommunicationAgent):
     """
     An agent to ground images' encoder, by producing captions based

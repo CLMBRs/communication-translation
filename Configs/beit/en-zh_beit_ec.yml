@@ -7,7 +7,8 @@ two_ffwd: false
 unit_norm: false
 dropout: 0.0
 share_reshaper: true
-recurrent_image_unroll: true
+recurrent_image_unroll: false
+input_sequence: true
 image_unroll_length: 32
 recurrent_hidden_aggregation: false
 freeze_adapters: false

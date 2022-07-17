@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
 
-from .agents import ImageCaptionGrounder, ECImageIdentificationAgent, VisionEncodeGrounder
+from .agents import ImageCaptionGrounder, ECImageIdentificationAgent
 from .modelings.modeling_mbart import (
     MBartForCausalLanguageModeling, MBartForConditionalGeneration
 )
@@ -82,9 +82,6 @@ def evaluate(args, model, dataloader, epoch=0, global_step=0):
         average_stats[key] = round(mean(value), 4)
 
     printout = statbar_string(average_stats)
-
-    if args.mode == 'vision_encoder_grounding':
-        return average_stats, output_ids, printout, eval_return_dict['image_feats']
 
     return average_stats, output_ids, printout
 
@@ -270,10 +267,12 @@ def main():
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
-    
+
     # Adaption for newly added parameters
     if not hasattr(args, "input_sequence"):
-        args.input_sequence = False
+        args.input_sequence = False  # Whether the input is a sequence of image embeddings.
+    if not hasattr(args, "input_image"):
+        args.input_image = False  # Whether the input is raw images and requires image encoder.
 
     # set random seed
     if args.seed_override:
@@ -299,7 +298,7 @@ def main():
     else:
         args.csv_headers = EC_CSV_HEADERS
         # We should have communication loss either way
-        # if args.language_model_lambda or args.weight_drift_lambda: 
+        # if args.language_model_lambda or args.weight_drift_lambda:
         args.csv_headers += ['communication loss']
         if args.language_model_lambda:
             args.csv_headers += ['lm loss']
@@ -316,7 +315,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.device = device
 
-    if args.mode == 'image_grounding' or args.mode == 'vision_encoder_grounding':
+    if args.mode == 'image_grounding':
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.train_captions, 'r').readlines()
@@ -325,22 +324,10 @@ def main():
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.valid_captions, 'r').readlines()
         ]
-        if args.mode == "vision_encoder_grounding":
-            predict_train_captions = [
-            [caption.strip() for caption in json.loads(line)]
-            for line in open(args.predict_train_captions, 'r').readlines()
-            ]
-            predict_val_captions = [
-            [caption.strip() for caption in json.loads(line)]
-            for line in open(args.predict_val_captions, 'r').readlines()
-            ]
 
-    
-    if args.mode == 'vision_encoder_grounding':
+    if args.input_image:
         train_images = open(args.train_images).readlines()
         valid_images = open(args.valid_images).readlines()
-        predict_train_images = open(args.predict_train_images).readlines() 
-        predict_val_images = open(args.predict_val_images).readlines() 
     else:
         train_images = torch.load(args.train_images)
         valid_images = torch.load(args.valid_images)
@@ -434,41 +421,6 @@ def main():
             args,
             max_length=args.max_seq_length
         )
-    if args.mode == 'vision_encoder_grounding':
-        model = VisionEncodeGrounder(sender, receiver, args)
-        training_set = CaptionTrainingDataset(
-            train_images,
-            train_captions,
-            args.num_distractors_train,
-            tokenizer,
-            args,
-            max_length=args.max_seq_length
-        )
-        valid_set = CaptionTrainingDataset(
-            valid_images,
-            valid_captions,
-            args.num_distractors_valid,
-            tokenizer,
-            args,
-            max_length=args.max_seq_length
-        )
-        predict_train_set = CaptionTrainingDataset(
-            predict_train_images,
-            predict_train_captions,
-            args.num_distractors_valid,
-            tokenizer,
-            args,
-            max_length=args.max_seq_length
-        )
-        predict_val_set = CaptionTrainingDataset(
-            predict_val_images,
-            predict_val_captions,
-            args.num_distractors_valid,
-            tokenizer,
-            args,
-            max_length=args.max_seq_length
-        )
-
     else:
         model = ECImageIdentificationAgent(
             sender,
@@ -519,18 +471,9 @@ def main():
         'shuffle': False,
         'drop_last': False
     }
-    if args.mode == 'vision_encoder_grounding':
-        predict_params = {
-            'batch_size': args.batch_size,
-            'shuffle': False,
-            'drop_last': False
-        }
 
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)
-    if args.mode == 'vision_encoder_grounding':
-        predict_train_dataloader = DataLoader(predict_train_set, **predict_params)
-        predict_val_dataloader = DataLoader(predict_val_set, **predict_params)
 
     if args.do_train:
         train(
@@ -552,45 +495,6 @@ def main():
 
         logger.info("Best model stats: ")
         logger.info(printout)
-
-        if args.mode == 'vision_encoder_grounding':
-            checkpoint = args.output_dir + "/model.pt"
-            logger.info("Predict with the following checkpoint: %s", checkpoint)
-            model.load_state_dict(torch.load(checkpoint), strict=False)
-            model.to(args.device)
-            model.eval()
-            results, output_ids, printout, vision_feats = evaluate(args, model, predict_train_dataloader)
-            torch.save(
-                vision_feats,
-                os.path.join(
-                    args.vision_feats_dir, "/images_train_ft.pt"
-                )
-            )
-
-            logger.info("Model stats on EC train dataset: ")
-            logger.info(printout)
-
-            results, output_ids, printout, vision_feats = evaluate(args, model, predict_val_dataloader)
-            torch.save(
-                vision_feats['val_feats'],
-                os.path.join(
-                    args.vision_feats_dir, "/images_val_ft.pt"
-                )
-            )
-            if args.save_output_txt:
-                output_texts = ids_to_texts(output_ids, tokenizer)
-                with open(args.output_dir + "/eval_texts.txt", 'w') as f:
-                    for i in output_texts:
-                        f.write(i)
-            
-            logger.info("Model stats on EC val dataset: ")
-            logger.info(printout)
-
-        logger.info("Best model stats: ")
-        logger.info(printout)
-
-
-
 
 
 if __name__ == '__main__':
