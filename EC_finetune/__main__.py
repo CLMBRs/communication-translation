@@ -1,4 +1,5 @@
 import argparse
+import warnings
 import json
 import logging
 import os
@@ -46,6 +47,9 @@ def ids_to_texts(output_ids, tokenizer):
             text.append(tokenizer.decode(i) + '\n')
     return text
 
+def freeze_module(mod):
+    for param in mod.parameters():
+        param.requires_grad = False
 
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
     batchwise_stats = defaultdict(list)
@@ -155,7 +159,8 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger):
             if args.mode == 'image_grounding':
                 batch['caption_ids'] = batch['caption_ids'].to(args.device)
                 batch['caption_mask'] = batch['caption_mask'].to(args.device)
-
+            #print(sum([param.sum() for param in model.sender.decoder.parameters()]))
+            #print(sum([param.sum() for param in model.receiver.encoder.parameters()]))
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
             optimizer.zero_grad()
@@ -273,6 +278,11 @@ def main():
         args.input_sequence = False  # Whether the input is a sequence of image embeddings.
     if not hasattr(args, "input_image"):
         args.input_image = False  # Whether the input is raw images and requires image encoder.
+    # TODO: Use image names in the eval output as well
+    if not hasattr(args, "train_img_name_file") or not hasattr(args, "val_img_name_file"):
+        args.train_img_name_file = None
+        args.val_img_name_file = None
+        warnings.warn('The input image name file is None')
 
     # set random seed
     if args.seed_override:
@@ -325,12 +335,8 @@ def main():
             for line in open(args.valid_captions, 'r').readlines()
         ]
 
-    if args.input_image:
-        train_images = open(args.train_images).readlines()
-        valid_images = open(args.valid_images).readlines()
-    else:
-        train_images = torch.load(args.train_images)
-        valid_images = torch.load(args.valid_images)
+    train_images = torch.load(args.train_images)
+    valid_images = torch.load(args.valid_images)
 
     logger.info("Dataset Loaded")
 
@@ -411,7 +417,8 @@ def main():
             args.num_distractors_train,
             tokenizer,
             args,
-            max_length=args.max_seq_length
+            max_length=args.max_seq_length,
+            img_name_file=args.train_img_name_file
         )
         valid_set = CaptionTrainingDataset(
             valid_images,
@@ -419,7 +426,8 @@ def main():
             args.num_distractors_valid,
             tokenizer,
             args,
-            max_length=args.max_seq_length
+            max_length=args.max_seq_length,
+            img_name_file=args.train_img_name_file
         )
     else:
         model = ECImageIdentificationAgent(
@@ -456,6 +464,18 @@ def main():
     if args.freeze_adapters:
         print("Freezing adapter modules")
         model.freeze_adapters()
+
+    if args.freeze_sender:
+        print("Freezing BART sender")
+        model.freeze_sender_decoder()
+
+    if args.freeze_receiver:
+        print("Freezing BART receiver")
+        model.freeze_receiver_encoder()
+
+    if args.input_image and args.freeze_img_encoder:
+        print("Freezing image encoder")
+        model.freeze_img_encoder()
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)

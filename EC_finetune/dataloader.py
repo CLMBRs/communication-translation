@@ -1,4 +1,6 @@
+import os
 import random
+from PIL import Image
 from typing import List
 
 from numpy import ndarray
@@ -7,9 +9,10 @@ from torch.utils.data.dataset import Dataset
 
 from .util import *
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
+from Vision_feats.generate_feats import ImageLoader
 
 
-class ImageIdentificationDataset(Dataset):
+class ImageIdentificationDataset(ImageLoader):
     """
     PyTorch Dataset subclass for image-identification games in which a "sender"
     agent takes in an image and communicates it, and a "receiver" identifies the
@@ -19,12 +22,13 @@ class ImageIdentificationDataset(Dataset):
         num_distractors: Number of distractor images to show to the "receiver"
             alongside the target image
     """
-    def __init__(self, images: ndarray, num_distractors: int) -> Dataset:
-        super().__init__()
+    def __init__(self, images: ndarray, num_distractors: int, args, img_name_file=None) -> Dataset:
+        super().__init__(args, img_name_file)
         self.images = images
         self.img_index = list(range(len(images)))
         self.num_distractors = num_distractors
-
+        self.input_image = args.input_image
+    
     def __len__(self) -> int:
         return len(self.images)
 
@@ -42,7 +46,10 @@ class ImageIdentificationDataset(Dataset):
         which = receiver_images.index(index)
 
         # Get the actual image embedding data to be returned
-        sender_image = self.images[index]
+        if self.input_image: # whether the input is raw image
+            sender_image = super().__getitem__(index)
+        else:
+            sender_image = self.images[index]
         receiver_images = torch.index_select(
             self.images, 0, torch.tensor(receiver_images)
         )
@@ -68,9 +75,9 @@ class XLImageIdentificationDataset(ImageIdentificationDataset):
             alongside the target image
     """
     def __init__(
-        self, images: ndarray, num_distractors: int, args, tokenizer
+        self, images, num_distractors: int, args, tokenizer
     ) -> Dataset:
-        super().__init__(images, num_distractors)
+        super().__init__(images, num_distractors, args)
         lang_code2id = dict(
             zip(
                 tokenizer.additional_special_tokens,
@@ -123,16 +130,17 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
     """
     def __init__(
         self,
-        images: ndarray,
+        images,
         captions: List[List[str]],
         num_distractors: int,
         tokenizer,
         args,
+        img_name_file = None,
         max_length: int = 256,
         max_captions_per_image: int = float('inf')
     ) -> Dataset:
         # Initialize using the ImageIdentificationDataset constructor
-        super().__init__(images, num_distractors)
+        super().__init__(images, num_distractors, args, img_name_file)
         self.captions = captions
         self.tokenizer = tokenizer
         self.max_length = max_length

@@ -41,6 +41,8 @@ Output/**/model.pt
 Output/**/sentencepiece.bpe.model
 Output/
 
+Vision_feats/data/
+
 Models/
 
 temp/

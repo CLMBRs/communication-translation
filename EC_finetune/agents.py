@@ -92,6 +92,18 @@ class CommunicationAgent(Module):
             for param in self.sender.lstm.parameters():
                 param.requires_grad = False
 
+    def freeze_sender_decoder(self) -> None:
+        for param in self.sender.decoder.parameters():
+            param.requires_grad = False
+
+    def freeze_receiver_encoder(self) -> None:
+        for param in self.receiver.encoder.parameters():
+            param.requires_grad = False
+
+    def freeze_img_encoder(self) -> None:
+        for param in self.image_encoder.model.parameters():
+            param.requres_grad = False
+
     def image_to_message(self, batch: dict) -> dict:
         """
         Take in an image embedding and use the sender to return a
@@ -131,17 +143,10 @@ class CommunicationAgent(Module):
                 choose between. `(batch_size, num_image_choices, image_dim)`
         Returns: a Tensor of logits over the image choices for the batch
         """
-        if self.input_image:
-            receiver_images = self.image_encoder(receiver_images)
-            # receiver_images (batch_size, num_choices, sequence_length, embedding_size)
-            receiver_images = torch.mean(receiver_images, dim=-2)
-
         num_image_choices = receiver_images.size(1)
 
         # Embed the Receiver's candidate images using the Reshaper
         # (batch_size, num_image_choices, hidden_dim)
-        if self.input_sequence:
-            receiver_images = torch.mean(receiver_images, dim=-2)
         receiver_image_embeddings = self.receiver_reshaper(receiver_images)
 
         # Encode the Sender's message to a hidden state to be used to select
@@ -521,100 +526,6 @@ class ImageCaptionGrounder(CommunicationAgent):
         }
 
 
-class VisionEncodeGrounder(CommunicationAgent):
-    """
-    An agent to ground images' encoder, by producing captions based
-    on images, and picking images based on a caption (independently)
-    """
-    def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
-        super().__init__(sender, receiver, args)
-        if hasattr(args, "image_selection_lambda"):
-            self.image_selection_lambda = args.image_selection_lambda
-        self.image_encoder = VisionEncode(args)
-
-    def forward(self, batch):
-        """
-        Train the sender to generate a gold-standard caption given an image.
-        Also train to select the correct image from among distractors using the
-        receiver's representation of the gold-standard caption
-
-        Args:
-            batch: a dictionary of Tensors and other data. Must obligatorily
-                include `caption_ids`, `caption_mask`, `sender_image`,
-                `receiver_images`, and `target`
-        Returns:
-            a dictionary of results with the following keys:
-                `loss` (Tensor): the combination of the mean cross-entropy loss
-                    for generating the caption and the cross-entropy for
-                    selecting the correct image
-                `caption generation loss` (float): the value of the loss for
-                    caption generation
-                `image selection loss` (float): the value of the loss for
-                    selecting the correct image
-                `accuracy` (float): the percent of the image selections the
-                    model chose correctly
-                `message` (Tensor): the batch of generated messages as indices
-        """
-
-        # Get the message dictionary (ids, logits) from the sender
-        # based on the input image and calculate loss with the gold caption.
-        # Adding the caption ids as `decoder_input_ids` puts the caption
-        # generation into a supervised mode rather than free generation
-        batch["decoder_input_ids"] = batch["caption_ids"]
-        message_dict = self.image_to_message(batch)
-        caption_generation_loss = F.cross_entropy(
-            message_dict["message_logits"].transpose(1, 2),
-            batch["caption_ids"],
-            ignore_index=self.padding_index,
-        )
-
-        # Get the logits for the image choice candidates based on the gold
-        # caption (NOT the sender's message)
-        caption = {
-            "message_ids": batch["caption_ids"],
-            "attention_mask": batch["caption_mask"],
-            "message_lengths": batch["caption_mask"].float().sum(dim=1).long(),
-        }
-
-        # Prepend the CLS id to the beginning of the sequence, and adjust the
-        # padding mask properly
-        caption["attention_mask"] = self.prepend_non_pad_to_mask(
-            caption["attention_mask"]
-        )
-        caption["message_ids"] = self.prepend_cls(
-            caption["message_ids"], self.cls_index
-        )
-
-        image_candidate_logits = self.choose_image_from_message(
-            caption, batch["receiver_images"]
-        )
-        # Get final cross-entropy loss between the candidates and the target
-        # images
-        target_image = batch["target"]
-        image_selection_loss = F.cross_entropy(
-            image_candidate_logits, target_image
-        )
-
-        # Get predicted accuracy
-        _, predicted_idx = torch.max(image_candidate_logits, dim=1)
-        eq = torch.eq(predicted_idx, target_image)
-        accuracy = float(eq.sum().data) / float(eq.nelement())
-
-        if self.image_selection_lambda:
-            image_selection_loss *= self.image_selection_lambda
-        loss = caption_generation_loss + image_selection_loss
-        #loss = image_selection_loss
-
-        return {
-            "loss": loss,
-            "caption generation loss": caption_generation_loss.item(),
-            "image selection loss": image_selection_loss.item(),
-            "accuracy": 100 * accuracy,
-            "message": message_dict["message_ids"],
-            "image_feats": message_dict["image_feats"]
-        }
-
-
 class Reshaper(Module):
     def __init__(self, input_dim: int, output_dim: int):
         super().__init__()
@@ -723,7 +634,7 @@ class LearnedLinearReshaper(Reshaper):
         h_image = self.image_to_hidden(image)
         h_image = self.dropout(h_image)
         if self.two_ffwd:
-            h_image = self.hidden_to_hidden(F.relu(h_image))
+            h_image = h_image + self.hidden_to_hidden(F.relu(h_image))
         if self.unit_norm:
             norm = torch.norm(h_image, p=2, dim=1, keepdim=True).detach() + 1e-9
             h_image = h_image / norm.expand_as(h_image)

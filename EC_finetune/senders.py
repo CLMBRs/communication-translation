@@ -97,7 +97,6 @@ class MBartSender(Sender):
         if self.input_sequence:
             # Make sure the unroll is disabled
             self.recurrent_unroll = False
-            self.project = nn.Linear(self.image_dim, self.embedding_dim)
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -151,9 +150,6 @@ class MBartSender(Sender):
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden
             image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
-
-        if self.input_sequence:
-            image_hidden = self.project(image_hidden)
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:
