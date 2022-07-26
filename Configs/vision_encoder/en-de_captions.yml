@@ -1,17 +1,31 @@
 # Model:
-model_name: Output/en-zh_beit_pipeline/bt_init/last
+model_name: temp/Output/en-de_pipeline_debug/bt_init/last
 load_entire_agent: false
-image_dim: 1024
+image_dim: 512
 reshaper_type: learned
 two_ffwd: false
 unit_norm: false
 dropout: 0.0
-share_reshaper: true
-input_sequence: true
+share_reshaper: false
 recurrent_image_unroll: true
 image_unroll_length: 32
 recurrent_hidden_aggregation: false
 freeze_adapters: false
+freeze_sender: false
+freeze_receiver: false
+freeze_img_encoder: true
+
+# Raw image process:
+input_sequence: false
+input_image: false # turning this to false would disable all the variables below it in this chunk
+sender_image_dim: 512 # Image embedding dim directly from image encoder
+do_transform: true
+downsample: linear
+img_encode_model: clip
+read_img_folder: false
+raw_image_dir: ../vision_feats/train2014
+train_img_name_file: ./Data/beit_ft_captioning/train_image_names.txt
+val_img_name_file: ./Data/beit_ft_captioning/val_image_names.txt
 
 # Generation
 beam_width: 1
@@ -25,14 +39,14 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 # Train and eval:
 seed: 1
 mode: image_grounding
-image_selection_lambda: 4.0
+image_selection_lambda: 5.0
 language_model_lambda: 0.0
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: true
 n_gpu: 1
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 6000
+max_global_step: 2048
 lr: 4.0e-5
 schedule: linear_w_warmup
 num_warmup_steps: 0
@@ -51,10 +65,10 @@ num_distractors_valid: 15
 # Loading and saving data:
 train_captions: ./Data/beit_ft_captioning/en_captions_train.jsonl
 valid_captions: ./Data/beit_ft_captioning/en_captions_val.jsonl
-train_images: ./Data/beit_ft_captioning/images_train.pt
-valid_images: ./Data/beit_ft_captioning/images_val.pt
+train_images: ./Data/beit_ft_captioning/clip_train.pt
+valid_images: ./Data/beit_ft_captioning/clip_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-zh_beit_pipeline/captions
+output_dir: Output/en-de_pipeline/captions_vision_clip
 save_output_txt: true
 
 # Specify info about language and vocab constraint

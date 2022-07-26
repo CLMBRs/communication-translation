@@ -1,8 +1,8 @@
 #!/bin/sh
 source activate unmt
 
-SPLIT='val'
-MODEL='beit'
+SPLIT=$1
+MODEL=$2
 
 python prepare_coco.py --from_where ${SPLIT}2014 \
     --image_feats ./data/${MODEL}_${SPLIT}_feats.pt \
@@ -12,5 +12,5 @@ python prepare_coco.py --from_where ${SPLIT}2014 \
     --new_ec_train_captions en_captions \
     --captioning_captions_base en_captions \
     --captioning_images_base images \
-    --ec_directory Beit_data/ec_finetuning \
-    --captioning_directory Beit_data/captioning \
+    --ec_directory ../Data/${MODEL}_ec_finetuning \
+    --captioning_directory ../Data/${MODEL}_captioning \

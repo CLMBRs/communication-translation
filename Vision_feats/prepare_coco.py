@@ -1,10 +1,18 @@
 import argparse
+from ast import dump
 from builtins import breakpoint
 from collections import defaultdict
 import json
 import os
 import random
 import torch
+
+
+def dump_img_ids(dir, file_name, ids):
+    with open(os.path.join(dir, file_name), 'w+') as fout:
+        for id in ids:
+            fout.write(id)
+
 
 def indices_to_string(index_list, index_to_tok):
     # Convert indices to tokens
@@ -15,18 +23,18 @@ def indices_to_string(index_list, index_to_tok):
     tokens = tokens[1:-1]
     return ' '.join(tokens)
 
+
 def dump_captions(directory, name, captions, captions_plus, mode):
     file_name = name + f'_{mode}.jsonl'
-    file_name_plus = name + f'_{mode}_plus.jsonl' 
-    with open(os.path.join(directory,file_name_plus), 'w+'
-        ) as fout:
-            for caption_set in captions_plus:
-                print(json.dumps(caption_set), file=fout)
+    file_name_plus = name + f'_{mode}_plus.jsonl'
+    with open(os.path.join(directory, file_name_plus), 'w+') as fout:
+        for caption_set in captions_plus:
+            print(json.dumps(caption_set), file=fout)
 
-    with open(os.path.join(directory,file_name), 'w+'
-        ) as fout:
-            for caption_set in captions:
-                print(json.dumps(caption_set), file=fout)
+    with open(os.path.join(directory, file_name), 'w+') as fout:
+        for caption_set in captions:
+            print(json.dumps(caption_set), file=fout)
+
 
 def process_captions(args):
     caption_dict = defaultdict(list)
@@ -37,7 +45,7 @@ def process_captions(args):
         caption_dict[str(i['image_id'])].append(i['caption'])
     for i in images:
         caption_plus_dict[str(i['id'])] = i
-    # Align the order 
+    # Align the order
     caption_list = []
     caption_list_plus = []
     with open(args.image_file_name, 'r') as f:
@@ -46,9 +54,10 @@ def process_captions(args):
             id = i.split('_')[-1][:-5].lstrip('0')
             caption_list.append(caption_dict[id])
             caption_list_plus.append(caption_plus_dict[id])
-    for index,caption in enumerate(caption_list):
+    for index, caption in enumerate(caption_list):
         caption_list_plus[index]['caption'] = caption
-    return caption_list, caption_list_plus
+    return caption_list, caption_list_plus, lines
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -61,8 +70,13 @@ def main():
     parser.add_argument('--captioning_captions_base', required=True, type=str)
     parser.add_argument('--captioning_images_base', required=True, type=str)
     parser.add_argument('--image_captioning_size', default=10000, type=int)
-    parser.add_argument('--ec_directory', default='Data/ec_finetuning', type=str)
-    parser.add_argument('--captioning_directory', default='Data/captioning', type=str)
+    parser.add_argument(
+        '--ec_directory', default='Data/ec_finetuning', type=str
+    )
+    parser.add_argument(
+        '--captioning_directory', default='Data/captioning', type=str
+    )
+    parser.add_argument('--debug', action="store_true")
     parser.add_argument('--seed', default=1, type=int)
     args = parser.parse_args()
 
@@ -75,32 +89,42 @@ def main():
 
     all_feats = torch.load(args.image_feats)
     num_examples = all_feats.size(0)
-    all_captions, all_captions_plus = process_captions(args)
+    all_captions, all_captions_plus, image_names = process_captions(args)
     permutation = random.sample([i for i in range(num_examples)], num_examples)
+    if args.debug:
+        permutation = permutation[:20]
 
-    if args.from_where=='val2014':
+    if args.from_where == 'val2014':
         # The validation part is only for ec_finetuning validation step
         # Reduce the size of the validation set, leave only 10%
-        ec_indices = permutation[:int(0.1*num_examples)] 
+        ec_indices = permutation[:int(0.1 * num_examples)]
         new_ec_feats = all_feats[ec_indices]
 
         torch.save(
-            new_ec_feats, os.path.join(args.ec_directory, args.new_ec_train_images + '_val.pt')
+            new_ec_feats,
+            os.path.join(
+                args.ec_directory, args.new_ec_train_images + '_val.pt'
+            )
         )
 
         new_ec_captions = [all_captions[i] for i in ec_indices]
+        ec_val_image_names = [image_names[i] for i in ec_indices]
         new_ec_captions_plus = [all_captions_plus[i] for i in ec_indices]
-        dump_captions(args.ec_directory , args.captioning_captions_base, 
-            new_ec_captions, new_ec_captions_plus, mode='val')
-        
-        # Dump indices
-        with open(
-            os.path.join(args.ec_directory, 'val_indices.txt'), 'w+'
-        ) as fout:
-            for idx in ec_indices:
-                print(idx, file=fout)
+        dump_captions(
+            args.ec_directory,
+            args.captioning_captions_base,
+            new_ec_captions,
+            new_ec_captions_plus,
+            mode='val'
+        )
 
-        return None # End the program here if from validation set
+        # Dump indices and image names
+        dump_img_ids(args.ec_directory, 'val_indices.txt', ec_indices)
+        dump_img_ids(
+            args.ec_directory, 'val_image_names.txt', ec_val_image_names
+        )
+
+        return None  # End the program here if from validation set
 
     caption_indices = permutation[:args.image_captioning_size]
     ec_indices = permutation[args.image_captioning_size:]
@@ -110,7 +134,8 @@ def main():
 
     new_ec_feats = all_feats[ec_indices]
     torch.save(
-        new_ec_feats, os.path.join(args.ec_directory, args.new_ec_train_images + '_train.pt')
+        new_ec_feats,
+        os.path.join(args.ec_directory, args.new_ec_train_images + '_train.pt')
     )
     captioning_train_feats = all_feats[caption_train_indices]
     captioning_val_feats = all_feats[caption_val_indices]
@@ -129,36 +154,62 @@ def main():
 
     new_ec_captions = [all_captions[i] for i in ec_indices]
     new_ec_captions_plus = [all_captions_plus[i] for i in ec_indices]
-    dump_captions(args.ec_directory, args.new_ec_train_captions, 
-        new_ec_captions, new_ec_captions_plus, mode='train')
+    dump_captions(
+        args.ec_directory,
+        args.new_ec_train_captions,
+        new_ec_captions,
+        new_ec_captions_plus,
+        mode='train'
+    )
 
     captioning_train_captions = [all_captions[i] for i in caption_train_indices]
-    captioning_train_captions_plus = [all_captions_plus[i] for i in caption_train_indices]
-    dump_captions(args.captioning_directory, args.captioning_captions_base, 
-        captioning_train_captions, captioning_train_captions_plus, mode='train')
+    captioning_train_captions_plus = [
+        all_captions_plus[i] for i in caption_train_indices
+    ]
+    dump_captions(
+        args.captioning_directory,
+        args.captioning_captions_base,
+        captioning_train_captions,
+        captioning_train_captions_plus,
+        mode='train'
+    )
 
     captioning_val_captions = [all_captions[i] for i in caption_val_indices]
-    captioning_val_captions_plus = [all_captions_plus[i] for i in caption_val_indices]
-    dump_captions(args.captioning_directory, args.captioning_captions_base, 
-        captioning_val_captions, captioning_val_captions_plus, mode='val')
+    captioning_val_captions_plus = [
+        all_captions_plus[i] for i in caption_val_indices
+    ]
+    dump_captions(
+        args.captioning_directory,
+        args.captioning_captions_base,
+        captioning_val_captions,
+        captioning_val_captions_plus,
+        mode='val'
+    )
 
-    with open(
-        os.path.join(args.ec_directory, 'train_indices.txt'), 'w+'
-    ) as fout:
-        for idx in ec_indices:
-            print(idx, file=fout)
+    ec_train_image_names = [image_names[i] for i in ec_indices]
+    captioning_train_image_names = [
+        image_names[i] for i in caption_train_indices
+    ]
+    captioning_val_image_names = [image_names[i] for i in caption_val_indices]
 
-    with open(
-        os.path.join(args.captioning_directory, 'train_indices.txt'), 'w+'
-    ) as fout:
-        for idx in caption_train_indices:
-            print(idx, file=fout)
-
-    with open(
-        os.path.join(args.captioning_directory, 'val_indices.txt'), 'w+'
-    ) as fout:
-        for idx in caption_val_indices:
-            print(idx, file=fout)
+    dump_img_ids(args.ec_diretory, 'train_indices.txt', ec_indices)
+    dump_img_ids(
+        args.captioning_directory, 'train_indices.txt', caption_train_indices
+    )
+    dump_img_ids(
+        args.captioning_directory, 'val_indices.txt', caption_val_indices
+    )
+    dump_img_ids(
+        args.ec_diretory, 'train_image_names.txt', ec_train_image_names
+    )
+    dump_img_ids(
+        args.captioning_directory, 'train_image_names.txt',
+        captioning_train_image_names
+    )
+    dump_img_ids(
+        args.captioning_directory, 'val_image_names.txt',
+        captioning_val_image_names
+    )
 
 
 if __name__ == "__main__":

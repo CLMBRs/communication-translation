@@ -3,18 +3,28 @@ source activate unmt
 
 OUTPUT_DIR=temp/Output/en-de_pipeline_debug
 BT_INIT_CONFIG=en-de_bt_initial
-CAPTIONS_CONFIG=en-de_captions
+CAPTIONS_CONFIG=vision_encoder/en-de_captions
 EC_CONFIG=en-de_ec
 BT_SECONDARY_CONFIG=en-de_bt_secondary
 
 # # Do initial (short) backtranslation
 # python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
 
-# # Do caption training
-# python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
+# Produce feature file (Temp setting)
+#bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/beit_ft_captioning resnet none
+#bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/beit_ft_captioning resnet none
 
-# Do EC
-python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
+# bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/beit_ft_captioning beit_ft mean
+# bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/beit_ft_captioning beit_ft mean
+
+# bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/beit_ft_captioning clip none
+# bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/beit_ft_captioning clip none
+
+# Do caption training
+python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
+
+# # Do EC
+# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -30,17 +40,5 @@ python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 # de2en=$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.val.en ${OUTPUT_DIR}/de-en.en.val 13a)
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
-# Do rest of backtranslation
-python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml --seed_override 2
-
-# # Running the model on the test set
-# python -u BackTranslation/translate.py --config Configs/en2de_translate.yml \
-#     --model_path ${OUTPUT_DIR}/ec \
-#     --output_dir ${OUTPUT_DIR}
-
-# python -u BackTranslation/translate.py --config Configs/de2en_translate.yml \
-#     --model_path ${OUTPUT_DIR}/ec \
-#     --output_dir ${OUTPUT_DIR}
-# en2de=$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a)
-# de2en=$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a)
-# echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
+# # Do rest of backtranslation
+# python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml --seed_override 2
