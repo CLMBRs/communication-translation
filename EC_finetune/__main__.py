@@ -261,6 +261,7 @@ def main():
         action='store_true',
         help="Flag to trigger adapter freezing (overriding config)"
     )
+    parser.add_argument('--ec_dir', type=str, default="Output/")
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -282,6 +283,7 @@ def main():
         args.freeze_adapters = True
 
     # set csv output file
+    args.output_dir = os.path.join(args.ec_dir, args.output_dir)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
