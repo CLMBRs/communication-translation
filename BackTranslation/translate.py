@@ -78,7 +78,7 @@ def main():
     language
     """
     # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("translate")
     out_handler = logging.StreamHandler(sys.stdout)
     logger.addHandler(out_handler)
     message_format = '%(asctime)s - %(message)s'

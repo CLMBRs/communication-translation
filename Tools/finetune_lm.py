@@ -144,7 +144,7 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
 def main():
     # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("finetune_lm")
     out_handler = logging.StreamHandler(sys.stdout)
     message_format = '%(asctime)s - %(message)s'
     date_format = '%m-%d-%y %H:%M:%S'

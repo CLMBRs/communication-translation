@@ -303,10 +303,10 @@ def evaluate(
             target_file = os.path.join(args.output_dir, target_filename)
             with open(source_file, 'w+') as f:
                 for line in source2target_translations:
-                    print(line, file=f)
+                    print(line.encode('utf8'), file=f)
             with open(target_file, 'w+') as f:
                 for line in target2source_translations:
-                    print(line, file=f)
+                    print(line.encode('utf8'), file=f)
     else:
         if step >= args.early_stop_start_time:
             # we start counting the early stopping after some 'warmup period'
@@ -495,7 +495,7 @@ BackTranslationPack = namedtuple(
 
 if __name__ == "__main__":
     # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("backtranslate")
     out_handler = logging.StreamHandler(sys.stdout)
     logger.addHandler(out_handler)
     message_format = '%(asctime)s - %(message)s'
@@ -646,6 +646,7 @@ if __name__ == "__main__":
         f" target language code: {args.lang2_code}"
     )
 
+    logger.info(f"Loading {args.lang1_code} and {args.lang2_code} datasets")
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
@@ -653,12 +654,14 @@ if __name__ == "__main__":
         "text", data_files=os.path.join(args.data_dir, args.lang2_data_file)
     )["train"]
 
+    logger.info(f"Creating {args.lang1_code} and {args.lang2_code} dataloaders")
     lang1_dataloader = DataLoader(
         lang1_dataset, batch_size=args.batch_size, shuffle=True
     )
     lang2_dataloader = DataLoader(
         lang2_dataset, batch_size=args.batch_size, shuffle=True
     )
+
     lang1_iter = iter(lang1_dataloader)
     lang2_iter = iter(lang2_dataloader)
 
