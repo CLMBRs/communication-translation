@@ -12,9 +12,8 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import set_seed
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-
+from Util.util import create_logger, set_seed
 
 def translate(
     args: Namespace, model: MBartForConditionalGeneration,
@@ -77,16 +76,8 @@ def main():
     Script to use an MBart model to translate a source dataset into a target
     language
     """
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger("translate")
-    out_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(out_handler)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+
+    logger = create_logger(name="translate")
 
     parser = argparse.ArgumentParser(description="MBart Translation Script")
 

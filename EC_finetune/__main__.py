@@ -24,7 +24,7 @@ from .modelings.modeling_mbart import (
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
 from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
-from .util import set_seed, statbar_string
+from Util.util import create_logger, set_seed, statbar_string
 
 EC_CSV_HEADERS = [
     'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
@@ -227,15 +227,7 @@ def main():
     Train a model to generate image captions
     """
 
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger("ec_finetune")
-    out_handler = logging.StreamHandler(sys.stdout)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    logger = create_logger(name="ec_finetune")
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)

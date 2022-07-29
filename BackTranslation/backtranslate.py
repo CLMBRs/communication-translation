@@ -21,10 +21,11 @@ from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import (
-    set_seed, translation2string, statbar_string, LangMeta
+    translation2string, statbar_string, LangMeta
 )
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
+from Util.util import create_logger, set_seed
 
 TOKENIZER_MAP = {
     'zh': 'zh',
@@ -494,17 +495,8 @@ BackTranslationPack = namedtuple(
 )
 
 if __name__ == "__main__":
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger("backtranslate")
-    out_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(out_handler)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    # logger.Formatter(message_format, date_format)
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    
+    logger = create_logger(name="backtranslate")
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 

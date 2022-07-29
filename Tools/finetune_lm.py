@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 
 from EC_finetune.dataloader import XLMDataset, SingleLangXLMDataset
 from EC_finetune.modelings.modeling_mbart import MBartForCausalLanguageModeling
-from EC_finetune.util import set_seed, statbar_string
+from Util.util import create_logger, set_seed, statbar_string
 
 
 def evaluate(args, model, dataloader, epoch=0, global_step=0):
@@ -143,15 +143,8 @@ def train(args, model, dataloader, valid_dataloader, params, logger):
 
 
 def main():
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger("finetune_lm")
-    out_handler = logging.StreamHandler(sys.stdout)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    
+    logger = create_logger(name="finetune_lm")
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
