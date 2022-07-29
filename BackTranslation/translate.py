@@ -110,9 +110,13 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    tokenizer = MBartTokenizer.from_pretrained(args.model_path, local_files_only=True)
+    tokenizer = MBartTokenizer.from_pretrained(
+        args.model_path, local_files_only=True
+    )
 
-    model = MBartForConditionalGeneration.from_pretrained(args.model_path, local_files_only=True)
+    model = MBartForConditionalGeneration.from_pretrained(
+        args.model_path, local_files_only=True
+    )
     model.to(args.device)
     model.eval()
 
@@ -133,8 +137,11 @@ def main():
         )
         args.is_translation_dataset = True
     elif getattr(args, 'source_data_file', False):
+        args.source_data_file_path = os.path.join(
+            args.output_dir, args.source_data_file
+        )
         source_dataset = load_dataset(
-            "text", data_files=args.source_data_file
+            "text", data_files=args.source_data_file_path
         )['train']
         args.is_translation_dataset = False
     else:
