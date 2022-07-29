@@ -278,6 +278,8 @@ def main():
         args.input_sequence = False  # Whether the input is a sequence of image embeddings.
     if not hasattr(args, "input_image"):
         args.input_image = False  # Whether the input is raw images and requires image encoder.
+        args.read_img_folder = False
+        args.raw_image_dir = None
     # TODO: Use image names in the eval output as well
     if not hasattr(args, "train_img_name_file") or not hasattr(args, "val_img_name_file"):
         args.train_img_name_file = None

@@ -39,8 +39,7 @@ class ImageLoader(data.Dataset):
         args,
         img_name_file=None,
     ):
-        self.data_dir = args.raw_image_dir
-        # TODO: Fix the place of feature extractor
+        # # TODO: Fix the place of feature extractor
         BeitFeat = BeitFeatureExtractor.from_pretrained(
             "microsoft/beit-large-patch16-224-pt22k"
         )
@@ -71,9 +70,13 @@ class ImageLoader(data.Dataset):
                 lambda x: torch.from_numpy(BeitFtFeat(x)['pixel_values'][0]),
             'clip': ClipFeat,
         }
-        # Load preprocess
-        # self.do_transform = args.do_transform
-        self.transform = self.transforms_dict[args.img_encode_model]
+
+        if args.raw_image_dir:
+            self.data_dir = args.raw_image_dir
+            # Load preprocess
+            # self.do_transform = args.do_transform
+            self.transform = self.transforms_dict[args.img_encode_model]
+            
         if args.read_img_folder:
             # Read images directly from the folder
             self.dataset = self.load_imagepaths_with_labels()
