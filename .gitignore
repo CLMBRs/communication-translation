@@ -13,6 +13,7 @@ clmbrs_communication_translation.egg-info/
 *.code-workspace
 
 # Data/**
+DataLink
 DataLink/
 Data/en-zh
 Data/cc/dummy
@@ -29,6 +30,7 @@ Data/cc/*.txt.xz
 Data/captioning/
 Data/coco
 Data/ec_finetuning/
+log/
 slurm_logs/
 Output/**/pytorch_model.bin
 Output/**/model.pt
