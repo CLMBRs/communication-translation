@@ -8,10 +8,11 @@ import numpy as np
 def create_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    out_handler = logging.StreamHandler(sys.stdout)
+    logger.propagate = False
+    out_handler = logging.StreamHandler()
     out_handler.setFormatter(
         logging.Formatter(
-            fmt='%(asctime)s - %(message)s', datefmt='%m-%d-%y %H:%M:%S'
+            "%(asctime)s %(name)s: %(message)s", "%Y-%m-%d %H:%M:%S"
         )
     )
     out_handler.setLevel(logging.INFO)
@@ -19,12 +20,12 @@ def create_logger(name):
     return logger
 
 
-def set_seed(args):
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    if args.n_gpu > 0:
-        torch.cuda.manual_seed_all(args.seed)
+def set_seed(seed, n_gpu=1):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if n_gpu > 0:
+        torch.cuda.manual_seed_all(seed)
 
 
 def statbar_string(stat_dict: dict) -> str:

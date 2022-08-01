@@ -253,7 +253,13 @@ def main():
         action='store_true',
         help="Flag to trigger adapter freezing (overriding config)"
     )
-    parser.add_argument('--ec_dir', type=str, default="Output/")
+    parser.add_argument(
+        '--ec_dir',
+        type=str,
+        default="",
+        help="New root to store output of EC. This can be useful when you are "
+        "running low of local storage. Used in combination with an output "
+        "directory path passed in via config.")
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:

@@ -20,12 +20,10 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import (
-    translation2string, statbar_string, LangMeta
-)
+from BackTranslation.util import translation2string, LangMeta
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
-from Util.util import create_logger, set_seed
+from Util.util import create_logger, set_seed, statbar_string
 
 TOKENIZER_MAP = {
     'zh': 'zh',
@@ -500,7 +498,13 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
-    parser.add_argument('--backtranslated_dir', type=str, default="Output/")
+    parser.add_argument(
+        '--backtranslated_dir',
+        type=str,
+        default="",
+        help="New root to store output of backtranslation. This can be useful "
+        "when you are running low of local storage. Used in combination with "
+        "an output directory path passed in via config.")
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
@@ -550,7 +554,7 @@ if __name__ == "__main__":
     # set random seed
     if args.seed_override:
         args.seed = args.seed_override
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     # Start the clock for the beginning of the main function
     start_time = time.time()

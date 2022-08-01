@@ -95,7 +95,7 @@ def main():
         os.makedirs(args.output_dir)
 
     # set random seed
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     # Setup CUDA, GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
