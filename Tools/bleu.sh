@@ -1,5 +1,5 @@
 #!/bin/sh
-source activate unmt
+#source activate unmt
 
 HYPOTHESIS=$1
 REFERENCE=$2
