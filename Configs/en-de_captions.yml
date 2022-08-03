@@ -1,7 +1,7 @@
 # Model:
 model_name: Output/en-de_pipeline/bt_init/last
 load_entire_agent: false
-image_dim: 2048
+image_dim: 512
 reshaper_type: learned
 two_ffwd: false
 unit_norm: false
@@ -48,12 +48,12 @@ num_distractors_train: 15
 num_distractors_valid: 15
 
 # Loading and saving data:
-train_captions: ./Data/captioning/en_captions_train.jsonl
-valid_captions: ./Data/captioning/en_captions_val.jsonl
-train_images: ./Data/captioning/images_train.pt
-valid_images: ./Data/captioning/images_val.pt
+train_captions: ./Data/captioning_new_new/en_captions_train.jsonl
+valid_captions: ./Data/captioning_new_new/en_captions_val.jsonl
+train_images: ./Data/captioning_new_new/clip_train.pt
+valid_images: ./Data/captioning_new_new/clip_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-de_pipeline/captions
+output_dir: Output/en-de_pipeline/captions_vision_clip
 save_output_txt: true
 
 # Specify info about language and vocab constraint
