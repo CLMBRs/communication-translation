@@ -18,6 +18,7 @@ import warnings
 from builtins import breakpoint
 import math
 import random
+from abc import ABC
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -48,7 +49,7 @@ from transformers import BeamScorer
 from transformers.models.bart.configuration_bart import BartConfig
 
 from transformers.generation_logits_process import (
-    LogitsProcessorList,
+    LogitsProcessorList, LogitsProcessor
 )
 from transformers.file_utils import ModelOutput
 
@@ -1005,6 +1006,33 @@ class BartClassificationHead(nn.Module):
         return x
 
 
+class RepetitionPenaltyLogitsProcessor(LogitsProcessor):
+    r"""
+    :class:`transformers.LogitsProcessor` enforcing an exponential penalty on repeated sequences.
+
+    Args:
+        repetition_penalty (:obj:`float`):
+            The parameter for repetition penalty. 1.0 means no penalty. See `this paper
+            <https://arxiv.org/pdf/1909.05858.pdf>`__ for more details.
+    """
+
+    def __init__(self, penalty: float):
+        if not isinstance(penalty, float) or not (penalty > 0):
+            raise ValueError(f"`penalty` has to be a strictly positive float, but is {penalty}")
+
+        self.penalty = penalty
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        for i in range(scores.shape[0]):
+            for previous_token in set(input_ids[i].tolist()):
+                # if score < 0 then repetition penalty has to be multiplied to reduce the previous token probability
+                if scores[i, previous_token] < 0:
+                    scores[i, previous_token] *= self.penalty
+                else:
+                    scores[i, previous_token] /= self.penalty
+        return scores
+
+
 class LearnedPositionalEmbedding(nn.Embedding):
     """
     This module learns positional embeddings up to a fixed maximum size. Padding ids are ignored by either offsetting
@@ -1646,6 +1674,10 @@ class BartForConditionalGeneration(PretrainedBartModel):
             diversity_penalty=diversity_penalty,
             remove_invalid_values=remove_invalid_values,
         )
+        # Replace the repetition penalty logit processor with HF 4.0.1's
+        # Reintialize our repetition penalty logits 
+        repetition_penalty_logits_processor = RepetitionPenaltyLogitsProcessor(repetition_penalty)
+        logits_processor[0] = repetition_penalty_logits_processor #repetition penalty is the first one
 
         if is_greedy_gen_mode:
             if num_return_sequences > 1:
