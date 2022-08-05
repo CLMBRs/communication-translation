@@ -25,7 +25,7 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 seed: 1
 mode: emergent_communication
 language_model_lambda: 0.125
-language_model_path: /projects/unmt/communication-translation/Models/mbart_lm_lr6e-6
+language_model_path: DataLink/../Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: false
