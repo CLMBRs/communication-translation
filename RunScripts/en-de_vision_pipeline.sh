@@ -17,17 +17,17 @@ BT_SECONDARY_CONFIG=en-de_bt_secondary
 # bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/beit_ft_captioning beit_ft mean
 # bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/beit_ft_captioning beit_ft mean
 
-# bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/captioning_new_new clip none
-# bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/captioning_new_new clip none
+# bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/captioning_new_new clipL none
+# bash ./Vision_feats/gen_feats_with_ids.sh train val ./Data/captioning_new_new clipL none
 
 # # Do caption training
 # python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
 
-# bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/ec_finetuning_new clip none
-# bash ./Vision_feats/gen_feats_with_ids.sh val val ./Data/ec_finetuning_new clip none
+bash ./Vision_feats/gen_feats_with_ids.sh train train ./Data/ec_finetuning_new clipL none
+bash ./Vision_feats/gen_feats_with_ids.sh val val ./Data/ec_finetuning_new clipL none
 
-# Do EC
-python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
+# # Do EC
+# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}

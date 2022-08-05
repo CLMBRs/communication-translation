@@ -30,8 +30,8 @@ python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
 # de2en=$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.val.en ${OUTPUT_DIR}/de-en.en.val 13a)
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
-# Do rest of backtranslation
-python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml --seed_override 2
+# # Do rest of backtranslation
+# python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml --seed_override 2
 
 # # Running the model on the test set
 # python -u BackTranslation/translate.py --config Configs/en2de_translate.yml \

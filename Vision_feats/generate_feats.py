@@ -25,7 +25,9 @@ from transformers import BeitFeatureExtractor, BeitModel
 
 models_file = {
     'beit': "microsoft/beit-large-patch16-224-pt22k",
-    'beit_ft': "microsoft/beit-large-patch16-224-pt22k-ft22k"
+    'beit_ft': "microsoft/beit-large-patch16-224-pt22k-ft22k",
+    'clip': "ViT-B/32",
+    'clipL': "ViT-L/14@336px" 
 }
 
 
@@ -47,6 +49,7 @@ class ImageLoader(data.Dataset):
             "microsoft/beit-large-patch16-224-pt22k-ft22k"
         )
         _, ClipFeat = clip.load("ViT-B/32")
+        _, ClipFeatL = clip.load("ViT-L/14@336px")
         self.transforms_dict = {
             'resnet':
                 transforms.Compose(
@@ -69,6 +72,7 @@ class ImageLoader(data.Dataset):
             'beit_ft':
                 lambda x: torch.from_numpy(BeitFtFeat(x)['pixel_values'][0]),
             'clip': ClipFeat,
+            'clipL': ClipFeatL,
         }
 
         if args.raw_image_dir:
@@ -160,7 +164,7 @@ class MyClip(nn.Module):
         """
         super().__init__()
         #self.feat_ex = BeitFeatureExtractor.from_pretrained("microsoft/beit-large-patch16-224")
-        full_model, _ = clip.load("ViT-B/32") 
+        full_model, _ = clip.load(models_file[args.img_encode_model]) 
         #self.model = full_model.visual
         self.model = full_model
 
@@ -183,7 +187,8 @@ class VisionEncode(nn.Module):
             'resnet': MyResNet50,
             'beit': MyBeit,
             'beit_ft': MyBeit,
-            'clip': MyClip
+            'clip': MyClip,
+            'clipL': MyClip
         }
         # Load model
         self.model = self.models_dict[args.img_encode_model](args)
@@ -266,7 +271,7 @@ def main():
     parser.add_argument('--kernel_size', default=4, type=int)
     args = parser.parse_args()
 
-    device = torch.device("cuda:0")
+    device = torch.device("cuda")
     args.device = device
     # Load dataset
     dataset = ImageLoader(args, args.img_name_file)

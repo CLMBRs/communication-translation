@@ -14,4 +14,4 @@ python ./Vision_feats/generate_feats.py --raw_image_dir /projects/unmt/vision_fe
     --img_encode_model $MODEL \
     --output_name ${IMG_NAME_FILE_DIR}/${MODEL}_${SPLIT}.pt \
     --downsample $DOWNSAMPLE \
-    --batch_size 2048 \
+    --batch_size  512 \
