@@ -38,7 +38,7 @@ output_data_filename: bt_en+de.csv
 lang1_data_file: en_500k.txt
 lang1_id: en
 lang1_max_len: 64
-lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+lang1_vocab_constrain_file: ./DataLink/cc/en_cc_tokenID2count_dict.cc25.json
 
 lang2_data_file: de_500k.txt
 lang2_id: de

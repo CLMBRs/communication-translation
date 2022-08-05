@@ -66,6 +66,15 @@ ones)
 ## Data
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
 
+## Pipeline
+To run code in this package, you must first do the following steps:
+1. Create a Python 3.9 Conda virtual environment: `conda create -n unmt python=3.9`
+1. Start the new environment: `conda activate unmt`
+1. Install this package using developer mode from the top level directory (`communication_translation`): `pip install -e .`
+
+To obtain the latest results of this project, go to the `communication-translation` folder and
+run the relevant script from [RunScripts](/RunScripts).
+
 ## Acknowledgements
 Part of the code is based on 
 [Translagent](https://github.com/facebookresearch/translagent). 
