@@ -1,7 +1,7 @@
 # Model:
-model_name: Output/en-de_pipeline/captions_vision_clip
+model_name: Output/en-de_pipeline/captions_clipL
 load_entire_agent: true
-image_dim: 512
+image_dim: 768
 reshaper_type: learned
 two_ffwd: false
 unit_norm: false
@@ -51,10 +51,10 @@ num_distractors_valid: 15
 # Loading and saving data:
 # train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
 # valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
-train_images: ./Data/ec_finetuning_new/clip_train.pt
-valid_images: ./Data/ec_finetuning_new/clip_val.pt
+train_images: ./Data/ec_finetuning_new/clipL_train.pt
+valid_images: ./Data/ec_finetuning_new/clipL_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-de_pipeline/ec_vision_clip
+output_dir: Output/en-de_pipeline/ec_clipL
 save_output_txt: true
 
 # Specify info about language and vocab constraint
