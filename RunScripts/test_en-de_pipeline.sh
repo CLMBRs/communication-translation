@@ -15,13 +15,13 @@ python -u BackTranslation/translate.py \
     --config Configs/test_en2de_translate.yml \
     --output_dir ${OUTPUT_DIR} \
     --model_path ${MODEL_CONFIG}
-en2de="$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.val.de ${OUTPUT_DIR}/de-en.de.val 13a)"
+en2de="$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-de_pipeline: en->de test bleu: $en2de"
 
-echo "$(date +'%Y-%m-%d %H:%M:%S') en-de_pipeline: Calculating de->en test translation scores"
+echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-de_pipeline: Calculating de->en test translation scores"
 python -u BackTranslation/translate.py \
     --config Configs/test_de2en_translate.yml \
     --output_dir ${OUTPUT_DIR} \
     --model_path ${MODEL_CONFIG}
-de2en="$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.val.en ${OUTPUT_DIR}/de-en.en.val 13a)"
+de2en="$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-de_pipeline: de->en test bleu: $de2en"
