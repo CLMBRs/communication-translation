@@ -11,7 +11,7 @@ BT_SECONDARY_CONFIG=$5
 # python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
 
 # Do caption training
-python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
+python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml --sender_freeze_override
 
 # Do EC
 python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml

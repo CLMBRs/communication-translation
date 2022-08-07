@@ -261,6 +261,11 @@ def main():
         action='store_true',
         help="Flag to trigger adapter freezing (overriding config)"
     )
+    parser.add_argument(
+        '--sender_freeze_override',
+        action='store_true',
+        help="Flag to trigger sender freezing (overriding config)"
+    )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -280,6 +285,11 @@ def main():
 
     if args.adapter_freeze_override:
         args.freeze_adapters = True
+
+    if args.sender_freeze_override:
+        args.freeze_sender = True
+    else:
+        args.freeze_sender = False
 
     # set csv output file
     if not os.path.exists(args.output_dir):
@@ -440,6 +450,10 @@ def main():
     if args.freeze_adapters:
         print("Freezing adapter modules")
         model.freeze_adapters()
+
+    if args.freeze_sender:
+        print("Freezing BART sender")
+        model.freeze_sender_decoder()
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)

@@ -83,6 +83,10 @@ class CommunicationAgent(Module):
         if self.sender.recurrent_unroll:
             for param in self.sender.lstm.parameters():
                 param.requires_grad = False
+    
+    def freeze_sender_decoder(self) -> None:
+        for param in self.sender.decoder.parameters():
+            param.requires_grad = False
 
     def image_to_message(self, batch: dict) -> dict:
         """
