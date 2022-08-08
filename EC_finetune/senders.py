@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from copy import deepcopy
 from typing import Dict
 
 import torch
@@ -87,6 +88,7 @@ class MBartSender(Sender):
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
+            self.adaptor_encode = deepcopy(model.model.encoder)
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -137,6 +139,11 @@ class MBartSender(Sender):
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden
             image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
+            image_hidden = self.adaptor_encode(
+                input_ids=None,
+                input_embeds=image_hidden,
+            )
+            image_hidden = image_hidden['last_hidden_state']
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:

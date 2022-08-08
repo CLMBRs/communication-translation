@@ -83,6 +83,8 @@ class CommunicationAgent(Module):
         if self.sender.recurrent_unroll:
             for param in self.sender.lstm.parameters():
                 param.requires_grad = False
+            for param in self.sender.adaptor_encode.parameters():
+                param.requires_grad = False 
     
     def freeze_sender_decoder(self) -> None:
         for param in self.sender.decoder.parameters():
@@ -497,8 +499,7 @@ class ImageCaptionGrounder(CommunicationAgent):
 
         if self.image_selection_lambda:
             image_selection_loss *= self.image_selection_lambda
-        #loss = caption_generation_loss + image_selection_loss
-        loss = caption_generation_loss
+        loss = caption_generation_loss + image_selection_loss
 
         return {
             "loss": loss,

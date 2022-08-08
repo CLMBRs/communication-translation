@@ -507,7 +507,7 @@ class BartGumbelEncoder(nn.Module):
             attention_mask = invert_mask(attention_mask)
         inputs_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
         inputs_embeds = inputs_embeds * self.embed_scale
-        embed_pos = self.embed_positions(input_ids)
+        embed_pos = self.embed_positions(input_embeds) #Get rid of the dependency of input_ids; verify the same as using input_ids
         x = inputs_embeds + embed_pos
         x = self.layernorm_embedding(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
