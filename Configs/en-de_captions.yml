@@ -53,7 +53,7 @@ valid_captions: ./Data/captioning_new_new/en_captions_val.jsonl
 train_images: ./Data/captioning_new_new/clipL_train.pt
 valid_images: ./Data/captioning_new_new/clipL_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-de_pipeline/captions_clipL_sFz
+output_dir: Output/en-de_pipeline/captions_clipL
 save_output_txt: true
 
 # Specify info about language and vocab constraint

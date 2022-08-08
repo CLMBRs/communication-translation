@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-de_pipeline/captions_clipL_sFz
+model_name: Output/en-de_pipeline/captions_clipL
 load_entire_agent: true
 image_dim: 768
 reshaper_type: learned
@@ -54,7 +54,7 @@ num_distractors_valid: 15
 train_images: ./Data/ec_finetuning_new/clipL_train.pt
 valid_images: ./Data/ec_finetuning_new/clipL_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-de_pipeline/ec_clipL_sFz
+output_dir: Output/en-de_pipeline/ec_clipL
 save_output_txt: true
 
 # Specify info about language and vocab constraint
