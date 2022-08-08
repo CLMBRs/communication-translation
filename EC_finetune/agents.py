@@ -497,8 +497,7 @@ class ImageCaptionGrounder(CommunicationAgent):
 
         if self.image_selection_lambda:
             image_selection_loss *= self.image_selection_lambda
-        #loss = caption_generation_loss + image_selection_loss
-        loss = caption_generation_loss
+        loss = caption_generation_loss + image_selection_loss
 
         return {
             "loss": loss,
