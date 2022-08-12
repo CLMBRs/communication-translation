@@ -48,10 +48,10 @@ num_distractors_train: 15
 num_distractors_valid: 15
 
 # Loading and saving data:
-train_captions: ./Data/captioning/en_captions_train.jsonl
-valid_captions: ./Data/captioning/en_captions_val.jsonl
-train_images: ./Data/captioning/images_train.pt
-valid_images: ./Data/captioning/images_val.pt
+train_captions: ./DataLink/captioning_new/en_captions_train.jsonl
+valid_captions: ./DataLink/captioning_new/en_captions_val.jsonl
+train_images: ./DataLink/captioning_new/images_train.pt
+valid_images: ./DataLink/captioning_new/images_val.pt
 save_pretrain_seperately: true
 output_dir: Output/en-si_pipeline/captions
 save_output_txt: true
