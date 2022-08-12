@@ -37,7 +37,7 @@ _CITATION = """\
 }
 """
 
-_DATA_URL = "https://github.com/facebookresearch/flores/raw/master/floresv1/data/wikipedia_en_ne_si_test_sets.tgz"
+_DATA_URL = "https://github.com/facebookresearch/flores/raw/main/previous_releases/floresv1/data/wikipedia_en_ne_si_test_sets.tgz"
 
 # Tuple that describes a single pair of files with matching translations.
 # language_to_file is the map from language (2 letter string: example 'en')
@@ -107,7 +107,7 @@ class Flores(datasets.GeneratorBasedBuilder):
         source, target = self.config.language_pair
         non_en = source if target == "en" else target
         path_tmpl = "{dl_dir}/wikipedia_en_ne_si_test_sets/wikipedia.{split}.{non_en}-en." "{lang}"
-
+        print(f"lookatme {path_tmpl.format(dl_dir=dl_dir, split='dev', non_en=non_en, lang=source)}")
         files = {}
         for split in ("dev", "devtest"):
             files[split] = {
