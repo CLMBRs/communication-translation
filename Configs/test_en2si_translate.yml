@@ -3,13 +3,13 @@ seed: 1
 n_gpu: 1
 batch_size: 64
 num_beams: 5
-translation_filename: sien.en.test.si
+translation_filename: si-en.en.test.si
 
-output_dir: Output/en-si_pipeline
+output_dir: Output/en-si_pipeline/translation_results
 model_path: Output/en-si_pipeline/best_bleu
 
 # data config
-source_data_file: sien.en.test
+source_data_file: Data/translation_references/si-en.en.test
 source_id: en
 source_max_len: 64
 target_id: si
