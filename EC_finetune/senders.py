@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
+from .adapters import TransformerMapper
 from .modelings.modeling_bart import _prepare_bart_decoder_inputs
 from .modelings.modeling_mbart import MBartForConditionalGeneration
 
@@ -50,7 +51,7 @@ class MBartSender(Sender):
         self,
         model: MBartForConditionalGeneration,
         seq_len: int = None,
-        recurrent_unroll: bool = False,
+        unroll: bool = False,
         unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,
@@ -75,7 +76,7 @@ class MBartSender(Sender):
         self.embedding = model.model.shared
         self.output_bias = model.final_logits_bias
         self.embedding_dim = model.model.shared.weight.size(1)
-        self.recurrent_unroll = recurrent_unroll
+        self.unroll = unroll
         self.unroll_length = unroll_length
         self.top.temp = temperature
         self.top.hard = hard
@@ -84,11 +85,16 @@ class MBartSender(Sender):
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
 
-        if self.recurrent_unroll:
+        if self.unroll == 'recurrent':
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
             self.adaptor_encode = deepcopy(model.model.encoder)
+        elif self.unroll == 'transformer':
+            # Make sure you turn off the recurrent unroll in the sender before using this
+            self.transformer = TransformerMapper(self.embedding_dim, self.embedding_dim, 
+                 prefix_length=self.seq_len, clip_length=10, num_layers=8)
+
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -122,11 +128,12 @@ class MBartSender(Sender):
         # Ensure the batch is the correct shape
         # (batch_size, image_hidden_dim)
         batch_size = image_hidden.size(0)
-        assert len(image_hidden.shape) == 2
+        # assert len(image_hidden.shape) == 2
         # (batch_size, 1, image_hidden_dim)
-        image_hidden = image_hidden.unsqueeze(1)
+        if len(image_hidden.shape) == 2:
+            image_hidden = image_hidden.unsqueeze(1)
 
-        if self.recurrent_unroll:
+        if self.unroll == 'recurrent':
             unrolled_hidden = []
             h = torch.zeros_like(image_hidden).transpose(0, 1).to(
                 image_hidden.device
@@ -144,6 +151,8 @@ class MBartSender(Sender):
                 input_embeds=image_hidden,
             )
             image_hidden = image_hidden['last_hidden_state']
+        elif self.unroll == 'transformer':
+            image_hidden = self.transformer(image_hidden)
 
         # If decoder inputs are given, use them to generate timestep-wise
         if decoder_input_ids is not None:

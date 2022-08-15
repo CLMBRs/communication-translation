@@ -381,7 +381,7 @@ def main():
         sender = MBartSender(
             comm_model,
             seq_len=args.max_seq_length,
-            recurrent_unroll=args.recurrent_image_unroll,
+            unroll=args.image_unroll,
             unroll_length=args.image_unroll_length,
             temperature=args.temperature,
             hard=args.hard,

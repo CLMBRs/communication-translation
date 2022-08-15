@@ -382,9 +382,9 @@ class BartEncoder(nn.Module):
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
 
-        inputs_embeds = self.embed_tokens(input_ids) * self.embed_scale
+        input_embeds = self.embed_tokens(input_ids) * self.embed_scale
         embed_pos = self.embed_positions(input_ids)
-        x = inputs_embeds + embed_pos
+        x = input_embeds + embed_pos
         x = self.layernorm_embedding(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
 
@@ -505,10 +505,10 @@ class BartGumbelEncoder(nn.Module):
         # check attention mask and invert
         if attention_mask is not None:
             attention_mask = invert_mask(attention_mask)
-        inputs_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
-        inputs_embeds = inputs_embeds * self.embed_scale
+        input_embeds = input_embeds if input_embeds is not None else self.embed_tokens(input_ids)
+        input_embeds = input_embeds * self.embed_scale
         embed_pos = self.embed_positions(input_embeds) #Get rid of the dependency of input_ids; verify the same as using input_ids
-        x = inputs_embeds + embed_pos
+        x = input_embeds + embed_pos
         x = self.layernorm_embedding(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
 
