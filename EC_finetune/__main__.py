@@ -266,6 +266,18 @@ def main():
         action='store_true',
         help="Flag to trigger sender freezing (overriding config)"
     )
+    parser.add_argument(
+        '--model_dir_override',
+        type=str,
+        default=None,
+        help="Flag to override the input model directory"
+    )
+    parser.add_argument(
+        '--output_dir_override',
+        type=str,
+        default=None,
+        help="Flag to override the output directory"
+    )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -290,6 +302,12 @@ def main():
         args.freeze_sender = True
     else:
         args.freeze_sender = False
+    
+    if args.model_dir_override:
+        args.model_name = args.model_dir_override
+
+    if args.output_dir_override:
+        args.output_dir = args.output_dir_override
 
     # set csv output file
     if not os.path.exists(args.output_dir):
