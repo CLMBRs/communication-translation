@@ -93,6 +93,10 @@ class CommunicationAgent(Module):
         for param in self.sender.decoder.parameters():
             param.requires_grad = False
 
+    def freeze_listener_encoder(self) -> None:
+        for param in self.receiver.encoder.parameters():
+            param.requires_grad = False
+
     def image_to_message(self, batch: dict) -> dict:
         """
         Take in an image embedding and use the sender to return a

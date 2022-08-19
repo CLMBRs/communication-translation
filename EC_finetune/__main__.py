@@ -267,6 +267,11 @@ def main():
         help="Flag to trigger sender freezing (overriding config)"
     )
     parser.add_argument(
+        '--receiver_freeze_override',
+        action='store_true',
+        help="Flag to trigger receiver freezing (overriding config)"
+    )
+    parser.add_argument(
         '--model_dir_override',
         type=str,
         default=None,
@@ -302,6 +307,11 @@ def main():
         args.freeze_sender = True
     else:
         args.freeze_sender = False
+
+    if args.receiver_freeze_override:
+        args.freeze_receiver = True
+    else:
+        args.freeze_receiver = False
     
     if args.model_dir_override:
         args.model_name = args.model_dir_override
@@ -470,8 +480,12 @@ def main():
         model.freeze_adapters()
 
     if args.freeze_sender:
-        print("Freezing BART sender")
+        print("Freezing sender's decoder")
         model.freeze_sender_decoder()
+    
+    if args.freeze_receiver:
+        print("Freezing listener's encoder")
+        model.freeze_listener_encoder()
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)
