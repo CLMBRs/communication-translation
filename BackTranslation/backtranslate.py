@@ -27,7 +27,6 @@ from Util.util import create_logger, set_seed, statbar_string
 
 TOKENIZER_MAP = {
     'zh': 'zh',
-    'ja': 'ja-mecab',
 }
 
 
@@ -107,7 +106,6 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
 
     TOKENIZER_MAP = {
         'zh': 'zh',
-        'ja': 'ja-mecab',
     }
 
     dataloader = torch.utils.data.DataLoader(
