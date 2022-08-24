@@ -107,7 +107,7 @@ class Flores(datasets.GeneratorBasedBuilder):
         source, target = self.config.language_pair
         non_en = source if target == "en" else target
         path_tmpl = "{dl_dir}/wikipedia_en_ne_si_test_sets/wikipedia.{split}.{non_en}-en." "{lang}"
-        print(f"lookatme {path_tmpl.format(dl_dir=dl_dir, split='dev', non_en=non_en, lang=source)}")
+
         files = {}
         for split in ("dev", "devtest"):
             files[split] = {
