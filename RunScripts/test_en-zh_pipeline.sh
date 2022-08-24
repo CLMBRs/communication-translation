@@ -8,7 +8,8 @@ MODEL_CONFIG=$2
 
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-zh_pipeline: Calculating en->zh test translation scores"
 python -u BackTranslation/translate.py --config Configs/test_en2zh_translate.yml
-en2zh="$(./Tools/bleu.sh ${OUTPUT_DIR}/translation_results/zh-en.en.test.zh Data/translation_references/zh-en.zh.test 13a)"
+# Special note that Chinese tokenization used here (zh) is different from the default setting (13a)
+en2zh="$(./Tools/bleu.sh ${OUTPUT_DIR}/translation_results/zh-en.en.test.zh Data/translation_references/zh-en.zh.test zh)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-zh_pipeline: en->zh test bleu: $en2zh"
 
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-zh_pipeline: Calculating zh->en test translation scores"
