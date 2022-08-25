@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from argparse import Namespace
 from copy import deepcopy
 from typing import Dict
 
@@ -57,7 +58,9 @@ class MBartSender(Sender):
         hard: bool = None,
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
-        generate_from_logits: bool = False
+        generate_from_logits: bool = False,
+        img_ext_len: int = 10,
+        tf_num_layers: int = 8
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -84,17 +87,21 @@ class MBartSender(Sender):
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
+        self.img_ext_len = img_ext_len
+        self.tf_num_layers = tf_num_layers
 
         if self.unroll == 'recurrent':
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
-            self.adaptor_encode = deepcopy(model.model.encoder)
         elif self.unroll == 'transformer':
-            # Make sure you turn off the recurrent unroll in the sender before using this
-            self.transformer = TransformerMapper(self.embedding_dim, self.embedding_dim, 
-                 prefix_length=self.seq_len, clip_length=10, num_layers=8)
-
+            self.transformer = TransformerMapper(
+                self.embedding_dim,
+                self.embedding_dim,
+                prefix_length=self.unroll_length,
+                clip_length=self.img_ext_len,
+                num_layers=self.tf_num_layers
+            )
 
     def forward(
         self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
@@ -146,11 +153,6 @@ class MBartSender(Sender):
                 unrolled_hidden.append(next_hidden)
                 image_hidden = next_hidden
             image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
-            image_hidden = self.adaptor_encode(
-                input_ids=None,
-                input_embeds=image_hidden,
-            )
-            image_hidden = image_hidden['last_hidden_state']
         elif self.unroll == 'transformer':
             image_hidden = self.transformer(image_hidden)
 

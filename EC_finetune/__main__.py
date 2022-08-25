@@ -312,7 +312,7 @@ def main():
         args.freeze_receiver = True
     else:
         args.freeze_receiver = False
-    
+
     if args.model_dir_override:
         args.model_name = args.model_dir_override
 
@@ -327,7 +327,7 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_lambda or args.weight_drift_lambda: 
+        if args.language_model_lambda or args.weight_drift_lambda:
             args.csv_headers += ['communication loss']
         if args.language_model_lambda:
             args.csv_headers += ['lm loss']
@@ -482,7 +482,7 @@ def main():
     if args.freeze_sender:
         print("Freezing sender's decoder")
         model.freeze_sender_decoder()
-    
+
     if args.freeze_receiver:
         print("Freezing listener's encoder")
         model.freeze_listener_encoder()
