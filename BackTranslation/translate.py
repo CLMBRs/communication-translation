@@ -128,11 +128,8 @@ def main():
         )
         args.is_translation_dataset = True
     elif getattr(args, 'source_data_file', False):
-        args.source_data_file_path = os.path.join(
-            args.output_dir, args.source_data_file
-        )
         source_dataset = load_dataset(
-            "text", data_files=args.source_data_file_path
+            "text", data_files=args.source_data_file
         )['train']
         args.is_translation_dataset = False
     else:

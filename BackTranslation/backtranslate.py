@@ -27,7 +27,6 @@ from Util.util import create_logger, set_seed, statbar_string
 
 TOKENIZER_MAP = {
     'zh': 'zh',
-    'ja': 'ja-mecab',
 }
 
 
@@ -62,10 +61,10 @@ def write_validation_splits(args, source_id, target_id):
     target_file = os.path.join(args.output_dir, target_filename)
     with open(source_file, 'w+') as f:
         for line in source_lines:
-            print(line.encode('utf8'), file=f)
+            print(line, file=f)
     with open(target_file, 'w+') as f:
         for line in target_lines:
-            print(line.encode('utf8'), file=f)
+            print(line, file=f)
 
 
 def save_model(args, backtranslation_pack, saved_model_name):
@@ -107,7 +106,6 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
 
     TOKENIZER_MAP = {
         'zh': 'zh',
-        'ja': 'ja-mecab',
     }
 
     dataloader = torch.utils.data.DataLoader(
@@ -302,10 +300,10 @@ def evaluate(
             target_file = os.path.join(args.output_dir, target_filename)
             with open(source_file, 'w+') as f:
                 for line in source2target_translations:
-                    print(line.encode('utf8'), file=f)
+                    print(line, file=f)
             with open(target_file, 'w+') as f:
                 for line in target2source_translations:
-                    print(line.encode('utf8'), file=f)
+                    print(line, file=f)
     else:
         if step >= args.early_stop_start_time:
             # we start counting the early stopping after some 'warmup period'
@@ -731,6 +729,7 @@ if __name__ == "__main__":
             f"{args.lang2_id} to {args.lang1_id}"
         ]
         data_file = os.path.join(args.output_dir, args.output_data_filename)
+        
         with open(data_file, 'w+') as f:
             print(", ".join(data_columns), file=f)
 
