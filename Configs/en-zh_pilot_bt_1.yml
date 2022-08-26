@@ -31,7 +31,7 @@ val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: zh-en
 # dir to save model
 models_shared: true
-output_dir: Output/en-zh_pilot_2/
+output_dir: ./Output/en-zh_pilot_2/
 
 # data config
 # backtranslation language

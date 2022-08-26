@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-si_pipeline/bt_init/last
+model_name: ./Output/en-si_pipeline/bt_init/last
 load_entire_agent: false
 image_dim: 2048
 reshaper_type: learned
@@ -53,7 +53,7 @@ valid_captions: ./DataLink/captioning_new/en_captions_val.jsonl
 train_images: ./DataLink/captioning_new/images_train.pt
 valid_images: ./DataLink/captioning_new/images_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-si_pipeline/captions
+output_dir: ./Output/en-si_pipeline/captions
 save_output_txt: true
 
 # Specify info about language and vocab constraint

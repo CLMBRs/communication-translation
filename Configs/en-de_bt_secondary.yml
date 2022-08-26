@@ -1,5 +1,5 @@
 # Path to load model for generation
-model_path: Output/en-de_pipeline/ec
+model_path: ./Output/en-de_pipeline/ec
 
 # training config
 num_steps: 6144
@@ -30,7 +30,7 @@ early_stop_start_time: 2048
 val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: de-en
 models_shared: true
-output_dir: Output/en-de_pipeline
+output_dir: ./Output/en-de_pipeline
 
 # data config
 # backtranslation language
