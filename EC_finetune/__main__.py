@@ -243,81 +243,59 @@ def main():
         description="Train emergent communication model via image-identification"
     )
     parser.add_argument('--config', type=str)
-    parser.add_argument('--seed_override', type=int)
+    parser.add_argument('--seed_override', type=int, dest='seed', default=None)
     parser.add_argument(
         '--lm_lambda_override',
         type=float,
         default=None,
-        help="Flag to override the language model lambda in the config"
+        dest='lm_lambda',
+        help="Argument to override the language model lambda in the config"
     )
     parser.add_argument(
         '--drift_lambda_override',
         type=float,
         default=None,
-        help="Flag to override the drift loss lambda in the config"
+        dest='drift_lambda',
+        help="Argument to override the drift loss lambda in the config"
     )
     parser.add_argument(
-        '--adapter_freeze_override',
+        '--freeze_adapters_override',
         action='store_true',
-        help="Flag to trigger adapter freezing (overriding config)"
+        dest='freeze_adapters',
+        help="Argument to trigger adapter freezing (overriding config)"
     )
     parser.add_argument(
-        '--sender_freeze_override',
+        '--freeze_sender_override',
         action='store_true',
-        help="Flag to trigger sender freezing (overriding config)"
+        dest='freeze_sender',
+        help="Argument to trigger sender freezing (overriding config)"
     )
     parser.add_argument(
-        '--receiver_freeze_override',
+        '--freeze_receiver_override',
         action='store_true',
-        help="Flag to trigger receiver freezing (overriding config)"
+        dest='freeze_receiver',
+        help="Argument to trigger receiver freezing (overriding config)"
     )
     parser.add_argument(
         '--model_dir_override',
         type=str,
         default=None,
-        help="Flag to override the input model directory"
+        dest='model_dir',
+        help="Argument to override the input model directory"
     )
     parser.add_argument(
         '--output_dir_override',
         type=str,
         default=None,
-        help="Flag to override the output directory"
+        dest='output_dir',
+        help="Argument to override the output directory"
     )
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
-
-    # set random seed
-    if args.seed_override:
-        args.seed = args.seed_override
-    set_seed(args.seed, args.n_gpu)
-
-    if args.lm_lambda_override:
-        args.language_model_lambda = args.lm_lambda_override
-
-    # weight drift override
-    if args.drift_lambda_override:
-        args.weight_drift_lambda = args.drift_lambda_override
-
-    if args.adapter_freeze_override:
-        args.freeze_adapters = True
-
-    if args.sender_freeze_override:
-        args.freeze_sender = True
-    else:
-        args.freeze_sender = False
-
-    if args.receiver_freeze_override:
-        args.freeze_receiver = True
-    else:
-        args.freeze_receiver = False
-
-    if args.model_dir_override:
-        args.model_name = args.model_dir_override
-
-    if args.output_dir_override:
-        args.output_dir = args.output_dir_override
+        config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+    config_dict.update(args_dict)
+    args_dict.update(config_dict)
 
     # set csv output file
     if not os.path.exists(args.output_dir):
@@ -327,8 +305,7 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_lambda or args.weight_drift_lambda:
-            args.csv_headers += ['communication loss']
+        args.csv_headers += ['communication loss']
         if args.language_model_lambda:
             args.csv_headers += ['lm loss']
         if args.weight_drift_lambda:

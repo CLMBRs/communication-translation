@@ -52,7 +52,7 @@ class MBartSender(Sender):
         self,
         model: MBartForConditionalGeneration,
         seq_len: int = None,
-        unroll: bool = False,
+        unroll: str = None,
         unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,

@@ -1,5 +1,6 @@
 from ast import Raise
 from builtins import breakpoint
+from email.mime import base
 import glob
 import os
 import csv
@@ -27,13 +28,13 @@ models_file = {
     'beit': "microsoft/beit-large-patch16-224-pt22k",
     'beit_ft': "microsoft/beit-large-patch16-224-pt22k-ft22k",
     'clip': "ViT-B/32",
-    'clipL': "ViT-L/14@336px" 
+    'clipL': "ViT-L/14@336px"
 }
 
 
 class ImageLoader(data.Dataset):
     """The bare minimum class for 
-        loading image data
+        loading image data.
         inference purpose only
     """
     def __init__(
@@ -41,46 +42,12 @@ class ImageLoader(data.Dataset):
         args,
         img_name_file=None,
     ):
-        # # TODO: Fix the place of feature extractor
-        BeitFeat = BeitFeatureExtractor.from_pretrained(
-            "microsoft/beit-large-patch16-224-pt22k"
-        )
-        BeitFtFeat = BeitFeatureExtractor.from_pretrained(
-            "microsoft/beit-large-patch16-224-pt22k-ft22k"
-        )
-        _, ClipFeat = clip.load("ViT-B/32")
-        _, ClipFeatL = clip.load("ViT-L/14@336px")
-        self.transforms_dict = {
-            'resnet':
-                transforms.Compose(
-                    [
-                        transforms.Resize(256),
-                        transforms.CenterCrop(224),
-                        transforms.ToTensor(),
-                        transforms.Normalize(
-                            mean=[0.485, 0.456, 0.406],
-                            std=[0.229, 0.224, 0.225]
-                        ),  #Imagenet pretraining default normalization.
-                    ]
-                ),
-            # 'beit': transforms.Compose([ #beit's feature extractor would do rest of the job
-            #     transforms.Resize(256, 256),
-            #     transforms.ToTensor(),
-            #     ]),
-            'beit':
-                lambda x: torch.from_numpy(BeitFeat(x)['pixel_values'][0]),
-            'beit_ft':
-                lambda x: torch.from_numpy(BeitFtFeat(x)['pixel_values'][0]),
-            'clip': ClipFeat,
-            'clipL': ClipFeatL,
-        }
-
         if args.raw_image_dir:
             self.data_dir = args.raw_image_dir
             # Load preprocess
             # self.do_transform = args.do_transform
-            self.transform = self.transforms_dict[args.img_encode_model]
-            
+            self.transform = None
+
         if args.read_img_folder:
             # Read images directly from the folder
             self.dataset = self.load_imagepaths_with_labels()
@@ -121,6 +88,39 @@ class ImageLoader(data.Dataset):
         """
         l = len(self.dataset)
         return l
+
+
+class ResNetImgLoader(ImageLoader):
+    def __init__(self, args, img_name_file=None):
+        super().__init__(args, img_name_file)
+        self.transform = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),  #Imagenet pretraining default normalization.
+            ]
+        )
+
+
+class ClipImgLoader(ImageLoader):
+    def __init__(self, args, img_name_file=None):
+        super().__init__(args, img_name_file)
+        _, ClipFeat = clip.load(models_file[args.img_encode_model])
+        self.transform = ClipFeat
+
+
+class BeitImgLoader(ImageLoader):
+    def __init__(self, args, img_name_file=None):
+        super().__init__(args, img_name_file)
+        BeitFeat = BeitFeatureExtractor.from_pretrained(
+            models_file[args.img_encode_model]
+        )
+        self.transform = lambda x: torch.from_numpy(
+            BeitFeat(x)['pixel_values'][0]
+        )
 
 
 class MyResNet50(nn.Module):
@@ -164,7 +164,7 @@ class MyClip(nn.Module):
         """
         super().__init__()
         #self.feat_ex = BeitFeatureExtractor.from_pretrained("microsoft/beit-large-patch16-224")
-        full_model, _ = clip.load(models_file[args.img_encode_model]) 
+        full_model, _ = clip.load(models_file[args.img_encode_model])
         #self.model = full_model.visual
         self.model = full_model
 
@@ -177,73 +177,67 @@ class MyClip(nn.Module):
 
 
 class VisionEncode(nn.Module):
-    def __init__(self, args):
-        """A vision encoder for processing images on the fly
+    def __init__(self, model, args):
+        """A vision encoder for processing images
         """
         super().__init__()
         # Warning: The feature is resized and cropped before
 
-        self.models_dict = {
-            'resnet': MyResNet50,
-            'beit': MyBeit,
-            'beit_ft': MyBeit,
-            'clip': MyClip,
-            'clipL': MyClip
-        }
         # Load model
-        self.model = self.models_dict[args.img_encode_model](args)
+        self.model = model
         self.args = args
-        if self.args.downsample == 'transformer':
-            self.adaptor = nn.Transformer(nhead=8, num_encoder_layers=6)
-        if self.args.downsample == 'lstm':
-            self.adaptor = nn.LSTM(10, 20, 2)
-        if self.args.downsample == 'cnn':
-            self.adaptor = nn.Conv1d(
-                args.sender_image_dim, args.image_dim, 8, stride=6
-            )
-        if self.args.downsample == 'linear':
-            self.adaptor = nn.Linear(
-                args.sender_image_dim, args.image_dim
-            )
+        # if self.args.downsample == 'transformer':
+        #     self.adaptor = nn.Transformer(nhead=8, num_encoder_layers=6)
+        # if self.args.downsample == 'lstm':
+        #     self.adaptor = nn.LSTM(10, 20, 2)
+        # if self.args.downsample == 'cnn':
+        #     self.adaptor = nn.Conv1d(
+        #         args.sender_image_dim, args.image_dim, 8, stride=6
+        #     )
+        # if self.args.downsample == 'linear':
+        #     self.adaptor = nn.Linear(
+        #         args.sender_image_dim, args.image_dim
+        #     )
 
     def downsample(self, feats):
         """
-        reduce the number of tokens in the image feature.
+        reduce the number of tokens in the image feature. Disabled for now :) 
         """
-        if self.args.downsample == 'mean':
-            feats = torch.mean(
-                feats, dim=-2
-            )  # Feats (batch_size, token_num, embedding_size)
-        elif self.args.downsample == 'averagePool':
-            batch_size = feats.shape[0]
-            s_feats = feats[:, 0].unsqueeze(1)
-            o_feats = feats[:, 1:]
-            num_patch = int(np.sqrt((o_feats.shape[1])))
-            embed_size = s_feats.shape[-1]
-            o_feats = o_feats.transpose(2, 1)
-            o_feats = o_feats.reshape(
-                batch_size, embed_size, num_patch, num_patch
-            )
-            m = nn.AvgPool2d(
-                self.args.kernel_size, stride=self.args.kernel_size
-            )
-            o_feats = m(
-                o_feats
-            )  # (batch_size, embed_size, new_num_patch, new_num_patch)
-            o_feats = o_feats.reshape(batch_size, embed_size, -1)
-            o_feats = o_feats.transpose(2, 1)
-            feats = torch.cat([s_feats, o_feats], dim=1)
-        elif self.args.downsample == 'transformer':
-            raise NotImplementedError("Will implement that in the future")
-        elif self.args.downsample == 'lstm':
-            raise NotImplementedError("Will implement that in the future")
-        elif self.args.downsample == 'cnn':
-            feats = feats.transpose(1, 2)
-            feats = self.adaptor(feats)
-            feats = feats.transpose(1, 2)
-        elif self.args.downsample == 'linear':
-            feats = self.adaptor(feats)
         return feats
+        # if self.args.downsample == 'mean':
+        #     feats = torch.mean(
+        #         feats, dim=-2
+        #     )  # Feats (batch_size, token_num, embedding_size)
+        # elif self.args.downsample == 'averagePool':
+        #     batch_size = feats.shape[0]
+        #     s_feats = feats[:, 0].unsqueeze(1)
+        #     o_feats = feats[:, 1:]
+        #     num_patch = int(np.sqrt((o_feats.shape[1])))
+        #     embed_size = s_feats.shape[-1]
+        #     o_feats = o_feats.transpose(2, 1)
+        #     o_feats = o_feats.reshape(
+        #         batch_size, embed_size, num_patch, num_patch
+        #     )
+        #     m = nn.AvgPool2d(
+        #         self.args.kernel_size, stride=self.args.kernel_size
+        #     )
+        #     o_feats = m(
+        #         o_feats
+        #     )  # (batch_size, embed_size, new_num_patch, new_num_patch)
+        #     o_feats = o_feats.reshape(batch_size, embed_size, -1)
+        #     o_feats = o_feats.transpose(2, 1)
+        #     feats = torch.cat([s_feats, o_feats], dim=1)
+        # elif self.args.downsample == 'transformer':
+        #     raise NotImplementedError("Will implement that in the future")
+        # elif self.args.downsample == 'lstm':
+        #     raise NotImplementedError("Will implement that in the future")
+        # elif self.args.downsample == 'cnn':
+        #     feats = feats.transpose(1, 2)
+        #     feats = self.adaptor(feats)
+        #     feats = feats.transpose(1, 2)
+        # elif self.args.downsample == 'linear':
+        #     feats = self.adaptor(feats)
+        # return feats
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # If x is (batch_size, num_choices, channel, img_w, img_h)
@@ -253,6 +247,15 @@ class VisionEncode(nn.Module):
         feats = feats.squeeze()
         feats = self.downsample(feats)
         return feats
+
+
+models_dict = {
+    'resnet': (MyResNet50, ResNetImgLoader),
+    'beit': (MyBeit, BeitImgLoader),
+    'beit_ft': (MyBeit, BeitImgLoader),
+    'clip': (MyClip, ClipImgLoader),
+    'clipL': (MyClip, ClipImgLoader)
+}
 
 
 def main():
@@ -273,12 +276,16 @@ def main():
 
     device = torch.device("cuda")
     args.device = device
+    # Choose dataset loader and base model
+    base_model, dataset = models_dict[args.img_encode_model]
+    base_model = base_model(args)
+    dataset = dataset(args, args.img_name_file)
+
     # Load dataset
-    dataset = ImageLoader(args, args.img_name_file)
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False)
 
     # Load model
-    model = VisionEncode(args)
+    model = VisionEncode(args, base_model)
     model.to(device)
     model.eval()
 

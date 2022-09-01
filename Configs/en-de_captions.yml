@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-de_pipeline/bt_init/last
+model_name: ./Output/en-de_pipeline/bt_init/last
 load_entire_agent: false
 image_dim: 768
 reshaper_type: learned
@@ -53,7 +53,7 @@ valid_captions: ./Data/captioning_new_new/en_captions_val.jsonl
 train_images: ./Data/captioning_new_new/clipL_train.pt
 valid_images: ./Data/captioning_new_new/clipL_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-de_pipeline/captions_clipL_sFz
+output_dir: ./Output/en-de_pipeline/captions_clipL_sFz
 save_output_txt: true
 
 # Specify info about language and vocab constraint

@@ -75,25 +75,24 @@ class CommunicationAgent(Module):
             print("Sharing reshaping adapter for each agent")
             self.sender_reshaper = self.receiver_reshaper = self.reshaper
 
+    def freeze_params(self, model) -> None:
+        for param in model.parameters():
+            param.requires_grad = False
+
     def freeze_adapters(self) -> None:
-        for param in self.sender_reshaper.parameters():
-            param.requires_grad = False
-        for param in self.receiver_reshaper.parameters():
-            param.requires_grad = False
+        self.freeze_params(self.sender_reshaper)
+        self.freeze_params(self.receiver_reshaper)
+        self.freeze_params(self.sender.lstm)
         if self.sender.unroll == 'recurrent':
-            for param in self.sender.lstm.parameters():
-                param.requires_grad = False
+            self.freeze_params(self.sender.lstm)
         elif self.sender.unroll == 'transformer':
-            for param in self.sender.transformer.parameters():
-                param.requires_grad = False
+            self.freeze_params(self.sender.transformer)
 
     def freeze_sender_decoder(self) -> None:
-        for param in self.sender.decoder.parameters():
-            param.requires_grad = False
+        self.freeze_params(self.sender.decoder)
 
     def freeze_listener_encoder(self) -> None:
-        for param in self.receiver.encoder.parameters():
-            param.requires_grad = False
+        self.freeze_params(self.receiver.encoder)
 
     def image_to_message(self, batch: dict) -> dict:
         """
