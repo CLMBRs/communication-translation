@@ -506,6 +506,18 @@ if __name__ == "__main__":
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
+        '--model_dir_override',
+        type=str,
+        default=None,
+        help="Flag to override the input model directory"
+    )
+    parser.add_argument(
+        '--output_dir_override',
+        type=str,
+        default=None,
+        help="Flag to override the output directory"
+    )
+    parser.add_argument(
         '--print_translation',
         action="store_true",
         help="Whether we want to print backtranslated sentence, for inspection"
@@ -524,6 +536,13 @@ if __name__ == "__main__":
 
     with open(args_dict['config'], 'r') as config_file:
         args_dict.update(yaml.load(config_file, Loader=yaml.SafeLoader))
+    
+    # Set the input model directory and output directory
+    if args.model_dir_override:
+        args.model_path = args.model_dir_override
+
+    if args.output_dir_override:
+        args.output_dir = args.output_dir_override
 
     args.output_dir = os.path.join(args.backtranslated_dir, args.output_dir)
     if not os.path.exists(args.output_dir):

@@ -1,10 +1,10 @@
 #!/bin/bash
 source activate unmt
 
-OUTPUT_DIR=$1
+OUTPUT_DIR=Output/en-de_pipeline/bt_sec
 BT_INIT_CONFIG=$2
-CAPTIONS_CONFIG=$3
-EC_CONFIG=$4
+CAPTIONS_CONFIG=en-de_captions
+EC_CONFIG=en-de_ec
 BT_SECONDARY_CONFIG=$5
 
 # Do initial (short) backtranslation

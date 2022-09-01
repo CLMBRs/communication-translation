@@ -113,7 +113,10 @@ class MBartReceiver(Receiver):
 
         if self.recurrent_aggregation:
             hidden = torch.nn.utils.rnn.pack_padded_sequence(
-                hidden, message_lengths.tolist(), batch_first=True, enforce_sorted=False
+                hidden,
+                message_lengths.tolist(),
+                batch_first=True,
+                enforce_sorted=False
             )
             _, (output, _) = self.hidden_to_output(hidden)
             output = output.squeeze()
