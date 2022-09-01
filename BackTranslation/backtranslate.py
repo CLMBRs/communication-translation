@@ -20,15 +20,13 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import (
-    set_seed, translation2string, statbar_string, LangMeta
-)
+from BackTranslation.util import translation2string, LangMeta
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
 from EC_finetune.util import vocab_constraint_from_file
+from Util.util import create_logger, set_seed, statbar_string
 
 TOKENIZER_MAP = {
     'zh': 'zh',
-    'ja': 'ja-mecab',
 }
 
 
@@ -108,7 +106,6 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
 
     TOKENIZER_MAP = {
         'zh': 'zh',
-        'ja': 'ja-mecab',
     }
 
     dataloader = torch.utils.data.DataLoader(
@@ -494,21 +491,18 @@ BackTranslationPack = namedtuple(
 )
 
 if __name__ == "__main__":
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
-    out_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(out_handler)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    # logger.Formatter(message_format, date_format)
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    
+    logger = create_logger(name="backtranslate")
 
     parser = argparse.ArgumentParser(description="Backtranslation Engine")
 
-    parser.add_argument('--backtranslated_dir', type=str, default="Output/")
+    parser.add_argument(
+        '--backtranslated_dir',
+        type=str,
+        default="",
+        help="New root to store output of backtranslation. This can be useful "
+        "when you are running low of local storage. Used in combination with "
+        "an output directory path passed in via config.")
     parser.add_argument('--config', type=str)
     parser.add_argument('--seed_override', type=int)
     parser.add_argument(
@@ -550,6 +544,7 @@ if __name__ == "__main__":
     if args.output_dir_override:
         args.output_dir = args.output_dir_override
 
+    args.output_dir = os.path.join(args.backtranslated_dir, args.output_dir)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -576,7 +571,7 @@ if __name__ == "__main__":
     # set random seed
     if args.seed_override:
         args.seed = args.seed_override
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     # Start the clock for the beginning of the main function
     start_time = time.time()
@@ -665,6 +660,7 @@ if __name__ == "__main__":
         f" target language code: {args.lang2_code}"
     )
 
+    logger.info(f"Loading {args.lang1_code} and {args.lang2_code} datasets")
     lang1_dataset = load_dataset(
         "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
     )["train"]
@@ -672,12 +668,14 @@ if __name__ == "__main__":
         "text", data_files=os.path.join(args.data_dir, args.lang2_data_file)
     )["train"]
 
+    logger.info(f"Creating {args.lang1_code} and {args.lang2_code} dataloaders")
     lang1_dataloader = DataLoader(
         lang1_dataset, batch_size=args.batch_size, shuffle=True
     )
     lang2_dataloader = DataLoader(
         lang2_dataset, batch_size=args.batch_size, shuffle=True
     )
+
     lang1_iter = iter(lang1_dataloader)
     lang2_iter = iter(lang2_dataloader)
 
@@ -750,6 +748,7 @@ if __name__ == "__main__":
             f"{args.lang2_id} to {args.lang1_id}"
         ]
         data_file = os.path.join(args.output_dir, args.output_data_filename)
+        
         with open(data_file, 'w+') as f:
             print(", ".join(data_columns), file=f)
 

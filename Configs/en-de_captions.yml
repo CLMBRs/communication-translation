@@ -48,15 +48,15 @@ num_distractors_train: 15
 num_distractors_valid: 15
 
 # Loading and saving data:
-train_captions: ./Data/captioning_new_new/en_captions_train.jsonl
-valid_captions: ./Data/captioning_new_new/en_captions_val.jsonl
-train_images: ./Data/captioning_new_new/clipL_train.pt
-valid_images: ./Data/captioning_new_new/clipL_val.pt
+train_captions: ./DataLink/captioning_new/en_captions_train.jsonl
+valid_captions: ./DataLink/captioning_new/en_captions_val.jsonl
+train_images: ./DataLink/captioning_new/images_train.pt
+valid_images: ./DataLink/captioning_new/images_val.pt
 save_pretrain_seperately: true
-output_dir: ./Output/en-de_pipeline/captions_clipL_sFz
+output_dir: ./Output/en-de_pipeline/captions
 save_output_txt: true
 
 # Specify info about language and vocab constraint
 has_vocab_constraint: false
 source_lang: en_XX
-source_lang_vocab_constrain_file: /projects/unmt/communication-translation/en_cc_tokenID2count_dict.cc25.json
+source_lang_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json

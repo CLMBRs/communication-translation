@@ -30,7 +30,7 @@ early_stop_start_time: 8192
 val_dataset_script: BackTranslation/flores/flores.py
 lang_pair: neen
 models_shared: true
-output_dir: Output/bt_en-ne_baseline/
+output_dir: ./Output/bt_en-ne_baseline/
 
 # data config
 data_dir: ./DataLink/cc

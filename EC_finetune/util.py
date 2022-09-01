@@ -8,24 +8,6 @@ from torch import Tensor
 from transformers import PreTrainedTokenizer
 
 
-def set_seed(seed, num_gpu):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if num_gpu > 0:
-        torch.cuda.manual_seed_all(seed)
-
-
-def statbar_string(stat_dict: dict) -> str:
-    """
-    Return a printable "statbar" string from a dictionary of named statistics
-    """
-    stat_items = []
-    for key, value in stat_dict.items():
-        stat_items.append(f"{key} {value}")
-    return ' | '.join(stat_items)
-
-
 def get_coco_idx():
     a, b = 56644, 56643
     a_, b_ = [], []

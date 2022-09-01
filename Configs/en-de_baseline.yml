@@ -30,7 +30,7 @@ early_stop_start_time: 8192
 val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: de-en
 models_shared: true
-output_dir: Output/bt_en-de_baseline/
+output_dir: ./Output/bt_en-de_baseline/
 
 # data config
 data_dir: ./DataLink/cc

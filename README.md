@@ -1,8 +1,17 @@
-# UNMT_wEye: Unsupervised Neural Machine Translation with image-selection as finetuning signal
+# Emergent Communication Fine-tuning for Pre-trained Language Models
 This repository contains the code for finetuning a pretrained multilingual model
-with an emergent-communication communication task grounded in image recognition.
+with an image-grounded Emergent Communication task. This is the official
+repository for the ICLR EmeComm Workshop Paper
+[Emergent Communication Fine-tuning (EC-FT) for Pretrained Language Models](https://openreview.net/forum?id=SUqrM7WR7W5)
+and the July 2022 pre-print "Learning to Translate by Learning to Communicate".
 
-The code is loosely based on the work from the following paper
+The image-to-image results (i2i-ec) from the July 2022 preprint should be
+replicable on the tag [preprint_jul22_i2i-ec](https://github.com/CLMBRs/communication-translation/releases/tag/preprint_jul22_i2i-ec).
+The text-to-image results (t2i-ec) should be replicable on
+[preprint_jul22_t2i-ec](https://github.com/CLMBRs/communication-translation/releases/tag/preprint_jul22_t2i-ec).
+
+## Code acknowledgement
+The code was loosely based on the work of the following paper
 
 Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. 
 *Emergent Communication Pretraining for Few-Shot Machine Translation*. In
@@ -56,6 +65,15 @@ ones)
 
 ## Data
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
+
+## Pipeline
+To run code in this package, you must first do the following steps:
+1. Create a Python 3.9 Conda virtual environment: `conda create -n unmt python=3.9`
+1. Start the new environment: `conda activate unmt`
+1. Install this package using developer mode from the top level directory (`communication_translation`): `pip install -e .`
+
+To obtain the latest results of this project, go to the `communication-translation` folder and
+run the relevant script from [RunScripts](/RunScripts).
 
 ## Acknowledgements
 Part of the code is based on 

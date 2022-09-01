@@ -3,12 +3,10 @@ seed: 1
 n_gpu: 1
 batch_size: 64
 num_beams: 5
-translation_filename: de-en.de.test.en
+translation_filename: de-en.de.val.en
 
 # data config
-source_data_file: Data/translation_references/de-en.de.test
-lang_pair: de-en
-dataset_split: test
+source_data_file: ./Output/en-de_pipeline/de-en.de.val
 source_id: de
 source_max_len: 64
 target_id: en

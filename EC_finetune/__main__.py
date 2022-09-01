@@ -24,7 +24,7 @@ from .modelings.modeling_mbart import (
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
 from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
-from .util import set_seed, statbar_string
+from Util.util import create_logger, set_seed, statbar_string
 
 EC_CSV_HEADERS = [
     'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
@@ -227,15 +227,7 @@ def main():
     Train a model to generate image captions
     """
 
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
-    out_handler = logging.StreamHandler(sys.stdout)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    logger = create_logger(name="ec_finetune")
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
@@ -290,6 +282,13 @@ def main():
         dest='output_dir',
         help="Argument to override the output directory"
     )
+    parser.add_argument(
+        '--ec_dir',
+        type=str,
+        default="",
+        help="New root to store output of EC. This can be useful when you are "
+        "running low of local storage. Used in combination with an output "
+        "directory path passed in via config.")
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
@@ -298,6 +297,7 @@ def main():
     args_dict.update(config_dict)
 
     # set csv output file
+    args.output_dir = os.path.join(args.ec_dir, args.output_dir)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 

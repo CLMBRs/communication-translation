@@ -1,5 +1,5 @@
 # Path to load model for generation
-model_path: Output/en-si_pipeline/ec
+model_path: ./Output/en-si_pipeline/ec
 
 # training config
 num_steps: 6144
@@ -30,7 +30,7 @@ early_stop_start_time: 4096
 val_dataset_script: BackTranslation/flores/flores.py
 lang_pair: sien
 models_shared: true
-output_dir: Output/en-si_pipeline
+output_dir: ./Output/en-si_pipeline
 
 # data config
 # backtranslation language

@@ -30,7 +30,7 @@ early_stop_start_time: 2048
 val_dataset_script: BackTranslation/flores/flores.py
 lang_pair: neen
 models_shared: true
-output_dir: Output/en-ne_pipeline/bt_init
+output_dir: ./Output/en-ne_pipeline/bt_init
 
 # data config
 # backtranslation language
