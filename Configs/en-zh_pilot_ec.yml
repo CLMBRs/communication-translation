@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-zh_pilot_2/best_loss
+model_name: ./Output/en-zh_pilot_2/best_loss
 load_entire_agent: true
 image_dim: 2048
 reshaper_type: learned
@@ -25,7 +25,7 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 seed: 1
 mode: emergent_communication
 language_model_lambda: 0.125
-language_model_path: Output/mbart_lm_lr6e-6
+language_model_path: ./Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: false
@@ -53,7 +53,7 @@ num_distractors_valid: 15
 train_images: ./Data/ec_finetuning/images_train
 valid_images: ./Data/ec_finetuning/images_val
 save_pretrain_seperately: true
-output_dir: Output/en-zh_pilot_2/best_loss
+output_dir: ./Output/en-zh_pilot_2/best_loss
 save_output_txt: true
 
 # Specify info about language and vocab constraint

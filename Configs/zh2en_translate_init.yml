@@ -1,10 +1,10 @@
 # Path to load model for generation
-model_path: Output/en-zh_pipeline/bt_init/last
+model_path: ./Output/en-zh_pipeline/bt_init/last
 seed: 1
 n_gpu: 1
 batch_size: 64
 num_beams: 5
-output_dir: Output/en-zh_pipeline/
+output_dir: ./Output/en-zh_pipeline/
 translation_filename: zh-en.zh.val.en
 
 # data config

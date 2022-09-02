@@ -1,5 +1,9 @@
 # Model:
+<<<<<<< HEAD
 model_name: Output/en-de_pipeline/captions_clipL
+=======
+model_name: ./Output/en-de_pipeline/captions
+>>>>>>> ee81f7f22a6d1b5b6db174efde1dd7007812a76e
 load_entire_agent: true
 image_dim: 768
 reshaper_type: learned
@@ -7,7 +11,7 @@ two_ffwd: false
 unit_norm: false
 dropout: 0.0
 share_reshaper: true
-recurrent_image_unroll: true
+image_unroll: transformer
 image_unroll_length: 32
 recurrent_hidden_aggregation: false
 freeze_adapters: false
@@ -25,7 +29,7 @@ TransferH: false # switch to hard gumbel after the model reaches target accuracy
 seed: 1
 mode: emergent_communication
 language_model_lambda: 0.125
-language_model_path: Output/mbart_lm_lr6e-6
+language_model_path: ./DataLink/../Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: false
@@ -51,10 +55,14 @@ num_distractors_valid: 15
 # Loading and saving data:
 # train_captions: ./Data/Coco/captioning/en_train_captions.jsonl
 # valid_captions: ./Data/Coco/captioning/en_valid_captions.jsonl
-train_images: ./Data/ec_finetuning_new/clipL_train.pt
-valid_images: ./Data/ec_finetuning_new/clipL_val.pt
+train_images: ./DataLink/ec_finetuning_new/images_train.pt
+valid_images: ./DataLink/ec_finetuning_new/images_val.pt
 save_pretrain_seperately: true
+<<<<<<< HEAD
 output_dir: Output/en-de_pipeline/ec_clipL
+=======
+output_dir: ./Output/en-de_pipeline/ec
+>>>>>>> ee81f7f22a6d1b5b6db174efde1dd7007812a76e
 save_output_txt: true
 
 # Specify info about language and vocab constraint
