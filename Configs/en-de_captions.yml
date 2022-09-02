@@ -53,11 +53,7 @@ valid_captions: ./DataLink/captioning_new/en_captions_val.jsonl
 train_images: ./DataLink/captioning_new/images_train.pt
 valid_images: ./DataLink/captioning_new/images_val.pt
 save_pretrain_seperately: true
-<<<<<<< HEAD
-output_dir: Output/en-de_pipeline/captions_clipL
-=======
 output_dir: ./Output/en-de_pipeline/captions
->>>>>>> ee81f7f22a6d1b5b6db174efde1dd7007812a76e
 save_output_txt: true
 
 # Specify info about language and vocab constraint
