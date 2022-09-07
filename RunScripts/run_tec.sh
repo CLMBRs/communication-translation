@@ -7,7 +7,7 @@ EC_CONFIG=$3
 BT_CONFIG=$4
 
 # Do caption training
-# python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
+python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml
 
 # Do EC
 python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml
