@@ -1,10 +1,10 @@
 # Path to load model for generation
-model_path: Output/bt_en-zh_captions_ec
+model_path: ./Output/bt_en-zh_captions_ec
 seed: 1
 n_gpu: 1
 batch_size: 64
 num_beams: 5
-output_dir: Output/translated/en-zh_captions_ec
+output_dir: ./Output/translated/en-zh_captions_ec
 translation_filename: zh-en.zh.val.en
 
 # data config

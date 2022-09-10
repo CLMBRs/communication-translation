@@ -3,16 +3,20 @@ model_path: facebook/mbart-large-cc25
 
 # training config
 num_steps: 2048
-lr: 2.5e-05
+lr: 2.0e-05
 grad_clip: 1.0
-num_warmup_steps: 1024
+num_warmup_steps: 512
 schedule: constant_w_warmup
 batch_size: 32
 seed: 1
 n_gpu: 1
 print_every: 32
-do_validation: true
-validate_every: 512
+do_initial_eval: false
+do_crossent_eval: false
+eval_every: 128
+crossent_patience: 16
+do_translate_eval: true
+translate_every: 512
 validation_set_size: 4096
 eval_batch_size: 64
 num_beams: 5
@@ -26,7 +30,7 @@ early_stop_start_time: 2048
 val_dataset_script: BackTranslation/wmt19/wmt19.py
 lang_pair: zh-en
 models_shared: true
-output_dir: Output/en-zh_pipeline/bt_init
+output_dir: ./Output/en-zh_pipeline/bt_init
 
 # data config
 # backtranslation language

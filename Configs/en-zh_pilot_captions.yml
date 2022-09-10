@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-zh_pilot_2/best_loss
+model_name: ./Output/en-zh_pilot_2/best_loss
 load_entire_agent: false
 image_dim: 2048
 reshaper_type: learned
@@ -53,7 +53,7 @@ valid_captions: ./Data/captioning/en_captions_val.jsonl
 train_images: ./Data/captioning/images_train
 valid_images: ./Data/captioning/images_val
 save_pretrain_seperately: true
-output_dir: Output/en-zh_pilot_2/best_loss
+output_dir: ./Output/en-zh_pilot_2/best_loss
 save_output_txt: true
 
 # Specify info about language and vocab constraint

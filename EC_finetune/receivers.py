@@ -25,11 +25,9 @@ class Receiver(Module):
         """
         Convert a gumbel-generated sequence of natural language samples and ids
         to a hidden representation
-
         This hidden state is often used in EC games to pick out an image from
         distractors, but in principle it can serve any purpose. Subclasses of
         Receiver must meet the Args and Returns interface constraints
-
         Args:
             message_ids: the batch of generated sentences as indices.
                 `(batch_size, sequence_length)`
@@ -48,7 +46,6 @@ class MBartReceiver(Receiver):
     """
     A Bart Receiver subclass that can be input to a CommunicationAgent for
     communication games
-
     Args:
         model: a BartForConditionalGeneration object to be used as the main
             encoder stack
@@ -116,7 +113,10 @@ class MBartReceiver(Receiver):
 
         if self.recurrent_aggregation:
             hidden = torch.nn.utils.rnn.pack_padded_sequence(
-                hidden, message_lengths.tolist(), batch_first=True, enforce_sorted=False
+                hidden,
+                message_lengths.tolist(),
+                batch_first=True,
+                enforce_sorted=False
             )
             _, (output, _) = self.hidden_to_output(hidden)
             output = output.squeeze()

@@ -1,0 +1,16 @@
+# Path to load model for generation
+seed: 1
+n_gpu: 1
+batch_size: 64
+num_beams: 5
+translation_filename: zh-en.zh.test.en
+
+output_dir: ./Output/en-zh_pipeline/translation_results
+model_path: ./Output/en-zh_pipeline/best_bleu
+
+# data config
+source_data_file: ./Data/translation_references/zh-en.zh.test
+source_id: zh
+source_max_len: 64
+target_id: en
+target_max_len: 64

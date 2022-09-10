@@ -12,9 +12,8 @@ from tqdm import tqdm
 from transformers import MBartTokenizer
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
-from BackTranslation.util import set_seed
 from EC_finetune.modelings.modeling_mbart import MBartForConditionalGeneration
-
+from Util.util import create_logger, set_seed
 
 def translate(
     args: Namespace, model: MBartForConditionalGeneration,
@@ -36,8 +35,16 @@ def translate(
     for batch in tqdm(
         dataloader, desc=f"translate:{args.source_id}->{args.target_id}"
     ):
-        translation_batch = batch["translation"]
-        source_string_batch = translation_batch[args.source_id]
+        if args.is_translation_dataset:
+            translation_batch = batch["translation"]
+            source_string_batch = [
+                x for x in translation_batch[args.source_id] if x.strip() != ''
+            ]
+        else:
+            source_string_batch = batch['text']
+            source_string_batch = [
+                x for x in source_string_batch if x.strip() != ''
+            ]
 
         source_batch = tokenizer.prepare_seq2seq_batch(
             src_texts=source_string_batch,
@@ -69,16 +76,8 @@ def main():
     Script to use an MBart model to translate a source dataset into a target
     language
     """
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
-    out_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(out_handler)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+
+    logger = create_logger(name="translate")
 
     parser = argparse.ArgumentParser(description="MBart Translation Script")
 
@@ -96,15 +95,19 @@ def main():
         os.makedirs(args.output_dir)
 
     # set random seed
-    set_seed(args)
+    set_seed(args.seed, args.n_gpu)
 
     # Setup CUDA, GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     args.device = device
 
-    tokenizer = MBartTokenizer.from_pretrained(args.model_path, local_files_only=True)
+    tokenizer = MBartTokenizer.from_pretrained(
+        args.model_path, local_files_only=True
+    )
 
-    model = MBartForConditionalGeneration.from_pretrained(args.model_path, local_files_only=True)
+    model = MBartForConditionalGeneration.from_pretrained(
+        args.model_path, local_files_only=True
+    )
     model.to(args.device)
     model.eval()
 
@@ -119,14 +122,16 @@ def main():
         f" target language code: {args.target_code}"
     )
 
-    if args.dataset_script:
+    if getattr(args, 'dataset_script', False):
         source_dataset = load_dataset(
             args.dataset_script, args.lang_pair, split=args.dataset_split
         )
-    elif args.source_data_file:
+        args.is_translation_dataset = True
+    elif getattr(args, 'source_data_file', False):
         source_dataset = load_dataset(
-            "text", data_files=os.path.join(args.data_dir, args.source_data_file)
-        )
+            "text", data_files=args.source_data_file
+        )['train']
+        args.is_translation_dataset = False
     else:
         raise ValueError(
             "Configuration must include either `dataset_script` or"

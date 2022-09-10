@@ -1,4 +1,7 @@
 from abc import abstractmethod
+from argparse import Namespace
+from audioop import cross
+from copy import deepcopy
 from typing import Dict
 
 import torch
@@ -7,6 +10,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Module
 
+from .adapters import TransformerMapper
 from .modelings.modeling_bart import _prepare_bart_decoder_inputs
 from .modelings.modeling_mbart import MBartForConditionalGeneration
 
@@ -49,14 +53,16 @@ class MBartSender(Sender):
         self,
         model: MBartForConditionalGeneration,
         seq_len: int = None,
-        recurrent_unroll: bool = False,
+        unroll: str = None,
         unroll_length: int = 4,
         temperature: float = None,
         hard: bool = None,
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
         generate_from_logits: bool = False,
-        use_caption_crossattention: bool = False
+        use_caption_crossattention: bool = False,
+        img_ext_len: int = 10,
+        tf_num_layers: int = 8
     ):
         """
         A Bart Sender subclass that can be input to a CommunicationAgent for
@@ -76,6 +82,7 @@ class MBartSender(Sender):
         self.embedding = model.model.shared
         self.output_bias = model.final_logits_bias
         self.embedding_dim = model.model.shared.weight.size(1)
+        self.unroll = unroll
         self.unroll_length = unroll_length
         self.top.temp = temperature
         self.top.hard = hard
@@ -84,9 +91,21 @@ class MBartSender(Sender):
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
         self.use_caption_crossattention = use_caption_crossattention
-        self.lstm = nn.LSTM(
-            self.embedding_dim, self.embedding_dim, batch_first=True
-        )
+        self.img_ext_len = img_ext_len
+        self.tf_num_layers = tf_num_layers
+
+        if self.unroll == 'recurrent':
+            self.lstm = nn.LSTM(
+                self.embedding_dim, self.embedding_dim, batch_first=True
+            )
+        elif self.unroll == 'transformer':
+            self.transformer = TransformerMapper(
+                self.embedding_dim,
+                self.embedding_dim,
+                prefix_length=self.unroll_length,
+                clip_length=self.img_ext_len,
+                num_layers=self.tf_num_layers
+            )
 
     def forward(
         self,
@@ -107,7 +126,7 @@ class MBartSender(Sender):
 
         Args:
             sender_image: batch of image representations for the Sender to
-                caption/describe. `(batch_size, image_hidden_dim)`
+                caption/describe. `(batch_size, sender_image_dim)`
             decoder_input_ids: optional batch of decoder inputs for "supervised"
                 generation. `(batch_size, max_seq_length)`. Default: `None`
             **kwargs: additional keyword arguments for gumbel generation. See
@@ -123,49 +142,64 @@ class MBartSender(Sender):
         """
         device = self.embedding.weight.device
 
-        if sender_image is not None and not self.use_caption_crossattention:
-            # Ensure the batch is the correct shape
-            # (batch_size, image_hidden_dim)
-            batch_size = sender_image.size(0)
-            assert len(sender_image.shape) == 2
-            # (batch_size, 1, image_hidden_dim)
-            sender_image = sender_image.unsqueeze(1)
+        # This is the input into gumbel generation; we will either unroll the
+        # hidden image (either via recurrent unrolling or transformer unrolling)
+        # or unroll text
+        #
+        # If decoder_input_ids is not None then we are performing caption
+        # training and will skip the gumbel generation
+        crossattention_input = None
+        batch_size = None
 
-            unrolled_hidden = []
-            h = torch.zeros_like(sender_image).transpose(0, 1).to(
-                sender_image.device
-            )
-            c = torch.zeros_like(sender_image).transpose(0, 1).to(
-                sender_image.device
-            )
-            for i in range(self.unroll_length):
-                next_hidden, (h, c) = self.lstm(sender_image, (h, c))
-                unrolled_hidden.append(next_hidden)
-                sender_image = next_hidden
-            sender_image = torch.stack(unrolled_hidden, dim=1).squeeze()
-            crossattention_input = sender_image
-        elif sender_input_text is not None:
-            # (batch_size, text_length, model_hidden_dim)
+        text_unrolling_condition = self.use_caption_crossattention and sender_input_text
+        caption_training_condition = decoder_input_ids is not None
+        image_unrolling_condition = sender_image and self.unroll in (
+            'recurrent', 'transformer'
+        )
+        assert image_unrolling_condition ^ text_unrolling_condition ^ caption_training_condition
+
+        if text_unrolling_condition:
             batch_size = sender_input_text.size(0)
             sender_input_encodings = self.encoder(
                 input_ids=sender_input_text,
                 attention_mask=sender_attention_mask
             ).last_hidden_state
             crossattention_input = sender_input_encodings
-        elif decoder_input_ids is not None:
+        elif caption_training_condition:
             sender_input_encodings = self.encoder(
                 input_ids=decoder_input_ids,
                 attention_mask=kwargs['caption_mask']
             ).last_hidden_state
             crossattention_input = sender_input_encodings
+        elif image_unrolling_condition:
+            batch_size = sender_image.size(0)
+            if len(sender_image.shape) == 2:
+                sender_image = sender_image.unsqueeze(1)
+            if self.unroll == 'recurrent':
+                unrolled_hidden = []
+                h = torch.zeros_like(sender_image).transpose(0, 1).to(
+                    sender_image.device
+                )
+                c = torch.zeros_like(sender_image).transpose(0, 1).to(
+                    sender_image.device
+                )
+                for i in range(self.unroll_length):
+                    next_hidden, (h, c) = self.lstm(sender_image, (h, c))
+                    unrolled_hidden.append(next_hidden)
+                    sender_image = next_hidden
+                sender_image = torch.stack(unrolled_hidden, dim=1).squeeze()
+            elif self.unroll == 'transformer':
+                sender_image = self.transformer(sender_image)
+            crossattention_input = sender_image
         else:
-            raise ValueError(
-                "Sender must receive either `sender_image` or"
-                " `sender_input_text` as input"
-            )
+            raise ValueError("Sender must receive valid input combination")
+
+        assert crossattention_input is not None and (
+            batch_size is None if decoder_input_ids else batch_size
+        )
 
         # If decoder inputs are given, use them to generate timestep-wise
-        if decoder_input_ids is not None:
+        if caption_training_condition:
             decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
                 config=self.top.config,
                 input_ids=decoder_input_ids,
@@ -252,24 +286,24 @@ class RnnSender(Sender):
         self.hard = hard
         self.output_length = output_length
 
-    def forward(self, image_hidden):
+    def forward(self, sender_image):
         """
         TODO: Add documentation
         """
-        batch_size = image_hidden.size(0)
+        batch_size = sender_image.size(0)
 
         # Embed the image representation for use as the initial hidden state
         # for all layers of the RNN
-        image_hidden = image_hidden.view(1, batch_size, self.input_dim)
-        image_hidden = self.projection(image_hidden)
-        image_hidden = image_hidden.repeat(self.num_layers, 1, 1)
+        sender_image = sender_image.view(1, batch_size, self.input_dim)
+        sender_image = self.projection(sender_image)
+        sender_image = sender_image.repeat(self.num_layers, 1, 1)
 
         # Set the initial input for generation to be the BOS index, and run this
         # through the RNN to get the first output and hidden state
         initial_input = self.embedding(
             torch.ones([batch_size, 1]).cuda() * self.bos_idx
         )
-        output, (h, c) = self.sender(initial_input, image_hidden)
+        output, (h, c) = self.sender(initial_input, sender_image)
 
         # Loop through generation until the message is length seq_len. At each
         # step, get the logits over the vocab size, pass this through Gumbel

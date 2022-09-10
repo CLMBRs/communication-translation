@@ -1,0 +1,15 @@
+# Path to load model for generation
+seed: 1
+n_gpu: 1
+batch_size: 64
+num_beams: 5
+translation_filename: neen.ne.val.en
+
+# data config
+dataset_script: BackTranslation/flores/flores.py
+lang_pair: neen
+dataset_split: val
+source_id: ne
+source_max_len: 64
+target_id: en
+target_max_len: 64

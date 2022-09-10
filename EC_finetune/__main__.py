@@ -25,9 +25,9 @@ from .modelings.modeling_mbart import (
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
 from .dataloader import (
-    CaptionTrainingDataset, XLImageIdentificationDataset, TextInputECDataset
+    CaptionTrainingDataset, TextInputECDataset, XLImageIdentificationDataset
 )
-from .util import set_seed, statbar_string
+from Util.util import create_logger, set_seed, statbar_string
 
 EC_CSV_HEADERS = [
     'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
@@ -226,15 +226,7 @@ def main():
     Train a model to generate image captions
     """
 
-    # Configure the logger (boilerplate)
-    logger = logging.getLogger(__name__)
-    out_handler = logging.StreamHandler(sys.stdout)
-    message_format = '%(asctime)s - %(message)s'
-    date_format = '%m-%d-%y %H:%M:%S'
-    out_handler.setFormatter(logging.Formatter(message_format, date_format))
-    out_handler.setLevel(logging.INFO)
-    logger.addHandler(out_handler)
-    logger.setLevel(logging.INFO)
+    logger = create_logger(name="ec_finetune")
 
     # Parse command line arguments (essentially only the configuration file,
     # which is read into a dictionary)
@@ -242,45 +234,69 @@ def main():
         description="Train emergent communication model via image-identification"
     )
     parser.add_argument('--config', type=str)
-    parser.add_argument('--seed_override', type=int)
+    parser.add_argument('--seed_override', type=int, dest='seed', default=None)
     parser.add_argument(
         '--lm_lambda_override',
         type=float,
         default=None,
-        help="Flag to override the language model lambda in the config"
+        dest='lm_lambda',
+        help="Argument to override the language model lambda in the config"
     )
     parser.add_argument(
         '--drift_lambda_override',
         type=float,
         default=None,
-        help="Flag to override the drift loss lambda in the config"
+        dest='drift_lambda',
+        help="Argument to override the drift loss lambda in the config"
     )
     parser.add_argument(
-        '--adapter_freeze_override',
+        '--freeze_adapters_override',
         action='store_true',
-        help="Flag to trigger adapter freezing (overriding config)"
+        dest='freeze_adapters',
+        help="Argument to trigger adapter freezing (overriding config)"
     )
+    parser.add_argument(
+        '--freeze_sender_override',
+        action='store_true',
+        dest='freeze_sender',
+        help="Argument to trigger sender freezing (overriding config)"
+    )
+    parser.add_argument(
+        '--freeze_receiver_override',
+        action='store_true',
+        dest='freeze_receiver',
+        help="Argument to trigger receiver freezing (overriding config)"
+    )
+    parser.add_argument(
+        '--model_dir_override',
+        type=str,
+        default=None,
+        dest='model_dir',
+        help="Argument to override the input model directory"
+    )
+    parser.add_argument(
+        '--output_dir_override',
+        type=str,
+        default=None,
+        dest='output_dir',
+        help="Argument to override the output directory"
+    )
+    parser.add_argument(
+        '--ec_dir',
+        type=str,
+        default="",
+        help="New root to store output of EC. This can be useful when you are "
+        "running low of local storage. Used in combination with an output "
+        "directory path passed in via config.")
     args = parser.parse_args()
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file, Loader=yaml.FullLoader))
-
-    # set random seed
-    if args.seed_override:
-        args.seed = args.seed_override
-    set_seed(args.seed, args.n_gpu)
-
-    if args.lm_lambda_override:
-        args.language_model_lambda = args.lm_lambda_override
-
-    # weight drift override
-    if args.drift_lambda_override:
-        args.weight_drift_lambda = args.drift_lambda_override
-
-    if args.adapter_freeze_override:
-        args.freeze_adapters = True
+        config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+    config_dict.update(args_dict)
+    args_dict.update(config_dict)
 
     # set csv output file
+    args.output_dir = os.path.join(args.ec_dir, args.output_dir)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -288,8 +304,7 @@ def main():
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
-        if args.language_model_lambda or args.weight_drift_lambda: 
-            args.csv_headers += ['communication loss']
+        args.csv_headers += ['communication loss']
         if args.language_model_lambda:
             args.csv_headers += ['lm loss']
         if args.weight_drift_lambda:
@@ -370,7 +385,7 @@ def main():
         sender = MBartSender(
             comm_model,
             seq_len=args.max_seq_length,
-            recurrent_unroll=args.recurrent_image_unroll,
+            unroll=args.image_unroll,
             unroll_length=args.image_unroll_length,
             temperature=args.temperature,
             hard=args.hard,
@@ -459,6 +474,14 @@ def main():
     if args.freeze_adapters:
         print("Freezing adapter modules")
         model.freeze_adapters()
+
+    if args.freeze_sender:
+        print("Freezing sender's decoder")
+        model.freeze_sender_decoder()
+
+    if args.freeze_receiver:
+        print("Freezing listener's encoder")
+        model.freeze_listener_encoder()
 
     # Move the model to gpu if the configuration calls for it
     model.to(args.device)

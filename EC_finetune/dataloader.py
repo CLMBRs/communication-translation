@@ -145,7 +145,9 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         self.caption_lookup = {}
         caption_index = 0
         for image_index, caption_set in enumerate(self.captions):
-            for secondary_index in range(min(max_captions_per_image, len(caption_set))):
+            for secondary_index in range(
+                min(max_captions_per_image, len(caption_set))
+            ):
                 self.caption_lookup[caption_index] = (
                     image_index, secondary_index
                 )
