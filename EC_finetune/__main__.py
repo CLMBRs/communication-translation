@@ -234,7 +234,8 @@ def main():
         description="Train emergent communication model via image-identification"
     )
     parser.add_argument('--config', type=str)
-    parser.add_argument('--seed_override', type=int, dest='seed', default=None)
+    # TODO: Replace all arguments with `dest` with Hydra config-level overrides
+    parser.add_argument('--seed_override', type=int, dest='seed', default=1)
     parser.add_argument(
         '--lm_lambda_override',
         type=float,
@@ -316,6 +317,9 @@ def main():
     # point there won't be two competing sources of information to be merged.
     # Today, we opt to pursue the latter route instead of fixing these config
     # update bugs which occur throughout the pipeline.
+    # 
+    # As is, this code does not run. Please comment out the next line to allow
+    # the pipeline to run. Note that this removes all command line overrides.
     config_dict.update(args_dict)
     args_dict.update(config_dict)
 

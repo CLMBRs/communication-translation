@@ -151,12 +151,13 @@ class MBartSender(Sender):
         crossattention_input = None
         batch_size = None
 
-        text_unrolling_condition = self.use_caption_crossattention and sender_input_text
+        # Choose text vs caption-training vs image in the following order. Based
+        # on config values, multiple conditions may be true during training. We
+        # opt to enforce a strict ordering below to decide if EC should be
+        # run on text then caption-training then images.
+        text_unrolling_condition = sender_input_text is not None
         caption_training_condition = decoder_input_ids is not None
-        image_unrolling_condition = sender_image and self.unroll in (
-            'recurrent', 'transformer'
-        )
-        assert image_unrolling_condition ^ text_unrolling_condition ^ caption_training_condition
+        image_unrolling_condition = sender_image is not None
 
         if text_unrolling_condition:
             batch_size = sender_input_text.size(0)
@@ -195,7 +196,8 @@ class MBartSender(Sender):
             raise ValueError("Sender must receive valid input combination")
 
         assert crossattention_input is not None and (
-            batch_size is None if decoder_input_ids else batch_size
+            batch_size is None
+            if decoder_input_ids is not None else batch_size is not None
         )
 
         # If decoder inputs are given, use them to generate timestep-wise
