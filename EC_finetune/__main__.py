@@ -270,14 +270,14 @@ def main():
     parser.add_argument(
         '--model_dir_override',
         type=str,
-        default=None,
+        default="",
         dest='model_dir',
         help="Argument to override the input model directory"
     )
     parser.add_argument(
         '--output_dir_override',
         type=str,
-        default=None,
+        default="",
         dest='output_dir',
         help="Argument to override the output directory"
     )
@@ -292,8 +292,34 @@ def main():
     args_dict = vars(args)
     with open(args_dict['config'], 'r') as config_file:
         config_dict = yaml.load(config_file, Loader=yaml.FullLoader)
+
+    # TODO: Fix config parsing from two different sources. With a combination of
+    # reading command line arguments straight into variables they are meant to
+    # override, and applying unconditional dictionary updates, the config's
+    # final values are not working as intended.
+    #
+    # Config file:    { output_dir = foo }
+    # Command line:   {}
+    # Parser default: output_dir_override will update output_dir (default: '')
+    #
+    # Based on the current order of operations,
+    # 1. args { output_dir = '' } & config { output_dir = foo }
+    # 2. args { output_dir = '' } & config { output_dir = '' }
+    # 
+    # We cannot simply swap the following two lines because then overriding
+    # config values via command line arguments does not work as expected.
+    #
+    # In the short term this could be remedied by conditionally applying
+    # dictionary updates if the values have initialized values. In the long term
+    # we plan on moving toward hierarchical config structures which will provide
+    # a single source of truth config to apply to a particular run. At this
+    # point there won't be two competing sources of information to be merged.
+    # Today, we opt to pursue the latter route instead of fixing these config
+    # update bugs which occur throughout the pipeline.
     config_dict.update(args_dict)
     args_dict.update(config_dict)
+
+    set_seed(args.seed, args.n_gpu)
 
     # set csv output file
     args.output_dir = os.path.join(args.ec_dir, args.output_dir)
