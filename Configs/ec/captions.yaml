@@ -1,0 +1,16 @@
+defaults:
+  - model: model
+  - train_eval: train_eval_caption
+  - generation: generation
+  - data: data
+  - language: en-de
+  - _self_
+
+model:
+  model_name: ./Output/en-de_pipeline/bt_init/last
+data:
+  output_dir: ./Output/en-de_pipeline/captions 
+language:
+  has_vocab_constraint: false
+
+

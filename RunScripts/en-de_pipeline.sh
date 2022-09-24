@@ -1,7 +1,7 @@
 #!/bin/bash
 source activate unmt
 
-OUTPUT_DIR=Output/en-de_pipeline/bt_sec
+OUTPUT_DIR=./Output/en-de_pipeline/bt_sec
 BT_INIT_CONFIG=$2
 CAPTIONS_CONFIG=en-de_captions
 EC_CONFIG=en-de_ec

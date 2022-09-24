@@ -1,25 +1,29 @@
 #!/bin/bash
-source activate unmt
 
 EX_ABBR=resnet_recheck
 OUTPUT_DIR=Output/en-de_pipeline/bt_sec_${EX_ABBR}
 BT_INIT_CONFIG=$2
-CAPTIONS_CONFIG=en-de_captions
-EC_CONFIG=en-de_ec
+CAPTIONS_CONFIG=captions
+EC_CONFIG=ec
+LANG=en-de
 BT_SECONDARY_CONFIG=$5
 
-# # Do initial (short) backtranslation
-# python -u BackTranslation/backtranslate.py --config Configs/${BT_INIT_CONFIG}.yml
+# Do initial (short) backtranslation
+python -u BackTranslation/backtranslate.py \
+    --config Configs/translate/translate=Configs/${BT_INIT_CONFIG}.yml
 
-# # Do caption training
-# python -u -m EC_finetune --config Configs/${CAPTIONS_CONFIG}.yml \
-#     --output_dir_override Output/en-de_pipeline/captions_${EX_ABBR} \
-#     #--sender_freeze_override \
+# # # Do caption training
+# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+#     ec/language=en-de \
+#     ec.data.output_dir=Output/en-de_pipeline/captions_${EX_ABBR} \
+#     ec.model.model_name=Output/en-de_pipeline/bt_init/last \
+#     ec.model.freeze_sender=True \
 
 # # Do EC
-# python -u -m EC_finetune --config Configs/${EC_CONFIG}.yml \
-#     --output_dir_override Output/en-de_pipeline/ec_${EX_ABBR} \
-#     --model_dir_override Output/en-de_pipeline/captions_${EX_ABBR} \
+# python -u -m EC_finetune  +ec=${EC_CONFIG} \
+#     ec/language=en-de \
+#     ec.data.output_dir=Output/en-de_pipeline/ec_${EX_ABBR} \
+#     ec.model_name=Output/en-de_pipeline/captions_${EX_ABBR} \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -50,6 +54,6 @@ BT_SECONDARY_CONFIG=$5
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
-cp Output/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
-./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
+# cp Output/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
