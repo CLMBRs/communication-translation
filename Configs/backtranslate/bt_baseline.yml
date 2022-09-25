@@ -1,0 +1,9 @@
+defaults:
+  - data: en-de
+  - train: train_baseline
+  - validation: valid
+  - _self_
+
+validation:
+  output_dir: ./Output/bt_en-de_baseline/
+  lang_pair: de-en

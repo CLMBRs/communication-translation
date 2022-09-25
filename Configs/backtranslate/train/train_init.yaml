@@ -26,22 +26,3 @@ vocab_constraint_threshold: 0.90
 secondary_threshold: 0.99
 early_stop_start_time: 2048
 
-# script to load validation datasets
-val_dataset_script: BackTranslation/wmt19/wmt19.py
-lang_pair: de-en
-models_shared: true
-output_dir: ./Output/en-de_pipeline/bt_init
-
-# data config
-# backtranslation language
-data_dir: ./DataLink/cc
-output_data_filename: bt_en+de.csv
-lang1_data_file: en_500k.txt
-lang1_id: en
-lang1_max_len: 64
-lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
-
-lang2_data_file: de_500k.txt
-lang2_id: de
-lang2_max_len: 64
-lang2_vocab_constrain_file: ./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json

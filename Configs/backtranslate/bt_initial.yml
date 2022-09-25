@@ -1,0 +1,10 @@
+defaults:
+  - data: en-de
+  - train: train_initial
+  - validation: valid
+  - _self_
+
+validation:
+  output_dir: ./Output/bt_en-de_initial/
+  lang_pair: de-en # candidates: neen; sien; zh-en
+  #val_dataset_script: BackTranslation/flores/flores.py # uncomment this line for en-ne; en-si; 
