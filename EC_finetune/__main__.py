@@ -465,7 +465,7 @@ def main():
                 args.num_distractors_train,
                 tokenizer,
                 args,
-                max_length=128
+                max_length=args.max_text_seq_length
             )
             valid_set = TextInputECDataset(
                 valid_images,
@@ -473,7 +473,7 @@ def main():
                 args.num_distractors_valid,
                 tokenizer,
                 args,
-                max_length=128,
+                max_length=args.max_text_seq_length,
                 max_captions_per_image=1
             )
         else:

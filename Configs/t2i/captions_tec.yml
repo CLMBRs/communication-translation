@@ -17,6 +17,7 @@ beam_width: 1
 temperature: 1.0
 hard: true
 max_seq_length: 32
+max_text_seq_length: 128
 repetition_penalty: 1.0
 generate_from_logits: false
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
