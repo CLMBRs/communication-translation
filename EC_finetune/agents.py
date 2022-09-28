@@ -111,9 +111,10 @@ class CommunicationAgent(Module):
         """
 
         # Embed the Sender's image using the Reshaper
-        image_embedding = self.sender_reshaper(batch["sender_image"])
+        if "sender_image" in batch:
+            batch["sender_image"] = self.sender_reshaper(batch["sender_image"])
         # Generate the Sender's message/caption about the image
-        return self.sender(image_embedding, **batch)
+        return self.sender(**batch)
 
     def choose_image_from_message(
         self, message_dict: dict, receiver_images: Tensor
@@ -504,7 +505,6 @@ class ImageCaptionGrounder(CommunicationAgent):
         if self.image_selection_lambda:
             image_selection_loss *= self.image_selection_lambda
         loss = caption_generation_loss + image_selection_loss
-
         return {
             "loss": loss,
             "caption generation loss": caption_generation_loss.item(),
