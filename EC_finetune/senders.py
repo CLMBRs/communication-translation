@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from argparse import Namespace
+from audioop import cross
 from copy import deepcopy
 from typing import Dict
 
@@ -25,7 +26,7 @@ class Sender(Module):
     docstring for the CommunicationAgent to work
     """
     @abstractmethod
-    def forward(self, image_hidden: Tensor) -> Dict[str, Tensor]:
+    def forward(self, sender_image: Tensor) -> Dict[str, Tensor]:
         """
         Convert a hidden representation of an image to a natural language
         sequence
@@ -34,8 +35,8 @@ class Sender(Module):
         constraints
 
         Args:
-            image_hidden: a Tensor batch of image representations for the
-                Sender to caption/describe. `(batch_size, image_hidden_dim)`
+            sender_image: a Tensor batch of image representations for the
+                Sender to caption/describe. `(batch_size, sender_image_dim)`
         Returns:
             a dictionary of Tensors with the following keys:
                 `message_ids`: the sequence of output indices.
@@ -59,6 +60,7 @@ class MBartSender(Sender):
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
         generate_from_logits: bool = False,
+        use_caption_crossattention: bool = False,
         img_ext_len: int = 10,
         tf_num_layers: int = 8
     ):
@@ -75,6 +77,7 @@ class MBartSender(Sender):
         """
         super().__init__()
         self.top = model
+        self.encoder = model.model.encoder
         self.decoder = model.model.decoder
         self.embedding = model.model.shared
         self.output_bias = model.final_logits_bias
@@ -87,6 +90,7 @@ class MBartSender(Sender):
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
+        self.use_caption_crossattention = use_caption_crossattention
         self.img_ext_len = img_ext_len
         self.tf_num_layers = tf_num_layers
 
@@ -104,7 +108,12 @@ class MBartSender(Sender):
             )
 
     def forward(
-        self, image_hidden: Tensor, decoder_input_ids: Tensor = None, **kwargs
+        self,
+        sender_image: Tensor = None,
+        sender_input_text: Tensor = None,
+        sender_attention_mask: Tensor = None,
+        decoder_input_ids: Tensor = None,
+        **kwargs
     ):
         """
         Convert an image representation to a natural language message/caption.
@@ -116,8 +125,8 @@ class MBartSender(Sender):
         original image from among distractors.
 
         Args:
-            image_hidden: batch of image representations for the Sender to
-                caption/describe. `(batch_size, image_hidden_dim)`
+            sender_image: batch of image representations for the Sender to
+                caption/describe. `(batch_size, sender_image_dim)`
             decoder_input_ids: optional batch of decoder inputs for "supervised"
                 generation. `(batch_size, max_seq_length)`. Default: `None`
             **kwargs: additional keyword arguments for gumbel generation. See
@@ -132,32 +141,67 @@ class MBartSender(Sender):
                 `message_lengths`: the length for each output. `(batch_size)`
         """
         device = self.embedding.weight.device
-        # Ensure the batch is the correct shape
-        # (batch_size, image_hidden_dim)
-        batch_size = image_hidden.size(0)
-        # assert len(image_hidden.shape) == 2
-        # (batch_size, 1, image_hidden_dim)
-        if len(image_hidden.shape) == 2:
-            image_hidden = image_hidden.unsqueeze(1)
 
-        if self.unroll == 'recurrent':
-            unrolled_hidden = []
-            h = torch.zeros_like(image_hidden).transpose(0, 1).to(
-                image_hidden.device
-            )
-            c = torch.zeros_like(image_hidden).transpose(0, 1).to(
-                image_hidden.device
-            )
-            for i in range(self.unroll_length):
-                next_hidden, (h, c) = self.lstm(image_hidden, (h, c))
-                unrolled_hidden.append(next_hidden)
-                image_hidden = next_hidden
-            image_hidden = torch.stack(unrolled_hidden, dim=1).squeeze()
-        elif self.unroll == 'transformer':
-            image_hidden = self.transformer(image_hidden)
+        # This is the input into gumbel generation; we will either unroll the
+        # hidden image (either via recurrent unrolling or transformer unrolling)
+        # or unroll text
+        #
+        # If decoder_input_ids is not None then we are performing caption
+        # training and will skip the gumbel generation
+        crossattention_input = None
+        batch_size = None
+
+        # Choose text vs caption-training vs image in the following order. Based
+        # on config values, multiple conditions may be true during training. We
+        # opt to enforce a strict ordering below to decide if EC should be
+        # run on text then caption-training then images.
+        text_unrolling_condition = sender_input_text is not None
+        caption_training_condition = decoder_input_ids is not None
+        image_unrolling_condition = sender_image is not None
+
+        if text_unrolling_condition:
+            batch_size = sender_input_text.size(0)
+            sender_input_encodings = self.encoder(
+                input_ids=sender_input_text,
+                attention_mask=sender_attention_mask
+            ).last_hidden_state
+            crossattention_input = sender_input_encodings
+        elif caption_training_condition:
+            sender_input_encodings = self.encoder(
+                input_ids=decoder_input_ids,
+                attention_mask=kwargs['caption_mask']
+            ).last_hidden_state
+            crossattention_input = sender_input_encodings
+        elif image_unrolling_condition:
+            batch_size = sender_image.size(0)
+            if len(sender_image.shape) == 2:
+                sender_image = sender_image.unsqueeze(1)
+            if self.unroll == 'recurrent':
+                unrolled_hidden = []
+                h = torch.zeros_like(sender_image).transpose(0, 1).to(
+                    sender_image.device
+                )
+                c = torch.zeros_like(sender_image).transpose(0, 1).to(
+                    sender_image.device
+                )
+                for i in range(self.unroll_length):
+                    next_hidden, (h, c) = self.lstm(sender_image, (h, c))
+                    unrolled_hidden.append(next_hidden)
+                    sender_image = next_hidden
+                sender_image = torch.stack(unrolled_hidden, dim=1).squeeze()
+            elif self.unroll == 'transformer':
+                sender_image = self.transformer(sender_image)
+            crossattention_input = sender_image
+        else:
+            raise ValueError("Sender must receive valid input combination")
+
+        assert crossattention_input is not None and (
+            batch_size is None
+            if decoder_input_ids is not None else batch_size is not None
+        )
 
         # If decoder inputs are given, use them to generate timestep-wise
-        if decoder_input_ids is not None:
+        if caption_training_condition:
             decoder_input_ids, decoder_padding_mask, causal_mask = _prepare_bart_decoder_inputs(
                 config=self.top.config,
                 input_ids=decoder_input_ids,
@@ -165,7 +209,7 @@ class MBartSender(Sender):
             )
             output = self.decoder(
                 input_ids=decoder_input_ids,
-                encoder_hidden_states=image_hidden,
+                encoder_hidden_states=crossattention_input,
                 encoder_padding_mask=None,
                 decoder_padding_mask=decoder_padding_mask,
                 decoder_causal_mask=causal_mask
@@ -186,16 +230,16 @@ class MBartSender(Sender):
             if 'lang_id' in kwargs:
                 kwargs['lang_id'] = kwargs['lang_id'].view(batch_size, -1)
                 kwargs['lang_id'] = \
-                    kwargs['lang_id'].to(image_hidden.device)
+                    kwargs['lang_id'].to(crossattention_input.device)
             if 'lang_mask' in kwargs:
                 kwargs['lang_mask'] = \
-                    kwargs['lang_mask'].to(image_hidden.device)
+                    kwargs['lang_mask'].to(crossattention_input.device)
             if self.generate_from_logits:
                 kwargs['generate_from_logits'] = True
 
             # Get the sender model output and return
             output = self.top.gumbel_generate(
-                input_embeds=image_hidden,
+                input_embeds=crossattention_input,
                 num_beams=self.beam_width,
                 max_length=self.seq_len,
                 repetition_penalty=self.repetition_penalty,
@@ -244,24 +288,24 @@ class RnnSender(Sender):
         self.hard = hard
         self.output_length = output_length
 
-    def forward(self, image_hidden):
+    def forward(self, sender_image):
         """
         TODO: Add documentation
         """
-        batch_size = image_hidden.size(0)
+        batch_size = sender_image.size(0)
 
         # Embed the image representation for use as the initial hidden state
         # for all layers of the RNN
-        image_hidden = image_hidden.view(1, batch_size, self.input_dim)
-        image_hidden = self.projection(image_hidden)
-        image_hidden = image_hidden.repeat(self.num_layers, 1, 1)
+        sender_image = sender_image.view(1, batch_size, self.input_dim)
+        sender_image = self.projection(sender_image)
+        sender_image = sender_image.repeat(self.num_layers, 1, 1)
 
         # Set the initial input for generation to be the BOS index, and run this
         # through the RNN to get the first output and hidden state
         initial_input = self.embedding(
             torch.ones([batch_size, 1]).cuda() * self.bos_idx
         )
-        output, (h, c) = self.sender(initial_input, image_hidden)
+        output, (h, c) = self.sender(initial_input, sender_image)
 
         # Loop through generation until the message is length seq_len. At each
         # step, get the logits over the vocab size, pass this through Gumbel

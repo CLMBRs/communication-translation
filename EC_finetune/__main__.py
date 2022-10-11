@@ -16,6 +16,7 @@ import torch.nn as nn
 import transformers
 import yaml
 import hydra
+from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
@@ -27,7 +28,9 @@ from .modelings.modeling_mbart import (
 )
 from .senders import MBartSender, RnnSender
 from .receivers import MBartReceiver, RnnReceiver
-from .dataloader import CaptionTrainingDataset, XLImageIdentificationDataset
+from .dataloader import (
+    CaptionTrainingDataset, TextInputECDataset, XLImageIdentificationDataset
+)
 from Util.util import create_logger, set_seed, statbar_string
 
 EC_CSV_HEADERS = [
@@ -62,16 +65,17 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        batch['sender_image'] = batch['sender_image'].to(device)
-        batch['receiver_images'] = batch['receiver_images'].to(device)
-        batch['target'] = batch['target'].to(device)
+        batch['sender_image'] = batch['sender_image'].to(args.device)
+        batch['receiver_images'] = batch['receiver_images'].to(args.device)
+        batch['target'] = batch['target'].to(args.device)
         if args.mode == 'image_grounding':
-            batch['caption_ids'] = batch['caption_ids'].to(device)
-            batch['caption_mask'] = batch['caption_mask'].to(device)
+            batch['caption_ids'] = batch['caption_ids'].to(args.device)
+            batch['caption_mask'] = batch['caption_mask'].to(args.device)
 
         eval_return_dict = model(batch)
-
-        output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
+        
+        if 'message' in eval_return_dict:
+            output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
@@ -151,12 +155,9 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
         for batch in epoch_iterator:
             model.train()
             # Move data to the GPU
-            batch['sender_image'] = batch['sender_image'].to(device)
-            batch['receiver_images'] = batch['receiver_images'].to(device)
-            batch['target'] = batch['target'].to(device)
-            if args.mode == 'image_grounding':
-                batch['caption_ids'] = batch['caption_ids'].to(device)
-                batch['caption_mask'] = batch['caption_mask'].to(device)
+            for key, value in batch.items():
+                if isinstance(value, Tensor):
+                    batch[key] = value.to(args.device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -267,7 +268,7 @@ def main(args: DictConfig):
     # Setup CUDA, GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    if args.mode == 'image_grounding':
+    if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.train_captions, 'r').readlines()

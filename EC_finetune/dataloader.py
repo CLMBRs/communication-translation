@@ -154,7 +154,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                 caption_index += 1
 
         # Prepartion for language-constrained generation
-        lang_code2id = dict(
+        self.lang_code2id = dict(
             zip(
                 tokenizer.additional_special_tokens,
                 tokenizer.additional_special_tokens_ids
@@ -162,6 +162,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         )
         self.lang_id = lang_code2id[args.language.source_lang]
         self.has_vocab_constraint = args.language.has_vocab_constraint
+
         if self.has_vocab_constraint:
             self.lang_mask = vocab_constraint_from_file(
                 tokenizer, args.language.source_lang_vocab_constrain_file
@@ -194,6 +195,54 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         if self.has_vocab_constraint:
             ret["lang_mask"] = self.lang_mask
 
+        return ret
+
+
+class TextInputECDataset(CaptionTrainingDataset):
+    def __init__(
+        self,
+        images: ndarray,
+        captions: List[List[str]],
+        num_distractors: int,
+        tokenizer,
+        args,
+        max_length: int = 256,
+        max_captions_per_image: int = float('inf')
+    ) -> Dataset:
+        super().__init__(
+            images, captions, num_distractors, tokenizer, args, max_length,
+            max_captions_per_image
+        )
+        self.source_lang_id = self.lang_code2id[args.source_lang]
+        self.target_lang_id = self.lang_code2id[args.target_lang]
+        self.lang_ids = [self.source_lang_id, self.target_lang_id]
+
+        if self.has_vocab_constraint:
+            self.source_lang_mask = vocab_constraint_from_file(
+                tokenizer, args.source_lang_vocab_constrain_file
+            )
+            self.target_lang_mask = vocab_constraint_from_file(
+                tokenizer, args.target_lang_vocab_constrain_file
+            )
+            self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
+
+    def __getitem__(self, index: int) -> dict:
+        # Randomly sample the distractor images out of the remainder of the
+        # dataset
+        super_ret = super().__getitem__(index)
+        # choose a language to generate sentence for
+        random_lang_idx = np.random.choice([0, 1])
+        chosen_lang_id = self.lang_ids[random_lang_idx]
+        ret = {
+            'sender_input_text': super_ret['caption_ids'],
+            'sender_attention_mask': super_ret['caption_mask'],
+            'receiver_images': super_ret['receiver_images'],
+            'target': super_ret['target'],
+            'lang_id': chosen_lang_id
+        }
+        if self.has_vocab_constraint:
+            chosen_lang_mask = self.lang_masks[random_lang_idx]
+            ret['lang_mask'] = chosen_lang_mask
         return ret
 
 
