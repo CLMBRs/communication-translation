@@ -1,5 +1,5 @@
 # Model:
-model_name: ./Output/en-de_pipeline/captions
+model_name: ./model_you_want_to_use
 load_entire_agent: true
 image_dim: 2048
 reshaper_type: learned

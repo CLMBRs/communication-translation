@@ -1,0 +1,1 @@
+{"bos_token": "<s>", "eos_token": "</s>", "unk_token": "<unk>", "sep_token": "</s>", "cls_token": "<s>", "pad_token": "<pad>", "mask_token": "<mask>", "tokenizer_file": null, "model_max_length": 1024, "name_or_path": "Output/en-de_pipeline/captions_resnet_recheck", "special_tokens_map_file": "Output/en-de_pipeline/bt_init/last/special_tokens_map.json"}

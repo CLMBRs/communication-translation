@@ -1,6 +1,5 @@
 # Train and eval:
 seed: 1
-mode: image_grounding
 image_selection_lambda: 4.0
 language_model_lambda: 0.0
 weight_drift_lambda: 0.0

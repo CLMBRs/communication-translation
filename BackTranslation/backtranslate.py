@@ -1,4 +1,5 @@
 import argparse
+from argparse import Namespace
 import logging
 import os
 import random
@@ -12,12 +13,14 @@ import sacrebleu
 import torch
 import transformers
 import yaml
+import hydra
 import numpy as np
 import torch.nn as nn
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from transformers import MBartTokenizer
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 from BackTranslation.constant import LANG_ID_2_LANGUAGE_CODES
 from BackTranslation.util import translation2string, LangMeta
@@ -28,6 +31,14 @@ from Util.util import create_logger, set_seed, statbar_string
 TOKENIZER_MAP = {
     'zh': 'zh',
 }
+
+def namespaced_hparams(hparams):
+    if type(hparams) is not dict:
+        return hparams
+    else:
+        hparams = {k: namespaced_hparams(v)
+            for k, v in hparams.items()}
+        return Namespace(**hparams)
 
 
 def get_next_batch(dataloader, data_iter):
@@ -42,21 +53,21 @@ def get_next_batch(dataloader, data_iter):
 
 
 def write_validation_splits(args, source_id, target_id):
-    reference_dataset = args.val_dataset
+    reference_dataset = args.train_eval.val_dataset
     dataloader = torch.utils.data.DataLoader(
-        reference_dataset, batch_size=args.eval_batch_size
+        reference_dataset, batch_size=args.train_eval.eval_batch_size
     )
     source_lines = []
     target_lines = []
-    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
+    num_batch = ceil(args.train_eval.validation_set_size / args.train_eval.eval_batch_size)
     for i, batch in enumerate(dataloader):
         if i == num_batch:
             break
         translation_batch = batch["translation"]
         source_lines += [line for line in translation_batch[source_id]]
         target_lines += [line for line in translation_batch[target_id]]
-    source_filename = f"{args.lang_pair}.{source_id}.val"
-    target_filename = f"{args.lang_pair}.{target_id}.val"
+    source_filename = f"{args.data.lang_pair}.{source_id}.val"
+    target_filename = f"{args.data.lang_pair}.{target_id}.val"
     source_file = os.path.join(args.output_dir, source_filename)
     target_file = os.path.join(args.output_dir, target_filename)
     with open(source_file, 'w+') as f:
@@ -75,7 +86,7 @@ def save_model(args, backtranslation_pack, saved_model_name):
     target_id, _, _ = list(target_meta)
 
     # Save the general part of the model
-    if args.models_shared:
+    if args.train_eval.models_shared:
         source2target_model.save_pretrained(
             os.path.join(args.output_dir, saved_model_name)
         )
@@ -96,7 +107,7 @@ def save_model(args, backtranslation_pack, saved_model_name):
 
 
 def get_translation_score(args, model, tokenizer, source_meta, target_meta):
-    reference_dataset = args.val_dataset
+    reference_dataset = args.train_eval.val_dataset
     cumulative_score = 0
     total_translations = 0
     translation_lines = []
@@ -109,15 +120,15 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
     }
 
     dataloader = torch.utils.data.DataLoader(
-        reference_dataset, batch_size=args.eval_batch_size
+        reference_dataset, batch_size=args.train_eval.eval_batch_size
     )
-    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
+    num_batch = ceil(args.train_eval.validation_set_size / args.train_eval.eval_batch_size)
     num_batch = min(num_batch, len(dataloader))
 
     for i, batch in enumerate(
         tqdm(
             dataloader,
-            desc=f"val-{args.val_metric_name}:{source_id}->{target_id}"
+            desc=f"val-{args.train_eval.val_metric_name}:{source_id}->{target_id}"
         )
     ):
         if i == num_batch:
@@ -148,7 +159,7 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
             translated_ids = model.generate(
                 **source_batch,
                 decoder_start_token_id=tokenizer.lang_code_to_id[target_code],
-                num_beams=args.num_beams,
+                num_beams=args.train_eval.num_beams,
                 max_length=target_max_len
             )
             translation_str = tokenizer.batch_decode(
@@ -173,22 +184,22 @@ def get_translation_score(args, model, tokenizer, source_meta, target_meta):
 
 
 def get_validation_loss(args, model, tokenizer, source_meta, target_meta):
-    reference_dataset = args.val_dataset
+    reference_dataset = args.train_eval.val_dataset
     loss = 0
 
     source_id, source_code, source_max_len = list(source_meta)
     target_id, target_code, target_max_len = list(target_meta)
 
     dataloader = torch.utils.data.DataLoader(
-        reference_dataset, batch_size=args.eval_batch_size
+        reference_dataset, batch_size=args.train_eval.eval_batch_size
     )
-    num_batch = ceil(args.validation_set_size / args.eval_batch_size)
+    num_batch = ceil(args.train_eval.validation_set_size / args.train_eval.eval_batch_size)
     num_batch = min(num_batch, len(dataloader))
 
     for i, batch in enumerate(
         tqdm(
             dataloader,
-            desc=f"val-{args.val_metric_name}:{source_id}->{target_id}"
+            desc=f"val-{args.train_eval.val_metric_name}:{source_id}->{target_id}"
         )
     ):
         if i == num_batch:
@@ -224,6 +235,7 @@ def evaluate(
     best_score,
     patience_count,
     step,
+    logger,
     mode='translate'
 ):
     if mode not in ['translate', 'crossentropy']:
@@ -266,7 +278,7 @@ def evaluate(
     logger.info(statbar_string(stats))
 
     if mode == 'translate':
-        data_file = os.path.join(args.output_dir, args.output_data_filename)
+        data_file = os.path.join(args.output_dir, args.data.output_data_filename)
         metrics = [
             step + 1,
             round(source2target_score, 2),
@@ -294,8 +306,8 @@ def evaluate(
                 args, backtranslation_pack, saved_model_name=f"best_{metric_name}"
             )
         if mode == 'translate':
-            source_filename = f"{args.lang_pair}.{source_id}.val.{target_id}"
-            target_filename = f"{args.lang_pair}.{target_id}.val.{source_id}"
+            source_filename = f"{args.data.lang_pair}.{source_id}.val.{target_id}"
+            target_filename = f"{args.data.lang_pair}.{target_id}.val.{source_id}"
             source_file = os.path.join(args.output_dir, source_filename)
             target_file = os.path.join(args.output_dir, target_filename)
             with open(source_file, 'w+') as f:
@@ -305,34 +317,33 @@ def evaluate(
                 for line in target2source_translations:
                     print(line, file=f)
     else:
-        if step >= args.early_stop_start_time:
+        if step >= args.train_eval.early_stop_start_time:
             # we start counting the early stopping after some 'warmup period'
             patience_count += 1
 
     return best_score, patience_count
 
-
-def main(args, backtranslation_pack):
+def backtranslate(args, backtranslation_pack, logger):
     checkpoint_stats = defaultdict(list)
     best_translation_score = 0.0
     best_crossentropy = float('inf')
     translation_patience_count = 0
     crossent_patience_count = 0
     
-    if args.do_initial_eval:
+    if args.train_eval.do_initial_eval:
         best_crossentropy, crossent_patience_count = evaluate(
             args, backtranslation_pack, best_crossentropy,
-            crossent_patience_count, 0, mode='crossentropy'
+            crossent_patience_count, 0, logger, mode='crossentropy'
         )
         crossent_patience_count = 0
 
-    for step in range(args.num_steps):
+    for step in range(args.train_eval.num_steps):
         # we might want to randomly decide the order, because we don't want the
         # model to learn the pattern that we do, e.g., English first and then
         # Japanese second.
 
-        if (step + 1) % args.print_every == 0 and args.print_translation:
-            translation_results = {args.lang1_id: [], args.lang2_id: []}
+        if (step + 1) % args.train_eval.print_every == 0 and args.train_eval.print_translation:
+            translation_results = {args.data.lang1_id: [], args.data.lang2_id: []}
 
         mini_step = 0
         for source in random.sample([0, 1], 2):
@@ -376,7 +387,7 @@ def main(args, backtranslation_pack):
                     return_tensors="pt"
                 )
                 source_batch = source_batch.to(args.device)
-                if step < args.num_constrained_steps:
+                if step < args.train_eval.num_constrained_steps:
                     translated_tokens = source2target_model.generate(
                         **source_batch,
                         decoder_start_token_id=tokenizer.
@@ -404,7 +415,7 @@ def main(args, backtranslation_pack):
             translation = tokenizer.batch_decode(
                 translated_tokens, skip_special_tokens=True
             )
-            if (step + 1) % args.print_every == 0 and args.print_translation:
+            if (step + 1) % args.train_eval.print_every == 0 and args.train_eval.print_translation:
                 translation_results[target_id] = list(
                     zip(source_string_batch, translation)
                 )
@@ -427,20 +438,20 @@ def main(args, backtranslation_pack):
             target2source_optimizer.zero_grad()
             output.loss.backward()
             nn.utils.clip_grad_norm_(
-                target2source_model.parameters(), args.grad_clip
+                target2source_model.parameters(), args.train_eval.grad_clip
             )
             target2source_optimizer.step()
             # Make sure if the model optimizer/scheuler are shared that
             # we only step once per "main" step rather than once per
             # language
-            if (not args.models_shared) or (mini_step == 1):
+            if (not args.train_eval.models_shared) or (mini_step == 1):
                 target2source_scheduler.step()
             mini_step += 1
             checkpoint_stats["loss"].append(
                 output["loss"].detach().cpu().item()
             )
 
-        if (step + 1) % args.print_every == 0:
+        if (step + 1) % args.train_eval.print_every == 0:
             checkpoint_average_stats = {}
             checkpoint_average_stats['step'] = step + 1
             checkpoint_average_stats['mode'] = "train"
@@ -451,27 +462,27 @@ def main(args, backtranslation_pack):
                 checkpoint_average_stats[key] = round(np.mean(value), 4)
             logger.info(statbar_string(checkpoint_average_stats))
             checkpoint_stats = defaultdict(list)
-            if args.print_translation:
+            if args.train_eval.print_translation:
                 logger.info(
                     translation2string(
-                        translation_results, args.num_printed_translation
+                        translation_results, args.train_eval.num_printed_translation
                     )
                 )
 
-        if args.do_crossent_eval and (step + 1) % args.eval_every == 0:
+        if args.train_eval.do_crossent_eval and (step + 1) % args.train_eval.eval_every == 0:
             best_crossentropy, crossent_patience_count = evaluate(
                 args, backtranslation_pack, best_crossentropy,
-                crossent_patience_count, step, mode='crossentropy'
+                crossent_patience_count, step, logger, mode='crossentropy'
             )
             if (
                 hasattr(args, 'crossent_patience') and
-                crossent_patience_count > args.crossent_patience
+                crossent_patience_count > args.train_eval.crossent_patience
             ):
                 break
-        if args.do_translate_eval and (step + 1) % args.translate_every == 0:
+        if args.train_eval.do_translate_eval and (step + 1) % args.train_eval.translate_every == 0:
             best_translation_score, translation_patience_count = evaluate(
                 args, backtranslation_pack, best_translation_score,
-                translation_patience_count, step
+                translation_patience_count, step, logger
             )
             if (
                 hasattr(args, 'translation_patience') and
@@ -490,59 +501,12 @@ BackTranslationPack = namedtuple(
     ]
 )
 
-if __name__ == "__main__":
-    
+@hydra.main(version_base=None, config_path="../Configs")
+def main(args: DictConfig) -> None:
     logger = create_logger(name="backtranslate")
-
-    parser = argparse.ArgumentParser(description="Backtranslation Engine")
-
-    parser.add_argument(
-        '--backtranslated_dir',
-        type=str,
-        default="",
-        help="New root to store output of backtranslation. This can be useful "
-        "when you are running low of local storage. Used in combination with "
-        "an output directory path passed in via config.")
-    parser.add_argument('--config', type=str)
-    parser.add_argument('--seed_override', type=int)
-    parser.add_argument(
-        '--model_dir_override',
-        type=str,
-        default=None,
-        help="Flag to override the input model directory"
-    )
-    parser.add_argument(
-        '--output_dir_override',
-        type=str,
-        default=None,
-        help="Flag to override the output directory"
-    )
-    parser.add_argument(
-        '--print_translation',
-        action="store_true",
-        help="Whether we want to print backtranslated sentence, for inspection"
-    )
-    parser.add_argument(
-        '--num_printed_translation',
-        type=int,
-        default=3,
-        help="No. of backtranslationed sentences to be printed. "
-        "This number will be capped by the batch size. "
-        "Sentences will be randomly sampled from the *current* batch"
-    )
-
-    args = parser.parse_args()
-    args_dict = vars(args)
-
-    with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file, Loader=yaml.SafeLoader))
-    
-    # Set the input model directory and output directory
-    if args.model_dir_override:
-        args.model_path = args.model_dir_override
-
-    if args.output_dir_override:
-        args.output_dir = args.output_dir_override
+    container = OmegaConf.to_object(args)
+    # turn hparams into a namespace
+    args = namespaced_hparams(container['backtranslate'])
 
     args.output_dir = os.path.join(args.backtranslated_dir, args.output_dir)
     if not os.path.exists(args.output_dir):
@@ -550,28 +514,26 @@ if __name__ == "__main__":
 
     # Good practice: save your training arguments together
     # with the trained model
-    if args.models_shared:
+    if args.train_eval.models_shared:
         torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
     else:
         torch.save(
             args,
             os.path.join(
-                args.output_dir, f"{args.lang1_id}2{args.lang2_id}",
+                args.output_dir, f"{args.data.lang1_id}2{args.data.lang2_id}",
                 "training_args.bin"
             )
         )
         torch.save(
             args,
             os.path.join(
-                args.output_dir, f"{args.lang2_id}2{args.lang1_id}",
+                args.output_dir, f"{args.data.lang2_id}2{args.data.lang1_id}",
                 "training_args.bin"
             )
         )
 
     # set random seed
-    if args.seed_override:
-        args.seed = args.seed_override
-    set_seed(args.seed, args.n_gpu)
+    set_seed(args.train_eval.seed, args.train_eval.n_gpu)
 
     # Start the clock for the beginning of the main function
     start_time = time.time()
@@ -583,8 +545,8 @@ if __name__ == "__main__":
 
     tokenizer = MBartTokenizer.from_pretrained(args.model_path)
 
-    if not hasattr(args, 'num_constrained_steps'):
-        args.num_constrained_steps = 0
+    if not hasattr(args.train_eval, 'num_constrained_steps'):
+        args.train_eval.num_constrained_steps = 0
 
     # Write the model description
     logger.info("Configuration:")
@@ -592,48 +554,48 @@ if __name__ == "__main__":
 
     lang1_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
-        file=args.lang1_vocab_constrain_file,
-        threshold=args.vocab_constraint_threshold,
+        file=args.data.lang1_vocab_constrain_file,
+        threshold=args.train_eval.vocab_constraint_threshold,
         mode='tensor'
     )
     lang1_vocab_constraint = lang1_vocab_constraint.to(device)
     logger.info(
-        f"Total valid {args.lang1_id} tokens:"
+        f"Total valid {args.data.lang1_id} tokens:"
         f" {torch.sum(torch.isfinite(lang1_vocab_constraint))}"
     )
 
     lang2_vocab_constraint = vocab_constraint_from_file(
         tokenizer=tokenizer,
-        file=args.lang2_vocab_constrain_file,
-        threshold=args.vocab_constraint_threshold,
+        file=args.data.lang2_vocab_constrain_file,
+        threshold=args.train_eval.vocab_constraint_threshold,
         mode='tensor'
     )
     lang2_vocab_constraint = lang2_vocab_constraint.to(device)
     logger.info(
-        f"Total valid {args.lang2_id} tokens:"
+        f"Total valid {args.data.lang2_id} tokens:"
         f" {torch.sum(torch.isfinite(lang2_vocab_constraint))}"
     )
 
     if hasattr(args, 'secondary_threshold'):
         lang1_secondary_constraint = vocab_constraint_from_file(
             tokenizer=tokenizer,
-            file=args.lang1_vocab_constrain_file,
-            threshold=args.secondary_threshold,
+            file=args.data.lang1_vocab_constrain_file,
+            threshold=args.train_eval.secondary_threshold,
             mode='tensor'
         )
         logger.info(
-            f"Total secondary {args.lang1_id} tokens:"
+            f"Total secondary {args.data.lang1_id} tokens:"
             f" {torch.sum(torch.isfinite(lang1_secondary_constraint))}"
         )
         lang1_secondary_constraint = lang1_secondary_constraint.to(device)
         lang2_secondary_constraint = vocab_constraint_from_file(
             tokenizer=tokenizer,
-            file=args.lang2_vocab_constrain_file,
-            threshold=args.secondary_threshold,
+            file=args.data.lang2_vocab_constrain_file,
+            threshold=args.train_eval.secondary_threshold,
             mode='tensor'
         )
         logger.info(
-            f"Total secondary {args.lang2_id} tokens:"
+            f"Total secondary {args.data.lang2_id} tokens:"
             f" {torch.sum(torch.isfinite(lang2_secondary_constraint))}"
         )
         lang2_secondary_constraint = lang2_secondary_constraint.to(device)
@@ -644,86 +606,86 @@ if __name__ == "__main__":
         args.model_path
     )
     lang1_to_lang2_model.to(args.device)
-    if args.models_shared:
+    if args.train_eval.models_shared:
         lang2_to_lang1_model = lang1_to_lang2_model
     else:
         raise NotImplementedError("Not yet")
 
     assert (
-        args.lang1_id in LANG_ID_2_LANGUAGE_CODES and
-        args.lang2_id in LANG_ID_2_LANGUAGE_CODES
+        args.data.lang1_id in LANG_ID_2_LANGUAGE_CODES and
+        args.data.lang2_id in LANG_ID_2_LANGUAGE_CODES
     )
-    args.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.lang1_id]
-    args.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.lang2_id]
+    args.data.lang1_code = LANG_ID_2_LANGUAGE_CODES[args.data.lang1_id]
+    args.data.lang2_code = LANG_ID_2_LANGUAGE_CODES[args.data.lang2_id]
     logger.info(
-        f"Source language code: {args.lang1_code},"
-        f" target language code: {args.lang2_code}"
+        f"Source language code: {args.data.lang1_code},"
+        f" target language code: {args.data.lang2_code}"
     )
 
-    logger.info(f"Loading {args.lang1_code} and {args.lang2_code} datasets")
+    logger.info(f"Loading {args.data.lang1_code} and {args.data.lang2_code} datasets")
     lang1_dataset = load_dataset(
-        "text", data_files=os.path.join(args.data_dir, args.lang1_data_file)
+        "text", data_files=os.path.join(args.data.data_dir, args.data.lang1_data_file)
     )["train"]
     lang2_dataset = load_dataset(
-        "text", data_files=os.path.join(args.data_dir, args.lang2_data_file)
+        "text", data_files=os.path.join(args.data.data_dir, args.data.lang2_data_file)
     )["train"]
 
-    logger.info(f"Creating {args.lang1_code} and {args.lang2_code} dataloaders")
+    logger.info(f"Creating {args.data.lang1_code} and {args.data.lang2_code} dataloaders")
     lang1_dataloader = DataLoader(
-        lang1_dataset, batch_size=args.batch_size, shuffle=True
+        lang1_dataset, batch_size=args.train_eval.batch_size, shuffle=True
     )
     lang2_dataloader = DataLoader(
-        lang2_dataset, batch_size=args.batch_size, shuffle=True
+        lang2_dataset, batch_size=args.train_eval.batch_size, shuffle=True
     )
 
     lang1_iter = iter(lang1_dataloader)
     lang2_iter = iter(lang2_dataloader)
 
     lang2_to_lang1_optimizer = torch.optim.Adam(
-        lang2_to_lang1_model.parameters(), lr=args.lr
+        lang2_to_lang1_model.parameters(), lr=args.train_eval.lr
     )
-    if args.models_shared:
+    if args.train_eval.models_shared:
         lang1_to_lang2_optimizer = lang2_to_lang1_optimizer
     else:
         lang1_to_lang2_optimizer = torch.optim.Adam(
-            lang1_to_lang2_model.parameters(), lr=args.lr
+            lang1_to_lang2_model.parameters(), lr=args.train_eval.lr
         )
 
-    if args.schedule == 'linear_w_warmup':
+    if args.train_eval.schedule == 'linear_w_warmup':
         scheduler_method = transformers.get_linear_schedule_with_warmup
         scheduler_args = {
             'optimizer': lang1_to_lang2_optimizer,
-            'num_warmup_steps': args.num_warmup_steps,
-            'num_training_steps': args.num_steps
+            'num_warmup_steps': args.train_eval.num_warmup_steps,
+            'num_training_steps': args.train_eval.num_steps
         }
     else:
         # Default to constant schedule with warmup
         scheduler_method = transformers.get_constant_schedule_with_warmup
         scheduler_args = {
             'optimizer': lang1_to_lang2_optimizer,
-            'num_warmup_steps': args.num_warmup_steps
+            'num_warmup_steps': args.train_eval.num_warmup_steps
         }
 
     lang1_to_lang2_scheduler = scheduler_method(**scheduler_args)
-    if args.models_shared:
+    if args.train_eval.models_shared:
         lang2_to_lang1_scheduler = lang1_to_lang2_scheduler
     else:
         scheduler_args['optimizer'] = lang2_to_lang1_optimizer
         lang2_to_lang1_scheduler = scheduler_method(**scheduler_args)
 
     lang1_meta = LangMeta(
-        lang_id=args.lang1_id,
-        lang_code=args.lang1_code,
-        max_length=args.lang1_max_len
+        lang_id=args.data.lang1_id,
+        lang_code=args.data.lang1_code,
+        max_length=args.data.lang1_max_len
     )
 
     lang2_meta = LangMeta(
-        lang_id=args.lang2_id,
-        lang_code=args.lang2_code,
-        max_length=args.lang2_max_len
+        lang_id=args.data.lang2_id,
+        lang_code=args.data.lang2_code,
+        max_length=args.data.lang2_max_len
     )
-    args.lang1_meta = lang1_meta
-    args.lang2_meta = lang2_meta
+    args.data.lang1_meta = lang1_meta
+    args.data.lang2_meta = lang2_meta
 
     backtranslation_pack = BackTranslationPack(
         dataloaders=(lang1_dataloader, lang2_dataloader),
@@ -739,17 +701,20 @@ if __name__ == "__main__":
         )
     )
 
-    if args.do_crossent_eval or args.do_translate_eval:
-        args.val_dataset = load_dataset(
-            args.val_dataset_script, args.lang_pair, split="validation"
+    if args.train_eval.do_crossent_eval or args.train_eval.do_translate_eval:
+        args.train_eval.val_dataset = load_dataset(
+            args.train_eval.val_dataset_script, args.data.lang_pair, split="validation"
         )
         data_columns = [
-            "step", f"{args.lang1_id} to {args.lang2_id}",
-            f"{args.lang2_id} to {args.lang1_id}"
+            "step", f"{args.data.lang1_id} to {args.data.lang2_id}",
+            f"{args.data.lang2_id} to {args.data.lang1_id}"
         ]
-        data_file = os.path.join(args.output_dir, args.output_data_filename)
+        data_file = os.path.join(args.output_dir, args.data.output_data_filename)
         
         with open(data_file, 'w+') as f:
             print(", ".join(data_columns), file=f)
 
-    main(args, backtranslation_pack)
+    backtranslate(args, backtranslation_pack, logger)
+
+if __name__ == '__main__':
+    main()

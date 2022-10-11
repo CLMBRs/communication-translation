@@ -1,6 +1,5 @@
 # Train and eval:
 seed: 1
-mode: emergent_communication
 language_model_lambda: 0.125
 language_model_path: ./DataLink/../Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0

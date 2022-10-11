@@ -1,0 +1,18 @@
+defaults:
+  - data: en-de
+  - train_eval: train_eval_baseline
+  - _self_
+
+# Path to load model for generation
+model_path: facebook/mbart-large-cc25
+output_dir: ./Output/bt_en-de_initial/
+# lang_pair: de-en # candidates: neen; sien; zh-en
+
+# New root to store output of backtranslation. This can be useful
+# when you are running low of local storage. Used in combination with 
+# an output directory path passed in via config.
+backtranslated_dir: ""
+
+validation:
+  # use "BackTranslation/flores/flores.py" for en-ne; en-si; 
+  val_dataset_script: BackTranslation/wmt19/wmt19.py

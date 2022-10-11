@@ -12,7 +12,6 @@ lang2_id: de
 lang2_max_len: 64
 lang2_vocab_constrain_file: ./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
 
-# New root to store output of backtranslation. This can be useful
-# when you are running low of local storage. Used in combination with 
-# an output directory path passed in via config.
-backtranslated_dir: ""
+lang_pair: de-en
+
+

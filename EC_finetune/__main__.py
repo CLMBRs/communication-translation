@@ -1,4 +1,5 @@
 import argparse
+from argparse import Namespace
 from bdb import set_trace
 import json
 import logging
@@ -54,7 +55,7 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
     batchwise_stats = defaultdict(list)
     max_eval_batches = None
     if hasattr(args, "max_eval_batches"):
-        max_eval_batches = args.ec.max_eval_batches
+        max_eval_batches = args.train_eval.max_eval_batches
     epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
     for i, batch in enumerate(epoch_iterator):
@@ -64,7 +65,7 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         batch['sender_image'] = batch['sender_image'].to(device)
         batch['receiver_images'] = batch['receiver_images'].to(device)
         batch['target'] = batch['target'].to(device)
-        if args.ec.mode == 'image_grounding':
+        if args.mode == 'image_grounding':
             batch['caption_ids'] = batch['caption_ids'].to(device)
             batch['caption_mask'] = batch['caption_mask'].to(device)
 
@@ -74,7 +75,7 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
 
         eval_return_dict['loss'] = eval_return_dict['loss'].item()
         for key, value in eval_return_dict.items():
-            if key in args.ec.stats_to_print:
+            if key in args.train_eval.stats_to_print:
                 batchwise_stats[key].append(value)
 
     average_stats = {}
@@ -91,14 +92,14 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
 
 def save(args, model, logger):
     # Create output directory if needed
-    if not os.path.exists(args.ec.output_dir):
-        os.makedirs(args.ec.output_dir)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
-    logger.info("Saving model to %s", args.ec.output_dir)
+    logger.info("Saving model to %s", args.output_dir)
 
     # Good practice: save your training arguments together
     # with the trained model
-    torch.save(args, os.path.join(args.ec.output_dir, "training_args.bin"))
+    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
 
     # Save the general part of the model
     state_dict = {
@@ -106,10 +107,10 @@ def save(args, model, logger):
         for k, v in model.state_dict().items()
         if not (k.startswith("language_model") or k.startswith("orig_model"))
     }
-    torch.save(state_dict, args.ec.output_dir + "/model.pt")
+    torch.save(state_dict, args.output_dir + "/model.pt")
 
     # For pretrained models, provide extra saving strategy
-    if args.ec.save_pretrain_seperately:
+    if args.save_pretrain_seperately:
         # Save a trained model, configuration and tokenizer
         # using `save_pretrained()`. They can then be
         # reloaded using `from_pretrained()`
@@ -117,7 +118,7 @@ def save(args, model, logger):
             model.sender.sender.module
             if hasattr(model.sender.top, 'module') else model.sender.top
         )  # Take care of distributed/parallel training
-        model_to_save.save_pretrained(args.ec.output_dir)
+        model_to_save.save_pretrained(args.output_dir)
 
 
 def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, device):
@@ -128,24 +129,24 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
     train_csv_data = []
     val_csv_data = []
 
-    optimizer = torch.optim.Adam(params, lr=args.ec.lr)
-    if args.ec.schedule == 'linear_w_warmup':
+    optimizer = torch.optim.Adam(params, lr=args.train_eval.lr)
+    if args.train_eval.schedule == 'linear_w_warmup':
         scheduler_method = transformers.get_linear_schedule_with_warmup
         scheduler_args = {
             'optimizer': optimizer,
-            'num_warmup_steps': args.ec.num_warmup_steps,
-            'num_training_steps': args.ec.max_global_step
+            'num_warmup_steps': args.train_eval.num_warmup_steps,
+            'num_training_steps': args.train_eval.max_global_step
         }
     else:
         # Default to constant schedule with warmup
         scheduler_method = transformers.get_constant_schedule_with_warmup
         scheduler_args = {
             'optimizer': optimizer,
-            'num_warmup_steps': args.ec.num_warmup_steps
+            'num_warmup_steps': args.train_eval.num_warmup_steps
         }
     scheduler = scheduler_method(**scheduler_args)
 
-    for epoch in range(args.ec.num_games):
+    for epoch in range(args.train_eval.num_games):
         epoch_iterator = tqdm(dataloader, desc='Iteration')
         for batch in epoch_iterator:
             model.train()
@@ -153,7 +154,7 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
             batch['sender_image'] = batch['sender_image'].to(device)
             batch['receiver_images'] = batch['receiver_images'].to(device)
             batch['target'] = batch['target'].to(device)
-            if args.ec.mode == 'image_grounding':
+            if args.mode == 'image_grounding':
                 batch['caption_ids'] = batch['caption_ids'].to(device)
                 batch['caption_mask'] = batch['caption_mask'].to(device)
 
@@ -162,8 +163,8 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
             optimizer.zero_grad()
             loss.backward()
             gradient_count += 1
-            nn.utils.clip_grad_norm_(params, args.ec.grad_clip)
-            if gradient_count >= args.ec.gradient_accumulation_steps:
+            nn.utils.clip_grad_norm_(params, args.train_eval.grad_clip)
+            if gradient_count >= args.train_eval.gradient_accumulation_steps:
                 optimizer.step()
                 scheduler.step()
                 gradient_count = 0
@@ -171,33 +172,33 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
 
             train_return_dict['loss'] = train_return_dict['loss'].item()
             for key, value in train_return_dict.items():
-                if key in args.ec.stats_to_print:
+                if key in args.train_eval.stats_to_print:
                     checkpoint_stats[key].append(value)
 
-            if global_step % args.ec.print_every == 0 and gradient_count == 0:
+            if global_step % args.train_eval.print_every == 0 and gradient_count == 0:
                 checkpoint_average_stats = {}
                 checkpoint_average_stats['epoch'] = epoch
                 checkpoint_average_stats['global step'] = global_step
                 checkpoint_average_stats['mode'] = 'train'
                 for key, value in checkpoint_stats.items():
                     checkpoint_average_stats[key] = round(mean(value), 4)
-                with open(f"{args.ec.output_dir}/log.csv", 'a') as f:
-                    csv_file = csv.DictWriter(f, fieldnames=args.ec.csv_headers)
+                with open(f"{args.output_dir}/log.csv", 'a') as f:
+                    csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
                     csv_file.writerow(checkpoint_average_stats)
                 train_csv_data.append(checkpoint_stats)
 
                 logger.info(statbar_string(checkpoint_average_stats))
                 checkpoint_stats = defaultdict(list)
 
-            if global_step % args.ec.valid_every == 0 and gradient_count == 0:
+            if global_step % args.train_eval.valid_every == 0 and gradient_count == 0:
                 with torch.no_grad():
                     results, output_ids, printout = evaluate(
                         args, model, valid_dataloader, epoch, global_step
                     )
                     val_csv_data.append(results)
-                    with open(f"{args.ec.output_dir}/log.csv", 'a') as f:
+                    with open(f"{args.output_dir}/log.csv", 'a') as f:
                         csv_file = csv.DictWriter(
-                            f, fieldnames=args.ec.csv_headers
+                            f, fieldnames=args.csv_headers
                         )
                         csv_file.writerow(results)
                     # Output evaluation statistics
@@ -206,23 +207,31 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
                     cur_loss = float(results['loss'])
                     if cur_loss < best_loss:
                         best_loss = cur_loss
-                        if args.ec.save_output_txt:
+                        if args.data.save_output_txt:
                             output_texts = ids_to_texts(output_ids, tokenizer)
                             with open(
-                                args.ec.output_dir + "/eval_texts.txt", 'w'
+                                args.output_dir + "/eval_texts.txt", 'w'
                             ) as f:
                                 for i in output_texts:
                                     f.write(i)
                         save(args, model, logger)
                         print(
                             f"Epoch: {epoch}, Prediction Accuracy: {cur_acc},"
-                            f" Saved to Path: {args.ec.output_dir}"
+                            f" Saved to Path: {args.output_dir}"
                         )
-                        if cur_acc > args.ec.target_acc and args.ec.TransferH:
-                            args.ec.hard = True
+                        if cur_acc > args.train_eval.target_acc and args.generation.TransferH:
+                            args.generation.hard = True
 
-            if global_step >= args.ec.max_global_step:
+            if global_step >= args.train_eval.max_global_step:
                 return global_step
+
+def namespaced_hparams(hparams):
+    if type(hparams) is not dict:
+        return hparams
+    else:
+        hparams = {k: namespaced_hparams(v)
+            for k, v in hparams.items()}
+        return Namespace(**hparams)
 
 @hydra.main(version_base=None, config_path="../Configs")
 def main(args: DictConfig):
@@ -231,22 +240,25 @@ def main(args: DictConfig):
     """
     logger = create_logger(name="ec_finetune")
     # set csv output file
-    breakpoint()
-    if not os.path.exists(args.ec.output_dir):
-        os.makedirs(args.ec.output_dir)
+    container = OmegaConf.to_object(args)
+    # turn hparams into a namespace
+    args = namespaced_hparams(container['ec'])
+    if not os.path.exists(args.output_dir):
+        # TODO: move output_dir to ec?
+        os.makedirs(args.output_dir)
     
     # Add new field
-    if args.ec.mode == 'image_grounding':
+    if args.mode == 'image_grounding':
         args.csv_headers = CAPTIONING_CSV_HEADERS
     else:
         args.csv_headers = EC_CSV_HEADERS
         args.csv_headers += ['communication loss']
-        if args.ec.language_model_lambda:
+        if args.train_eval.language_model_lambda:
             args.csv_headers += ['lm loss']
-        if args.ec.weight_drift_lambda:
+        if args.train_eval.weight_drift_lambda:
             args.csv_headers += ['drift loss']
 
-    with open(f"{args.ec.output_dir}/log.csv", 'w') as f:
+    with open(f"{args.output_dir}/log.csv", 'w') as f:
         csv_file = csv.DictWriter(f, fieldnames=args.csv_headers)
         csv_file.writeheader()
 
@@ -255,17 +267,17 @@ def main(args: DictConfig):
     # Setup CUDA, GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    if args.ec.mode == 'image_grounding':
+    if args.mode == 'image_grounding':
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
-            for line in open(args.ec.train_captions, 'r').readlines()
+            for line in open(args.data.train_captions, 'r').readlines()
         ]
         valid_captions = [
             [caption.strip() for caption in json.loads(line)]
-            for line in open(args.ec.valid_captions, 'r').readlines()
+            for line in open(args.data.valid_captions, 'r').readlines()
         ]
-    train_images = torch.load(args.ec.train_images)
-    valid_images = torch.load(args.ec.valid_images)
+    train_images = torch.load(args.data.train_images)
+    valid_images = torch.load(args.data.valid_images)
 
     logger.info("Dataset Loaded")
 
@@ -273,86 +285,86 @@ def main(args: DictConfig):
     logger.info("Configuration:")
     print(args)
 
-    tokenizer = MBartTokenizer.from_pretrained(args.ec.model_name)
-    #args.ec.tokenizer = tokenizer
-    tokenizer.save_pretrained(args.ec.output_dir)
+    tokenizer = MBartTokenizer.from_pretrained(args.model.model_name)
+    args.model.tokenizer = tokenizer
+    tokenizer.save_pretrained(args.output_dir)
     vocab = tokenizer.get_vocab()
-    args.ec.padding_index = vocab['<pad>']
-    args.ec.cls_index = vocab['<s>']
-    args.ec.vocab_size = len(vocab)
+    args.model.padding_index = vocab['<pad>']
+    args.model.cls_index = vocab['<s>']
+    args.model.vocab_size = len(vocab)
 
     language_model = None
     orig_model = None
 
     # Initialize Sender and Receiver, either from pretrained Bart or as a
     # from-scratch RNN
-    if args.ec.model_name == 'rnn':
+    if args.model.model_name == 'rnn':
         comm_model = nn.GRU(
-            input_size=args.ec.hidden_dim,
-            hidden_size=args.ec.hidden_dim,
-            num_layers=args.ec.num_layers,
+            input_size=args.model.hidden_dim,
+            hidden_size=args.model.hidden_dim,
+            num_layers=args.model.num_layers,
             batch_first=True
         )
         sender = RnnSender(
-            comm_model, args.ec.hidden_dim, args.ec.vocab_size, args.ec.bos_idx
+            comm_model, args.model.hidden_dim, args.model.vocab_size, args.model.bos_idx
         )
-        receiver = RnnReceiver(comm_model, args.ec.hidden_dim, args.ec.vocab_size)
+        receiver = RnnReceiver(comm_model, args.model.hidden_dim, args.model.vocab_size)
     else:
         # If language modeling loss is to be used, get a copy of the original
         # facebook weights, deepcopy the decoder and embeddings, and delete the
         # rest
-        if args.ec.language_model_lambda:
+        if args.train_eval.language_model_lambda:
             language_model = MBartForCausalLanguageModeling.from_pretrained(
-                args.ec.language_model_path
+                args.train_eval.language_model_path
             )
             for param in language_model.parameters():
                 param.requires_grad = False
 
         comm_model = MBartForConditionalGeneration.from_pretrained(
-            args.ec.model_name
+            args.model.model_name
         )
 
-        if args.ec.weight_drift_lambda:
+        if args.train_eval.weight_drift_lambda:
             orig_model = deepcopy(comm_model)
             for param in orig_model.parameters():
                 param.requireds_grad = False
 
         sender = MBartSender(
             comm_model,
-            seq_len=args.ec.max_seq_length,
-            unroll=args.ec.image_unroll,
-            unroll_length=args.ec.image_unroll_length,
-            temperature=args.ec.temperature,
-            hard=args.ec.hard,
-            repetition_penalty=args.ec.repetition_penalty,
-            beam_width=args.ec.beam_width,
-            generate_from_logits=args.ec.generate_from_logits
+            seq_len=args.generation.max_seq_length,
+            unroll=args.model.image_unroll,
+            unroll_length=args.model.image_unroll_length,
+            temperature=args.generation.temperature,
+            hard=args.generation.hard,
+            repetition_penalty=args.generation.repetition_penalty,
+            beam_width=args.generation.beam_width,
+            generate_from_logits=args.generation.generate_from_logits
         )
         receiver = MBartReceiver(
             comm_model,
-            recurrent_aggregation=args.ec.recurrent_hidden_aggregation,
-            dropout=args.ec.dropout,
-            unit_norm=args.ec.unit_norm
+            recurrent_aggregation=args.model.recurrent_hidden_aggregation,
+            dropout=args.model.dropout,
+            unit_norm=args.model.unit_norm
         )
 
     # Initialize agent setup
-    if args.ec.mode == 'image_grounding':
+    if args.mode == 'image_grounding':
         model = ImageCaptionGrounder(sender, receiver, args)
         training_set = CaptionTrainingDataset(
             train_images,
             train_captions,
-            args.ec.num_distractors_train,
+            args.train_eval.num_distractors_train,
             tokenizer,
             args,
-            max_length=args.ec.max_seq_length
+            max_length=args.generation.max_seq_length
         )
         valid_set = CaptionTrainingDataset(
             valid_images,
             valid_captions,
-            args.ec.num_distractors_valid,
+            args.train_eval.num_distractors_valid,
             tokenizer,
             args,
-            max_length=args.ec.max_seq_length
+            max_length=args.generation.max_seq_length
         )
     else:
         model = ECImageIdentificationAgent(
@@ -363,14 +375,14 @@ def main(args: DictConfig):
             orig_model=orig_model
         )
         training_set = XLImageIdentificationDataset(
-            train_images, args.ec.num_distractors_train, args, tokenizer
+            train_images, args.train_eval.num_distractors_train, args, tokenizer
         )
         valid_set = XLImageIdentificationDataset(
-            valid_images, args.ec.num_distractors_valid, args, tokenizer
+            valid_images, args.train_eval.num_distractors_valid, args, tokenizer
         )
 
-    if args.ec.load_entire_agent:
-        state_dict = torch.load(args.ec.model_name + "/model.pt")
+    if args.model.load_entire_agent:
+        state_dict = torch.load(args.model.model_name + "/model.pt")
         state_dict = {
             k: v
             for k, v in state_dict.items() if (
@@ -386,15 +398,15 @@ def main(args: DictConfig):
         }
         model.load_state_dict(state_dict, strict=False)
 
-    if args.ec.freeze_adapters:
+    if args.model.freeze_adapters:
         print("Freezing adapter modules")
         model.freeze_adapters()
 
-    if args.ec.freeze_sender:
+    if args.model.freeze_sender:
         print("Freezing sender's decoder")
         model.freeze_sender_decoder()
 
-    if args.ec.freeze_receiver:
+    if args.model.freeze_receiver:
         print("Freezing listener's encoder")
         model.freeze_listener_encoder()
 
@@ -403,12 +415,12 @@ def main(args: DictConfig):
 
     # Initialize the dataloader
     training_params = {
-        'batch_size': args.ec.batch_size,
+        'batch_size': args.train_eval.batch_size,
         'shuffle': True,
         'drop_last': True
     }
     test_params = {
-        'batch_size': args.ec.batch_size,
+        'batch_size': args.train_eval.batch_size,
         'shuffle': False,
         'drop_last': False
     }
@@ -416,21 +428,21 @@ def main(args: DictConfig):
     training_dataloader = DataLoader(training_set, **training_params)
     valid_dataloader = DataLoader(valid_set, **test_params)
 
-    if args.ec.do_train:
+    if args.train_eval.do_train:
         train(
             args, model, training_dataloader, valid_dataloader, tokenizer,
             model.parameters(), logger, device
         )
-    if args.ec.do_eval:
-        checkpoint = args.ec.output_dir + "/model.pt"
+    if args.train_eval.do_eval:
+        checkpoint = args.output_dir + "/model.pt"
         logger.info("Evaluate the following checkpoint: %s", checkpoint)
         model.load_state_dict(torch.load(checkpoint), strict=False)
         model.to(device)
         model.eval()
         results, output_ids, printout = evaluate(args, model, valid_dataloader, device)
-        if args.ec.save_output_txt:
+        if args.data.save_output_txt:
             output_texts = ids_to_texts(output_ids, tokenizer)
-            with open(args.ec.output_dir + "/eval_texts.txt", 'w') as f:
+            with open(args.output_dir + "/eval_texts.txt", 'w') as f:
                 for i in output_texts:
                     f.write(i)
 

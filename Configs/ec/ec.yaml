@@ -6,6 +6,9 @@ defaults:
   - language: en-de
   - _self_
 
+output_dir: ./Output/en-de_pipeline/ec
+mode: emergent_communication
+save_pretrain_seperately: true
 model:
   model_name: ./Output/en-de_pipeline/captions
 

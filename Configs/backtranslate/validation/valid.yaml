@@ -1,8 +1,0 @@
-# script to load validation datasets
-val_dataset_script: BackTranslation/wmt19/wmt19.py
-lang_pair: de-en
-models_shared: true
-output_dir: ./Output/en-de_pipeline/bt_init
-
-print_translations: true # Whether we want to print backtranslated sentence, for inspection
-num_printed_translation: 3 # Number of backtranslated sentences to print
