@@ -66,7 +66,7 @@ def translate(
         )
         translation_lines += [line for line in translation_str]
 
-    with open(args.translation_file, 'w+') as fout:
+    with open(args.translation_file, 'w+', encoding='utf-8') as fout:
         for line in translation_lines:
             print(line, file=fout)
 
