@@ -1,6 +1,6 @@
 defaults:
   - data: en-de
-  - train_eval: train_eval_baseline
+  - train_eval: baseline
   - _self_
 
 # Path to load model for generation

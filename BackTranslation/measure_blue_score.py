@@ -13,7 +13,7 @@ metric = load_metric("bleu")
 
 
 def measure_bleu_score(args, model, tokenizer, data_source):
-    translation_task = f"translation_{args.data.source_lang_id}_to_{args.data.data.target_lang_id}"
+    translation_task = f"translation_{args.data.source_lang_id}_to_{args.data.target_lang_id}"
     translation = pipeline(translation_task, model=model, tokenizer=tokenizer)
     # TODO (Leo): I think this function should take a Dataset that already have parallel corpus processed
 

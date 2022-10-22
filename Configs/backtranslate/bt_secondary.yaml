@@ -1,6 +1,6 @@
 defaults:
   - data: en-de
-  - train_eval: train_eval_secondary
+  - train_eval: secondary
   - _self_
 
 # Path to load model for generation
