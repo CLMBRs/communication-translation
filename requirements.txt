@@ -4,5 +4,5 @@ sentencepiece
 yapf
 pyyaml==5.3.1
 protobuf
-torch==1.7.1
+torch==1.7.1+cu110
 transformers==4.0.1
