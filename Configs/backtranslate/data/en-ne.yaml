@@ -1,0 +1,13 @@
+# data config
+# backtranslation language
+data_dir: ./DataLink/cc
+output_data_filename: bt_en+ne.csv
+lang1_data_file: en_500k.txt
+lang1_id: en
+lang1_max_len: 64
+lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+
+lang2_data_file: ne_500k.txt
+lang2_id: ne
+lang2_max_len: 64
+lang2_vocab_constrain_file: ./Data/cc/ne_cc_tokenID2count_dict.facebook-mbart-large-cc25.json

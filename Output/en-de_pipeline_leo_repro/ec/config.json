@@ -1,5 +1,5 @@
 {
-  "_name_or_path": "Output/en-de_pipeline/captions",
+  "_name_or_path": "./Output/en-de_pipeline/captions",
   "_num_labels": 3,
   "activation_dropout": 0.0,
   "activation_function": "gelu",
