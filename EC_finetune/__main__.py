@@ -73,7 +73,7 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
             batch['caption_mask'] = batch['caption_mask'].to(args.device)
 
         eval_return_dict = model(batch)
-        
+
         if 'message' in eval_return_dict:
             output_ids.append(eval_return_dict['message'].cpu().detach().numpy())
 
@@ -157,7 +157,7 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
             # Move data to the GPU
             for key, value in batch.items():
                 if isinstance(value, Tensor):
-                    batch[key] = value.to(args.device)
+                    batch[key] = value.to(device)
 
             train_return_dict = model(batch)
             loss = train_return_dict['loss']
@@ -241,13 +241,14 @@ def main(args: DictConfig):
     """
     logger = create_logger(name="ec_finetune")
     # set csv output file
+    # import pdb; pdb.set_trace()
     container = OmegaConf.to_object(args)
     # turn hparams into a namespace
     args = namespaced_hparams(container['ec'])
     if not os.path.exists(args.output_dir):
         # TODO: move output_dir to ec?
         os.makedirs(args.output_dir)
-    
+
     # Add new field
     if args.mode == 'image_grounding':
         args.csv_headers = CAPTIONING_CSV_HEADERS

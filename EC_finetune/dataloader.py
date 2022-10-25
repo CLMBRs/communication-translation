@@ -160,7 +160,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                 tokenizer.additional_special_tokens_ids
             )
         )
-        self.lang_id = lang_code2id[args.language.source_lang]
+        self.lang_id = self.lang_code2id[args.language.source_lang]
         self.has_vocab_constraint = args.language.has_vocab_constraint
 
         if self.has_vocab_constraint:
