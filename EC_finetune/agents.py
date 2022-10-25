@@ -42,7 +42,7 @@ class CommunicationAgent(Module):
         self.receiver = receiver
         self.tokenizer = args.model.tokenizer
 
-        self.image_dim = args.model.image_dim
+        self.image_dim = args.data.image_dim
         self.hidden_dim = self.sender.embedding_dim
         self.unit_norm = args.model.unit_norm
         self.beam_width = args.generation.beam_width
@@ -55,12 +55,12 @@ class CommunicationAgent(Module):
         # Initialize the image Reshaper, and clone if there is to be a separate
         # Reshaper stack for both Sender and Receiver
         if self.reshaper_type == 'identity':
-            self.reshaper = IdentityReshaper(args.model.image_dim, self.hidden_dim)
+            self.reshaper = IdentityReshaper(args.data.image_dim, self.hidden_dim)
         elif self.reshaper_type == 'pooler':
-            self.reshaper = PoolingReshaper(args.model.image_dim, self.hidden_dim)
+            self.reshaper = PoolingReshaper(args.data.image_dim, self.hidden_dim)
         else:
             self.reshaper = LearnedLinearReshaper(
-                args.model.image_dim,
+                args.data.image_dim,
                 self.hidden_dim,
                 dropout=args.model.dropout,
                 unit_norm=args.model.unit_norm,

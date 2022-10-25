@@ -1,7 +1,7 @@
 # Model:
 model_name: ./model_you_want_to_use
 load_entire_agent: true
-image_dim: 2048
+image_dim: ${ec.data.image_dim}
 reshaper_type: learned
 two_ffwd: false
 unit_norm: false
