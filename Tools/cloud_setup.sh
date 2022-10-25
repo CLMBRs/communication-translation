@@ -29,8 +29,10 @@ echo "Transfer data..."
 # scp is 4x faster than rsync, so we use it for the first time.
 if [ ! -d "~/Data" ]; then
      scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
+     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 else
      rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
+     rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 fi
 echo "Done."
 echo
