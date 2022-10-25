@@ -2,7 +2,7 @@ defaults:
   - model: model
   - train_eval: train_eval_caption
   - generation: generation
-  - data: data_captions
+  - data: resnet
   - language: en-de
   - _self_
 
