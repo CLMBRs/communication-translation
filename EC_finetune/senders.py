@@ -95,10 +95,12 @@ class MBartSender(Sender):
         self.tf_num_layers = tf_num_layers
 
         if self.unroll == 'recurrent':
+            print("Using 'recurrent' unrolling ")
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
         elif self.unroll == 'transformer':
+            print("Using 'transformer' unrolling")
             self.transformer = TransformerMapper(
                 self.embedding_dim,
                 self.embedding_dim,
@@ -106,6 +108,8 @@ class MBartSender(Sender):
                 clip_length=self.img_ext_len,
                 num_layers=self.tf_num_layers
             )
+        else:
+            print("No unrolling")
 
     def forward(
         self,
