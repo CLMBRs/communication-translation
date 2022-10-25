@@ -4,4 +4,5 @@ train_captions: ${.base_dir}/en_captions_train.jsonl
 valid_captions: ${.base_dir}/en_captions_val.jsonl
 train_images: ${.base_dir}/images_train.pt
 valid_images: ${.base_dir}/images_val.pt
+image_dim: 2048
 save_output_txt: true
