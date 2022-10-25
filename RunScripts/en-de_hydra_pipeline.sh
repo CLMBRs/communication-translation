@@ -15,6 +15,7 @@ python -u BackTranslation/backtranslate.py \
 # # Do caption training
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
+    ec/data=clipL \
     ec.output_dir=Output/en-de_pipeline/captions_${EX_ABBR} \
     ec.model.model_name=Output/en-de_pipeline/bt_init/last \
     ec.model.freeze_sender=True \
