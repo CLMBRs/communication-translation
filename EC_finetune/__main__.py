@@ -65,12 +65,12 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        batch['sender_image'] = batch['sender_image'].to(args.device)
-        batch['receiver_images'] = batch['receiver_images'].to(args.device)
-        batch['target'] = batch['target'].to(args.device)
+        batch['sender_image'] = batch['sender_image'].to(device)
+        batch['receiver_images'] = batch['receiver_images'].to(device)
+        batch['target'] = batch['target'].to(device)
         if args.mode == 'image_grounding':
-            batch['caption_ids'] = batch['caption_ids'].to(args.device)
-            batch['caption_mask'] = batch['caption_mask'].to(args.device)
+            batch['caption_ids'] = batch['caption_ids'].to(device)
+            batch['caption_mask'] = batch['caption_mask'].to(device)
 
         eval_return_dict = model(batch)
 
