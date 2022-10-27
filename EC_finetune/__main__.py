@@ -269,7 +269,7 @@ def main(args: DictConfig):
 
     # Setup CUDA, GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    set_seed(args.train_eval.set_seed)
+    set_seed(args.train_eval.seed)
     # num_train = 100
     if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
         train_captions = [
