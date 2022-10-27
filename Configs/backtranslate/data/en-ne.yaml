@@ -11,3 +11,5 @@ lang2_data_file: ne_500k.txt
 lang2_id: ne
 lang2_max_len: 64
 lang2_vocab_constrain_file: ./Data/cc/ne_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
+
+lang_pair: ne-en
