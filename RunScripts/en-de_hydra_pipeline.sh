@@ -1,14 +1,17 @@
 #!/bin/bash
 
-DATA=clipL
+# DATA=clipL
+DATA=resnet
 SEED=1
 EX_ABBR=${DATA}
 LANG=en-de
 # UNROLL=transformer
 UNROLL=recurrent
 
+OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
-OUTPUT_DIR=Output/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
+
 BT_INIT_CONFIG=bt_initial
 CAPTIONS_CONFIG=captions
 EC_CONFIG=ec
@@ -24,26 +27,37 @@ BT_SECONDARY_CONFIG=bt_secondary
 
 # Do caption training
 caption_lr=4.0e-5
-rep_penalty=1.2
+caption_rep_penalty=1.2
+distractor=15
+recurrent_hidden_aggregation=false
+CAPTION_OUT_DIR=captions_${EX_ABBR}_lr${caption_lr}_${UNROLL}_rep${caption_rep_penalty}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation}
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
     ec.train_eval.lr=${caption_lr} \
-    ec.output_dir=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR}_lr${caption_lr}_${UNROLL}_rep${rep_penalty} \
+    ec.train_eval.num_distractors_train=${distractor} \
+    ec.train_eval.num_distractors_valid=${distractor} \
     ec.model.image_unroll=${UNROLL} \
+    ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/bt_init/last \
-    ec.generation.repetition_penalty=${rep_penalty} \
-    # ec.model.freeze_sender=True \
+    ec.generation.repetition_penalty=${caption_rep_penalty} \
+    ec.output_dir=Output/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
 
 # Do EC
-# python -u -m EC_finetune  +ec=${EC_CONFIG} \
-#     ec/language=${LANG} \
-#     ec/data=${DATA} \
-#     ec.train_eval.seed=${SEED} \
-#     ec.output_dir=Output/${OUTPUT_BASE_DIR}/ec_${EX_ABBR} \
-#     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR}_lr${caption_lr}_${UNROLL} \
-#     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR} \
+ec_rep_penalty=1.0
+ec_lr=6.0e-6
+EC_OUT_DIR=ec_${EX_ABBR}_lr${ec_lr}_${UNROLL}_rep${ec_rep_penalty}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+python -u -m EC_finetune  +ec=${EC_CONFIG} \
+    ec/language=${LANG} \
+    ec/data=${DATA} \
+    ec.train_eval.seed=${SEED} \
+    ec.train_eval.num_distractors_train=${distractor} \
+    ec.train_eval.num_distractors_valid=${distractor} \
+    ec.model.image_unroll=${UNROLL} \
+    ec.model.model_name=Output/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+    ec.generation.repetition_penalty=${ec_rep_penalty} \
+    ec.output_dir=Output/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -64,7 +78,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
 #     +backtranslate=${BT_SECONDARY_CONFIG} \
 #     backtranslate/data=${LANG} \
 #     backtranslate.train_eval.seed=${SEED} \
-#     backtranslate.model_path=Output/${OUTPUT_BASE_DIR}/ec_${EX_ABBR} \
+#     backtranslate.model_path=Output/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 #     backtranslate.output_dir=${OUTPUT_DIR}
 
 # python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml \
