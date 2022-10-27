@@ -194,8 +194,9 @@ def train(args, model, dataloader, valid_dataloader, tokenizer, params, logger, 
             if global_step % args.train_eval.valid_every == 0 and gradient_count == 0:
                 with torch.no_grad():
                     results, output_ids, printout = evaluate(
-                        args, model, valid_dataloader, epoch, global_step
+                        args, model, valid_dataloader, device, epoch, global_step
                     )
+                    # import pbd; pdb.set_trace()
                     val_csv_data.append(results)
                     with open(f"{args.output_dir}/log.csv", 'a') as f:
                         csv_file = csv.DictWriter(
@@ -268,17 +269,19 @@ def main(args: DictConfig):
 
     # Setup CUDA, GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    # num_train = 100
     if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.train_captions, 'r').readlines()
-        ]
+        ] # [:num_train]
         valid_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.valid_captions, 'r').readlines()
         ]
+    # import pdb; pdb.set_trace()
     train_images = torch.load(args.data.train_images)
+    # train_images = train_images[:num_train]
     valid_images = torch.load(args.data.valid_images)
 
     logger.info("Dataset Loaded")

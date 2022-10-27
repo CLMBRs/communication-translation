@@ -1,9 +1,11 @@
 #!/bin/bash
 
-DATA=resnet
+DATA=clipL
 SEED=1
-EX_ABBR=${DATA}_recheck
+EX_ABBR=${DATA}
 LANG=en-de
+# UNROLL=transformer
+UNROLL=recurrent
 
 OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 OUTPUT_DIR=Output/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
@@ -15,27 +17,33 @@ BT_SECONDARY_CONFIG=bt_secondary
 # Do initial (short) backtranslation
 # python -u BackTranslation/backtranslate.py \
 #     +backtranslate=${BT_INIT_CONFIG} \
-#     backtranslate/data=${LANG}
+#     backtranslate/data=${LANG} \
 #     backtranslate.train_eval.seed=${SEED} \
+#     backtranslate.output_dir=Output/${OUTPUT_BASE_DIR}/bt_init/
+
 
 # Do caption training
+caption_lr=4.0e-5
+rep_penalty=1.2
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.output_dir=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR} \
+    ec.train_eval.lr=${caption_lr} \
+    ec.output_dir=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR}_lr${caption_lr}_${UNROLL}_rep${rep_penalty} \
+    ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/bt_init/last \
-    # ec.generation.repetition_penalty=1.0 \
+    ec.generation.repetition_penalty=${rep_penalty} \
     # ec.model.freeze_sender=True \
-    # ec/data=clipL \
 
 # Do EC
-python -u -m EC_finetune  +ec=${EC_CONFIG} \
-    ec/language=${LANG} \
-    ec/data=${DATA} \
-    ec.train_eval.seed=${SEED} \
-    ec.output_dir=Output/${OUTPUT_BASE_DIR}/ec_${EX_ABBR} \
-    ec.model.model_name=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR} \
+# python -u -m EC_finetune  +ec=${EC_CONFIG} \
+#     ec/language=${LANG} \
+#     ec/data=${DATA} \
+#     ec.train_eval.seed=${SEED} \
+#     ec.output_dir=Output/${OUTPUT_BASE_DIR}/ec_${EX_ABBR} \
+#     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR}_lr${caption_lr}_${UNROLL} \
+#     ec.model.model_name=Output/${OUTPUT_BASE_DIR}/captions_${EX_ABBR} \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
