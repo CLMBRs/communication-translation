@@ -1,6 +1,6 @@
 defaults:
   - model: model
-  - train_eval: train_eval_caption
+  - train_eval: caption
   - generation: generation
   - data: resnet
   - language: en-de

@@ -7,7 +7,7 @@ do_train: true
 do_eval: true
 n_gpu: 1
 num_games: 30 # Upper bound of the num of epochs
-max_global_step: 1024
+max_global_step: 2048
 lr: 4.0e-5
 schedule: linear_w_warmup
 num_warmup_steps: 0
