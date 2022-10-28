@@ -380,12 +380,31 @@ def main(args: DictConfig):
             language_model=language_model,
             orig_model=orig_model
         )
-        training_set = XLImageIdentificationDataset(
-            train_images, args.train_eval.num_distractors_train, args, tokenizer
-        )
-        valid_set = XLImageIdentificationDataset(
-            valid_images, args.train_eval.num_distractors_valid, args, tokenizer
-        )
+        if getattr(args, 'ec_input_text', False):
+            training_set = TextInputECDataset(
+                train_images,
+                train_captions,
+                args.num_distractors_train,
+                tokenizer,
+                args,
+                max_length=args.max_text_seq_length
+            )
+            valid_set = TextInputECDataset(
+                valid_images,
+                valid_captions,
+                args.num_distractors_valid,
+                tokenizer,
+                args,
+                max_length=args.max_text_seq_length,
+                max_captions_per_image=1
+            )
+        else:
+            training_set = XLImageIdentificationDataset(
+                train_images, args.num_distractors_train, args, tokenizer
+            )
+            valid_set = XLImageIdentificationDataset(
+                valid_images, args.num_distractors_valid, args, tokenizer
+            )
 
     if args.model.load_entire_agent:
         state_dict = torch.load(args.model.model_name + "/model.pt")
