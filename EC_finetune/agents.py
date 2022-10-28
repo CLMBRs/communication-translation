@@ -40,31 +40,31 @@ class CommunicationAgent(Module):
         super().__init__()
         self.sender = sender
         self.receiver = receiver
-        self.tokenizer = args.tokenizer
+        self.tokenizer = args.model.tokenizer
 
-        self.image_dim = args.image_dim
+        self.image_dim = args.data.image_dim
         self.hidden_dim = self.sender.embedding_dim
-        self.unit_norm = args.unit_norm
-        self.beam_width = args.beam_width
-        self.padding_index = args.padding_index
-        self.cls_index = args.cls_index
-        self.max_seq_length = args.max_seq_length
-        self.reshaper_type = args.reshaper_type
-        self.share_reshaper = args.share_reshaper
+        self.unit_norm = args.model.unit_norm
+        self.beam_width = args.generation.beam_width
+        self.padding_index = args.model.padding_index
+        self.cls_index = args.model.cls_index
+        self.max_seq_length = args.generation.max_seq_length
+        self.reshaper_type = args.model.reshaper_type
+        self.share_reshaper = args.model.share_reshaper
 
         # Initialize the image Reshaper, and clone if there is to be a separate
         # Reshaper stack for both Sender and Receiver
         if self.reshaper_type == 'identity':
-            self.reshaper = IdentityReshaper(args.image_dim, self.hidden_dim)
+            self.reshaper = IdentityReshaper(args.data.image_dim, self.hidden_dim)
         elif self.reshaper_type == 'pooler':
-            self.reshaper = PoolingReshaper(args.image_dim, self.hidden_dim)
+            self.reshaper = PoolingReshaper(args.data.image_dim, self.hidden_dim)
         else:
             self.reshaper = LearnedLinearReshaper(
-                args.image_dim,
+                args.data.image_dim,
                 self.hidden_dim,
-                dropout=args.dropout,
-                unit_norm=args.unit_norm,
-                two_ffwd=args.two_ffwd
+                dropout=args.model.dropout,
+                unit_norm=args.model.unit_norm,
+                two_ffwd=args.model.two_ffwd
             )
 
         if (not self.share_reshaper) and self.reshaper_type == 'learned':
@@ -250,8 +250,8 @@ class ECImageIdentificationAgent(CommunicationAgent):
         orig_model=None
     ):
         super().__init__(sender, receiver, args)
-        self.language_model_lambda = args.language_model_lambda
-        self.weight_drift_lambda = args.weight_drift_lambda
+        self.language_model_lambda = args.train_eval.language_model_lambda
+        self.weight_drift_lambda = args.train_eval.weight_drift_lambda
 
         if self.language_model_lambda:
             if language_model is not None:
@@ -356,17 +356,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
             lm_loss /= sum([length - 1 for length in lengths])
             lm_loss *= self.language_model_lambda
 
-        # Prepend the CLS id to the beginning of the sequence, and adjust the
-        # padding mask properly
-        message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
-            message_dict["attention_mask"]
-        )
-        message_dict["message_ids"] = self.prepend_cls(
-            message_dict["message_ids"], self.cls_index
-        )
-        message_dict["message_samples"] = self.prepend_cls_logit(
-            message_dict["message_samples"], self.cls_index
-        )
+        if not self.receiver.recurrent_aggregation:
+            # Prepend the CLS id to the beginning of the sequence, and adjust the
+            # padding mask properly
+            message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
+                message_dict["attention_mask"]
+            )
+            message_dict["message_ids"] = self.prepend_cls(
+                message_dict["message_ids"], self.cls_index
+            )
+            message_dict["message_samples"] = self.prepend_cls_logit(
+                message_dict["message_samples"], self.cls_index
+            )
 
         # The receiver does not have `message_logits` as one of its arguments
         del message_dict["message_logits"]
@@ -431,8 +432,8 @@ class ImageCaptionGrounder(CommunicationAgent):
     """
     def __init__(self, sender: Sender, receiver: Receiver, args: Namespace):
         super().__init__(sender, receiver, args)
-        if hasattr(args, "image_selection_lambda"):
-            self.image_selection_lambda = args.image_selection_lambda
+        if hasattr(args.train_eval, "image_selection_lambda"):
+            self.image_selection_lambda = args.train_eval.image_selection_lambda
 
     def forward(self, batch):
         """
@@ -478,14 +479,15 @@ class ImageCaptionGrounder(CommunicationAgent):
             "message_lengths": batch["caption_mask"].float().sum(dim=1).long(),
         }
 
-        # Prepend the CLS id to the beginning of the sequence, and adjust the
-        # padding mask properly
-        caption["attention_mask"] = self.prepend_non_pad_to_mask(
-            caption["attention_mask"]
-        )
-        caption["message_ids"] = self.prepend_cls(
-            caption["message_ids"], self.cls_index
-        )
+        if not self.receiver.recurrent_aggregation:
+            # Prepend the CLS id to the beginning of the sequence, and adjust the
+            # padding mask properly
+            caption["attention_mask"] = self.prepend_non_pad_to_mask(
+                caption["attention_mask"]
+            )
+            caption["message_ids"] = self.prepend_cls(
+                caption["message_ids"], self.cls_index
+            )
 
         image_candidate_logits = self.choose_image_from_message(
             caption, batch["receiver_images"]

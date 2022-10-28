@@ -1,0 +1,7 @@
+# Specify info about language and vocab constraint
+has_vocab_constraint: true
+vocab_constraint_threshold: 0.95
+source_lang: en_XX
+source_lang_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+target_lang: ne_NP
+target_lang_vocab_constrain_file: ./Data/cc/ne_cc_tokenID2count_dict.facebook-mbart-large-cc25.json

@@ -95,10 +95,12 @@ class MBartSender(Sender):
         self.tf_num_layers = tf_num_layers
 
         if self.unroll == 'recurrent':
+            print("Using 'recurrent' unrolling ")
             self.lstm = nn.LSTM(
                 self.embedding_dim, self.embedding_dim, batch_first=True
             )
         elif self.unroll == 'transformer':
+            print("Using 'transformer' unrolling")
             self.transformer = TransformerMapper(
                 self.embedding_dim,
                 self.embedding_dim,
@@ -106,6 +108,8 @@ class MBartSender(Sender):
                 clip_length=self.img_ext_len,
                 num_layers=self.tf_num_layers
             )
+        else:
+            print("No unrolling")
 
     def forward(
         self,
@@ -166,12 +170,6 @@ class MBartSender(Sender):
                 attention_mask=sender_attention_mask
             ).last_hidden_state
             crossattention_input = sender_input_encodings
-        elif caption_training_condition:
-            sender_input_encodings = self.encoder(
-                input_ids=decoder_input_ids,
-                attention_mask=kwargs['caption_mask']
-            ).last_hidden_state
-            crossattention_input = sender_input_encodings
         elif image_unrolling_condition:
             batch_size = sender_image.size(0)
             if len(sender_image.shape) == 2:
@@ -194,11 +192,6 @@ class MBartSender(Sender):
             crossattention_input = sender_image
         else:
             raise ValueError("Sender must receive valid input combination")
-
-        assert crossattention_input is not None and (
-            batch_size is None
-            if decoder_input_ids is not None else batch_size is not None
-        )
 
         # If decoder inputs are given, use them to generate timestep-wise
         if caption_training_condition:

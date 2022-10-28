@@ -1,4 +1,5 @@
 # Emergent Communication Fine-tuning for Pre-trained Language Models
+
 This repository contains the code for finetuning a pretrained multilingual model
 with an image-grounded Emergent Communication task. This is the official
 repository for the ICLR EmeComm Workshop Paper
@@ -11,9 +12,10 @@ The text-to-image results (t2i-ec) should be replicable on
 [preprint_jul22_t2i-ec](https://github.com/CLMBRs/communication-translation/releases/tag/preprint_jul22_t2i-ec).
 
 ## Code acknowledgement
+
 The code was loosely based on the work of the following paper
 
-Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020. 
+Yaoyiran Li, Edoardo Maria Ponti, Ivan Vulić, and Anna Korhonen. 2020.
 *Emergent Communication Pretraining for Few-Shot Machine Translation*. In
 Proceedings of the 28th International Conference on Computational Linguistics
 (COLING 2020). [LINK](https://www.aclweb.org/anthology/2020.coling-main.416.pdf)
@@ -22,6 +24,7 @@ and is under development by the **University of Washington CLMBR Lab**, under
 Shane Steinert-Threlkeld.
 
 ## Dependencies
+
 The source code is built aroud PyTorch, and has the following main dependencies:
 
 - Python 3.9
@@ -33,6 +36,7 @@ For more extensive dependencies, see `requirements.txt`.
     pip install -r requirements.txt
 
 ## Style Guide
+
 Source code can be largely automatically formatted using yapf. Make sure you
 have yapf installed (it is included in requirements.txt).
 
@@ -56,18 +60,21 @@ display a ruler to check*)
 - Organize imports into the following three groups, alphabetizing within each
 group (and within group, put Python library imports before external package
 ones)
-    - `import a`
-    - `import a as b`
-    - `from a import b`
+  - `import a`
+  - `import a as b`
+  - `from a import b`
 - **Comment any code you add**
-    - "Imperative" style is preferred, e.g.\
+  - "Imperative" style is preferred, e.g.\
     `# save variable to cache`
 
 ## Data
+
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
 
 ## Pipeline
+
 To run code in this package, you must first do the following steps:
+
 1. Create a Python 3.9 Conda virtual environment: `conda create -n unmt python=3.9`
 1. Start the new environment: `conda activate unmt`
 1. Install this package using developer mode from the top level directory (`communication_translation`): `pip install -e .`
@@ -76,8 +83,9 @@ To obtain the latest results of this project, go to the `communication-translati
 run the relevant script from [RunScripts](/RunScripts).
 
 ## Acknowledgements
-Part of the code is based on 
-[Translagent](https://github.com/facebookresearch/translagent). 
+
+Part of the code is based on
+[Translagent](https://github.com/facebookresearch/translagent).
 
 The datasets for our experiments include [MS COCO](http://cocodataset.org/#home)
-for Emergent Communication pretraining, 
+for Emergent Communication pretraining,
