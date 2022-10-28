@@ -36,13 +36,11 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.lr=${caption_lr} \
     ec.train_eval.num_distractors_train=${distractor} \
     ec.train_eval.num_distractors_valid=${distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
-    ec.generation.repetition_penalty=${caption_rep_penalty} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
 
 # Do EC
@@ -56,7 +54,6 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.train_eval.num_distractors_valid=${distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.generation.repetition_penalty=${ec_rep_penalty} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
