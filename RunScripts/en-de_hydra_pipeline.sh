@@ -27,34 +27,35 @@ INIT_BT_OUT_DIR=bt_init
 
 
 # Do caption training
-distractor=15
+caption_distractor=15
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
 
-python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
-    ec/language=${LANG} \
-    ec/data=${DATA} \
-    ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${distractor} \
-    ec.train_eval.num_distractors_valid=${distractor} \
-    ec.model.image_unroll=${UNROLL} \
-    ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
-    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+#     ec/language=${LANG} \
+#     ec/data=${DATA} \
+#     ec.train_eval.seed=${SEED} \
+#     ec.train_eval.num_distractors_train=${caption_distractor} \
+#     ec.train_eval.num_distractors_valid=${caption_distractor} \
+#     ec.model.image_unroll=${UNROLL} \
+#     ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
+#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
 
 # Do EC
-EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+ec_distractor=15
+EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
 
-python -u -m EC_finetune  +ec=${EC_CONFIG} \
-    ec/language=${LANG} \
-    ec/data=${DATA} \
-    ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${distractor} \
-    ec.train_eval.num_distractors_valid=${distractor} \
-    ec.model.image_unroll=${UNROLL} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+# python -u -m EC_finetune  +ec=${EC_CONFIG} \
+#     ec/language=${LANG} \
+#     ec/data=${DATA} \
+#     ec.train_eval.seed=${SEED} \
+#     ec.train_eval.num_distractors_train=${ec_distractor} \
+#     ec.train_eval.num_distractors_valid=${ec_distractor} \
+#     ec.model.image_unroll=${UNROLL} \
+#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -86,13 +87,13 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 
 # Do test
 # cp Data/translation_references/de-en.* ${OUTPUT_DIR}
-# python -u BackTranslation/translate.py --config Configs/test_en2de_translate.yml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_en2de_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
-# python -u BackTranslation/translate.py --config Configs/test_de2en_translate.yml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_de2en_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
 # cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
+./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
+./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
