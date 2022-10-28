@@ -89,7 +89,10 @@ def main():
     args_dict = vars(args)
 
     with open(args_dict['config'], 'r') as config_file:
-        args_dict.update(yaml.load(config_file, Loader=yaml.SafeLoader))
+        config_dict = yaml.load(config_file, Loader=yaml.SafeLoader)
+        config_dict.update(args_dict)
+
+    args_dict.update(config_dict)
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
