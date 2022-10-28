@@ -1,6 +1,7 @@
 # Train and eval:
 seed: 1
-language_model_lambda: 0.125
+sender_input: text
+language_model_lambda: 0.0625
 language_model_path: ./Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
@@ -8,14 +9,14 @@ do_eval: false
 n_gpu: 1
 num_games: 30 # Upper bound of the num of epochs
 max_global_step: 2048
-lr: 6.0e-6
+lr: 1.0e-6
 schedule: linear_w_warmup
 num_warmup_steps: 0
 batch_size: 12
 gradient_accumulation_steps: 1
-grad_clip: 1.0
+grad_clip: 0.5
 valid_every: 256
-max_eval_batches: 32
+max_eval_batches: 64
 print_every: 32
 target_acc: 85.0
 stats_to_print: ['loss', 'accuracy', 'lm loss', 'drift loss', 'communication loss', 'mean_length']

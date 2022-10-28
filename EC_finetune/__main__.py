@@ -271,7 +271,7 @@ def main(args: DictConfig):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     set_seed(args.train_eval.seed)
     # num_train = 100
-    if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
+    if args.mode == 'image_grounding' or getattr(args, 'sender_input', "image") == "text":
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.train_captions, 'r').readlines()
@@ -380,7 +380,7 @@ def main(args: DictConfig):
             language_model=language_model,
             orig_model=orig_model
         )
-        if getattr(args, 'ec_input_text', False):
+        if getattr(args, 'sender_input', "image") == "text":
             training_set = TextInputECDataset(
                 train_images,
                 train_captions,

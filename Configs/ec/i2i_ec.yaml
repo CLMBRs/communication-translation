@@ -1,7 +1,7 @@
 defaults:
-  - model: model
-  - train_eval: ec
-  - generation: ec
+  - model: i2i_ec
+  - train_eval: i2i_ec
+  - generation: i2i_ec
   - data: resnet
   - language: en-de
   - _self_
