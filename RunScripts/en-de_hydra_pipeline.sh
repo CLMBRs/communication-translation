@@ -27,31 +27,32 @@ INIT_BT_OUT_DIR=bt_init
 
 
 # Do caption training
-distractor=15
+caption_distractor=15
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${distractor} \
-    ec.train_eval.num_distractors_valid=${distractor} \
+    ec.train_eval.num_distractors_train=${caption_distractor} \
+    ec.train_eval.num_distractors_valid=${caption_distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
 
 # Do EC
-EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+ec_distractor=15
+EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${distractor} \
-    ec.train_eval.num_distractors_valid=${distractor} \
+    ec.train_eval.num_distractors_train=${ec_distractor} \
+    ec.train_eval.num_distractors_valid=${ec_distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
@@ -72,12 +73,12 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 
 # Do rest of backtranslation
 
-# python -u BackTranslation/backtranslate.py \
-#     +backtranslate=${BT_SECONDARY_CONFIG} \
-#     backtranslate/data=${LANG} \
-#     backtranslate.train_eval.seed=${SEED} \
-#     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-#     backtranslate.output_dir=${OUTPUT_DIR}
+python -u BackTranslation/backtranslate.py \
+    +backtranslate=${BT_SECONDARY_CONFIG} \
+    backtranslate/data=${LANG} \
+    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+    backtranslate.output_dir=${OUTPUT_DIR}
 
 # python -u BackTranslation/backtranslate.py --config Configs/${BT_SECONDARY_CONFIG}.yml \
 #     --seed_override 2 \
