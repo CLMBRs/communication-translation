@@ -1,23 +1,6 @@
-# Train and eval:
-seed: 1
+# T2I-specific train and eval configs:
 image_selection_lambda: 8.0
-language_model_lambda: 0.0
-weight_drift_lambda: 0.0
-do_train: true
-do_eval: true
-n_gpu: 1
-num_games: 30 # Upper bound of the num of epochs
-max_global_step: 2048
-lr: 4.0e-5
-schedule: linear_w_warmup
-num_warmup_steps: 0
-gradient_accumulation_steps: 1
-batch_size: 16
 grad_clip: 0.5
-valid_every: 512
-print_every: 32
-target_acc: 85.0
-stats_to_print: ['loss', 'accuracy', 'caption generation loss', 'image selection loss']
 
 # Number of image distractors
 num_distractors_train: 7

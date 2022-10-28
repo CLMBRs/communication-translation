@@ -1,6 +1,6 @@
 defaults:
   - model: t2i_ec
-  - train_eval: t2i_ec
+  - train_eval: base_ec
   - generation: t2i_ec
   - data: resnet
   - language: en-de
@@ -11,6 +11,13 @@ mode: emergent_communication
 save_pretrain_seperately: true
 model:
   model_name: ./Output/en-de_pipeline/captions
+train_eval:
+  # T2I-specific train and eval configs:
+  sender_input: text
+  language_model_lambda: 0.0625
+  lr: 1.0e-6
+  grad_clip: 0.5
+
 
 
 

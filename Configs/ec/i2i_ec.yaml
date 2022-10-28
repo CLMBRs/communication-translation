@@ -1,6 +1,8 @@
 defaults:
   - model: i2i_ec
-  - train_eval: i2i_ec
+  - train_eval:
+    - base_ec
+    - i2i_ec
   - generation: i2i_ec
   - data: resnet
   - language: en-de
