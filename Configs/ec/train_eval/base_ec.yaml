@@ -1,7 +1,7 @@
 # Commonly shared Train and eval configs:
 seed: 1
-sender_input: <need specify>
-language_model_lambda: <need specify>
+sender_input: <need specify -- text or iamge>
+language_model_lambda: <need specify -- float>
 language_model_path: ./Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
@@ -9,12 +9,12 @@ do_eval: false
 n_gpu: 1
 num_games: 30 # Upper bound of the num of epochs
 max_global_step: 2048
-lr: <need specify>
+lr: <need specify -- float>
 schedule: linear_w_warmup
 num_warmup_steps: 0
 batch_size: 12
 gradient_accumulation_steps: 1
-grad_clip: <need specify>
+grad_clip: <need specify -- float>
 valid_every: 256
 max_eval_batches: 
 print_every: 32

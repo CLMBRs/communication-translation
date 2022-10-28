@@ -1,7 +1,0 @@
-# I2I-specific train and eval configs:
-image_selection_lambda: 4.0
-grad_clip: 1.0
-
-# Number of image distractors
-num_distractors_train: 15
-num_distractors_valid: 15

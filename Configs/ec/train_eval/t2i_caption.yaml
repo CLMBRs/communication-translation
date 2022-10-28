@@ -1,7 +1,0 @@
-# T2I-specific train and eval configs:
-image_selection_lambda: 8.0
-grad_clip: 0.5
-
-# Number of image distractors
-num_distractors_train: 7
-num_distractors_valid: 7

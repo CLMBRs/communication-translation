@@ -1,5 +1,0 @@
-# T2I-specific train and eval configs:
-sender_input: text
-language_model_lambda: 0.0625
-lr: 1.0e-6
-grad_clip: 0.5

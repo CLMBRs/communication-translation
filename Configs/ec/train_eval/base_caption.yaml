@@ -1,6 +1,6 @@
 # Commonly shared Train and eval configs:
 seed: 1
-image_selection_lambda: <need specify>
+image_selection_lambda: <need specify -- float>
 language_model_lambda: 0.0
 weight_drift_lambda: 0.0
 do_train: true
@@ -13,12 +13,12 @@ schedule: linear_w_warmup
 num_warmup_steps: 0
 gradient_accumulation_steps: 1
 batch_size: 16
-grad_clip: <need specify>
+grad_clip: <need specify -- float>
 valid_every: 512
 print_every: 32
 target_acc: 85.0
 stats_to_print: ['loss', 'accuracy', 'caption generation loss', 'image selection loss']
 
 # Number of image distractors
-num_distractors_train: <need specify>
-num_distractors_valid: <need specify>
+num_distractors_train: <need specify -- int>
+num_distractors_valid: <need specify -- int>

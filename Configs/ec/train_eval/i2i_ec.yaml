@@ -1,5 +1,0 @@
-# I2I-specific train and eval configs:
-sender_input: image
-language_model_lambda: 0.125
-lr: 6.0e-6
-grad_clip: 1.0
