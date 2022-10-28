@@ -13,7 +13,7 @@ OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
 
 BT_INIT_CONFIG=bt_initial
-CAPTIONS_CONFIG=captions
+CAPTIONS_CONFIG=caption
 EC_CONFIG=ec
 BT_SECONDARY_CONFIG=bt_secondary
 
@@ -27,12 +27,10 @@ INIT_BT_OUT_DIR=bt_init
 
 
 # Do caption training
-caption_lr=4.0e-5
-caption_rep_penalty=1.2
 distractor=15
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=captions_${EX_ABBR}_lr${caption_lr}_${UNROLL}_rep${caption_rep_penalty}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
@@ -48,9 +46,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
 
 # Do EC
-ec_rep_penalty=1.0
-ec_lr=6.0e-6
-EC_OUT_DIR=ec_${EX_ABBR}_lr${ec_lr}_${UNROLL}_rep${ec_rep_penalty}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
