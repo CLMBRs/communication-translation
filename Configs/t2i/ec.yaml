@@ -1,0 +1,22 @@
+defaults:
+  - model: ec
+  - train_eval: ec
+  - generation: ec
+  - data: resnet
+  - language: en-de
+  - _self_
+
+output_dir: ./Output/en-de_t2i_pipeline/ec
+mode: emergent_communication
+save_pretrain_seperately: true
+model:
+  model_name: ./Output/en-de_t2i_pipeline/captions
+
+
+
+
+
+
+
+
+

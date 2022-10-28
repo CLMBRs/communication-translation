@@ -8,7 +8,6 @@ unit_norm: false
 dropout: 0.0
 share_reshaper: true
 recurrent_image_unroll: true
-image_unroll: recurrent
 image_unroll_length: 32
 recurrent_hidden_aggregation: true
 freeze_adapters: false
@@ -28,7 +27,7 @@ seed: 1
 mode: emergent_communication
 ec_input_text: true
 language_model_lambda: 0.0625
-language_model_path: ./DataLink/../Output/mbart_lm_lr6e-6
+language_model_path: Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: false
@@ -52,10 +51,10 @@ num_distractors_train: 15
 num_distractors_valid: 15
 
 # Loading and saving data:
-train_captions: ./DataLink/ec_finetuning_new/en_captions_train.jsonl
-valid_captions: ./DataLink/ec_finetuning_new/en_captions_val.jsonl
-train_images: ./DataLink/ec_finetuning_new/images_train.pt
-valid_images: ./DataLink/ec_finetuning_new/images_val.pt
+train_captions: ./Data/ec_finetuning/en_captions_train.jsonl
+valid_captions: ./Data/ec_finetuning/en_captions_val.jsonl
+train_images: ./Data/ec_finetuning/images_train.pt
+valid_images: ./Data/ec_finetuning/images_val.pt
 save_pretrain_seperately: true
 output_dir: Output/en-zh_tec/ec
 save_output_txt: true

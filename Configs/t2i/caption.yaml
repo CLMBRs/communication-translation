@@ -1,0 +1,18 @@
+defaults:
+  - model: caption
+  - train_eval: caption
+  - generation: caption
+  - data: resnet
+  - language: en-de
+  - _self_
+
+output_dir: ./Output/en-de_pipeline/captions
+mode: image_grounding
+save_pretrain_seperately: true
+model:
+  load_entire_agent: false
+  model_name: facebook/mbart-large-cc25
+language:
+  has_vocab_constraint: false
+
+
