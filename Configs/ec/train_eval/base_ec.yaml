@@ -1,6 +1,6 @@
 # Commonly shared Train and eval configs:
 seed: 1
-sender_input: <need specify -- text or iamge>
+sender_input_type: <need specify -- text or iamge>
 language_model_lambda: <need specify -- float>
 language_model_path: ./Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0

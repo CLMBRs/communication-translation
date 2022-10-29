@@ -1,0 +1,24 @@
+defaults:
+  - model: base_caption
+  - train_eval: base_caption
+  - generation: base_caption
+  - data: resnet
+  - language: en-de
+  - _self_
+
+# T2I-specific train and eval configs:
+output_dir: ./Output/en-de_pipeline/captions
+mode: image_grounding
+save_pretrain_seperately: true
+
+model:
+  model_name: ./Output/en-de_pipeline/bt_init/last
+  recurrent_hidden_aggregation: false
+
+train_eval:
+  sender_input_type: text
+
+language:
+  has_vocab_constraint: false
+
+

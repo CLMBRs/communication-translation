@@ -16,8 +16,8 @@ model:
   recurrent_hidden_aggregation: true
 
 train_eval:
-  sender_input: text
-  # language_model_lambda: 0.0625
+  sender_input_type: text
+  # language_model_lambda: 0.0625 
   # lr: 1.0e-6
   # grad_clip: 0.5
   language_model_lambda: 0.125

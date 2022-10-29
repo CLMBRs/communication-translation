@@ -1,5 +1,6 @@
 # Commonly shared Train and eval configs:
 seed: 1
+sender_input_type: <need specify -- text or iamge>
 image_selection_lambda: 4.0
 language_model_lambda: 0.0
 weight_drift_lambda: 0.0

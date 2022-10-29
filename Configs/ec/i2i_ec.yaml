@@ -16,7 +16,7 @@ model:
   recurrent_hidden_aggregation: false
 
 train_eval:
-  sender_input: image
+  sender_input_type: image
   language_model_lambda: 0.125
   lr: 6.0e-6
   grad_clip: 1.0
