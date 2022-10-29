@@ -29,6 +29,7 @@ INIT_BT_OUT_DIR=bt_init
 
 # Do caption training
 caption_distractor=15
+# caption_lr=4e-5
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}

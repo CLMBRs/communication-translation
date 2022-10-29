@@ -29,6 +29,7 @@ INIT_BT_OUT_DIR=bt_init
 
 # Do caption training
 caption_distractor=15
+caption_lr=4e-5
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
@@ -42,7 +43,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    # ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
 
 # Do EC
 ec_distractor=15
@@ -96,5 +97,5 @@ EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenA
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
 # cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
-./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
