@@ -159,18 +159,21 @@ class MBartSender(Sender):
         # on config values, multiple conditions may be true during training. We
         # opt to enforce a strict ordering below to decide if EC should be
         # run on text then caption-training then images.
-        text_unrolling_condition = sender_input_text is not None
         caption_training_condition = decoder_input_ids is not None
-        image_unrolling_condition = sender_image is not None
+        image_crossattention_condition = sender_image is not None
+        
+        if caption_training_condition and self.use_caption_crossattention:
+            sender_input_text = decoder_input_ids
+        text_crossattention_condition = sender_input_text is not None
 
-        if text_unrolling_condition:
+        if text_crossattention_condition:
             batch_size = sender_input_text.size(0)
             sender_input_encodings = self.encoder(
                 input_ids=sender_input_text,
                 attention_mask=sender_attention_mask
             ).last_hidden_state
             crossattention_input = sender_input_encodings
-        elif image_unrolling_condition:
+        elif image_crossattention_condition:
             batch_size = sender_image.size(0)
             if len(sender_image.shape) == 2:
                 sender_image = sender_image.unsqueeze(1)
