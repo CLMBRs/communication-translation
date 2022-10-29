@@ -10,7 +10,7 @@ UNROLL=recurrent
 EC_TYPE=t2i
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${EC_TYPE}_${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
 
 BT_INIT_CONFIG=bt_initial
@@ -31,7 +31,7 @@ INIT_BT_OUT_DIR=bt_init
 caption_distractor=15
 recurrent_hidden_aggregation=false
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
@@ -46,7 +46,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
 
 # Do EC
 ec_distractor=15
-EC_OUT_DIR=ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
 
 # python -u -m EC_finetune  +ec=${EC_CONFIG} \
 #     ec/language=${LANG} \
