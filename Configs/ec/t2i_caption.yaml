@@ -16,12 +16,18 @@ model:
   recurrent_hidden_aggregation: true
   
 train_eval:
-  image_selection_lambda: 8.0
-  grad_clip: 0.5
+  image_selection_lambda: 4.0
+  grad_clip: 1.0
 
   # Number of image distractors
-  num_distractors_train: 7
-  num_distractors_valid: 7
+  num_distractors_train: 15
+  num_distractors_valid: 15
+  # image_selection_lambda: 8.0
+  # grad_clip: 0.5
+
+  # # Number of image distractors
+  # num_distractors_train: 7
+  # num_distractors_valid: 7
 
 generation:
   max_text_seq_length: 128

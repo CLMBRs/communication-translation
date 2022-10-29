@@ -17,9 +17,12 @@ model:
 
 train_eval:
   sender_input: text
-  language_model_lambda: 0.0625
-  lr: 1.0e-6
-  grad_clip: 0.5
+  # language_model_lambda: 0.0625
+  # lr: 1.0e-6
+  # grad_clip: 0.5
+  language_model_lambda: 0.125
+  lr: 6.0e-6
+  grad_clip: 1.0
 
 generation:
   max_text_seq_length: 128
