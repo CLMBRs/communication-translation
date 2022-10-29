@@ -14,14 +14,6 @@ save_pretrain_seperately: true
 model:
   model_name: ./Output/en-de_pipeline/bt_init/last
   recurrent_hidden_aggregation: false
-
-train_eval:
-  image_selection_lambda: 4.0
-  grad_clip: 1.0
-
-  # Number of image distractors
-  num_distractors_train: 15
-  num_distractors_valid: 15
   
 language:
   has_vocab_constraint: false
