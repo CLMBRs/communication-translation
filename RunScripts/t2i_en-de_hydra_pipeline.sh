@@ -10,7 +10,7 @@ UNROLL=recurrent
 EC_TYPE=t2i
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${EC_TYPE}_${LANG}_pipeline_seed${SEED}
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
 
 BT_INIT_CONFIG=bt_initial
