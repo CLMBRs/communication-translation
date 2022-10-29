@@ -13,8 +13,8 @@ OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
 
 BT_INIT_CONFIG=bt_initial
-CAPTIONS_CONFIG=caption
-EC_CONFIG=ec
+CAPTIONS_CONFIG=i2i_caption
+EC_CONFIG=i2i_ec
 BT_SECONDARY_CONFIG=bt_secondary
 
 # Do initial (short) backtranslation
