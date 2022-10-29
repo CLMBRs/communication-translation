@@ -381,6 +381,7 @@ def main(args: DictConfig):
             orig_model=orig_model
         )
         if getattr(args, 'sender_input', "image") == "text":
+            print("*T2I* EC training")
             training_set = TextInputECDataset(
                 train_images,
                 train_captions,
@@ -399,6 +400,7 @@ def main(args: DictConfig):
                 max_captions_per_image=1
             )
         else:
+            print("*I2I* EC training")
             training_set = XLImageIdentificationDataset(
                 train_images, args.train_eval.num_distractors_train, args, tokenizer
             )
