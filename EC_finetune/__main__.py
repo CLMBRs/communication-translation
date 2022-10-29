@@ -400,10 +400,10 @@ def main(args: DictConfig):
             )
         else:
             training_set = XLImageIdentificationDataset(
-                train_images, args.num_distractors_train, args, tokenizer
+                train_images, args.train_eval.num_distractors_train, args, tokenizer
             )
             valid_set = XLImageIdentificationDataset(
-                valid_images, args.num_distractors_valid, args, tokenizer
+                valid_images, args.train_eval.num_distractors_valid, args, tokenizer
             )
 
     if args.model.load_entire_agent:
