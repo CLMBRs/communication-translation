@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# DATA=clipL
-DATA=resnet
+DATA=clipL
+# DATA=resnet
 SEED=1
 EX_ABBR=${DATA}
 LANG=en-de
-# UNROLL=transformer
-UNROLL=recurrent
+UNROLL=transformer
+# UNROLL=recurrent
 EC_TYPE=t2i
 
 OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
-OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_${EX_ABBR}
 
 BT_INIT_CONFIG=bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption
@@ -73,6 +72,8 @@ EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenA
 # de2en=$(./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.val.en ${OUTPUT_DIR}/de-en.en.val 13a)
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
+
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_hiddenAgg-${recurrent_hidden_aggregation}
 # Do rest of backtranslation
 
 # python -u BackTranslation/backtranslate.py \
