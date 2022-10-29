@@ -12,7 +12,7 @@ mode: image_grounding
 save_pretrain_seperately: true
 
 model:
-  model_name: ./Output/en-de_pipeline/bt_init/last
+  model_name: facebook/mbart-large-cc25
   recurrent_hidden_aggregation: true
   
 train_eval:
