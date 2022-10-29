@@ -13,7 +13,7 @@ OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 
 BT_INIT_CONFIG=bt_initial
-CAPTIONS_CONFIG=${EC_TYPE}_caption
+CAPTIONS_CONFIG=caption
 EC_CONFIG=${EC_TYPE}_ec
 BT_SECONDARY_CONFIG=bt_secondary
 
