@@ -17,6 +17,8 @@ model:
 
 train_eval:
   sender_input_type: text
+  # image_selection_lambda: 8.0
+  # grad_clip: 0.5
 
 language:
   has_vocab_constraint: false
