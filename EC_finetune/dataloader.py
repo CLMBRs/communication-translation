@@ -213,16 +213,16 @@ class TextInputECDataset(CaptionTrainingDataset):
             images, captions, num_distractors, tokenizer, args, max_length,
             max_captions_per_image
         )
-        self.source_lang_id = self.lang_code2id[args.source_lang]
-        self.target_lang_id = self.lang_code2id[args.target_lang]
+        self.source_lang_id = self.lang_code2id[args.language.source_lang]
+        self.target_lang_id = self.lang_code2id[args.language.target_lang]
         self.lang_ids = [self.source_lang_id, self.target_lang_id]
 
         if self.has_vocab_constraint:
             self.source_lang_mask = vocab_constraint_from_file(
-                tokenizer, args.source_lang_vocab_constrain_file
+                tokenizer, args.language.source_lang_vocab_constrain_file
             )
             self.target_lang_mask = vocab_constraint_from_file(
-                tokenizer, args.target_lang_vocab_constrain_file
+                tokenizer, args.language.target_lang_vocab_constrain_file
             )
             self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
 
