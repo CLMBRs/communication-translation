@@ -392,7 +392,7 @@ def main(args: DictConfig):
             training_set = TextInputECDataset(
                 train_images,
                 train_captions,
-                args.num_distractors_train,
+                args.train_eval.num_distractors_train,
                 tokenizer,
                 args,
                 max_length=args.max_text_seq_length
@@ -400,7 +400,7 @@ def main(args: DictConfig):
             valid_set = TextInputECDataset(
                 valid_images,
                 valid_captions,
-                args.num_distractors_valid,
+                args.train_eval.num_distractors_valid,
                 tokenizer,
                 args,
                 max_length=args.max_text_seq_length,
