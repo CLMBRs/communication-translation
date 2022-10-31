@@ -2,7 +2,7 @@
 
 DATA=clipL
 # DATA=resnet
-SEED=1
+SEED=2
 EX_ABBR=${DATA}
 LANG=en-zh
 UNROLL=transformer
