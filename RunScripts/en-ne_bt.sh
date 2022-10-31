@@ -18,5 +18,6 @@ python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_INIT_CONFIG} \
     backtranslate/data=${LANG} \
     backtranslate.train_eval.seed=${SEED} \
+    backtranslate.train_eval.val_dataset_script=BackTranslation/flores/flores.py \
     backtranslate.output_dir=Output/${OUTPUT_BASE_DIR}/bt_init/
 
