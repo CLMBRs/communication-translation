@@ -67,11 +67,13 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
             break
         model.eval()
         assert args.train_eval.sender_input_type in [IMAGE, TEXT]
-        if args.train_eval.sender_input_type == IMAGE:
-            batch['sender_image'] = batch['sender_image'].to(device)
-        else:
+        if args.train_eval.sender_input_type == TEXT and args.mode == 'emergent_communication':
+            # Special treatment is only done for T2I EC
             batch['sender_input_text'] = batch['sender_input_text'].to(device)
             batch['sender_attention_mask'] = batch['sender_attention_mask'].to(device)
+        else:
+            # For T2I/I2I caption, I2I EC, we use the same procedure
+            batch['sender_image'] = batch['sender_image'].to(device)
 
         batch['receiver_images'] = batch['receiver_images'].to(device)
         batch['target'] = batch['target'].to(device)
