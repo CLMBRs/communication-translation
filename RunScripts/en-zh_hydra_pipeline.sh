@@ -2,7 +2,7 @@
 
 DATA=clipL
 # DATA=resnet
-SEED=2
+SEED=3
 EX_ABBR=${DATA}
 LANG=en-zh
 UNROLL=transformer
@@ -30,9 +30,8 @@ INIT_BT_OUT_DIR=bt_init
 # Do caption training
 caption_distractor=15
 caption_lr=4e-5
-recurrent_hidden_aggregation=true
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
@@ -41,14 +40,13 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.train_eval.num_distractors_train=${caption_distractor} \
     ec.train_eval.num_distractors_valid=${caption_distractor} \
     ec.model.image_unroll=${UNROLL} \
-    ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
 ec_distractor=15
-EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
@@ -81,7 +79,7 @@ OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_hi
 python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_SECONDARY_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.train_eval.seed=$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
