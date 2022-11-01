@@ -88,14 +88,14 @@ python -u BackTranslation/backtranslate.py \
 
 
 # Do test
-# cp Data/translation_references/de-en.* ${OUTPUT_DIR}
-# python -u BackTranslation/translate.py --config Configs/translate/test_en2de_translate.yaml \
+# cp Data/translation_references/si-en.* ${OUTPUT_DIR}
+# python -u BackTranslation/translate.py --config Configs/translate/test_en2si_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
-# python -u BackTranslation/translate.py --config Configs/translate/test_de2en_translate.yaml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_si2en_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
-# cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
+# cp ${OUTPUT_ROOT_DIR}/translation_results/* ${OUTPUT_DIR}
+# ./Tools/bleu.sh ${OUTPUT_DIR}/si-en.en.test.si ${OUTPUT_DIR}/si-en.si.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/si-en.si.test.en ${OUTPUT_DIR}/si-en.en.test 13a
