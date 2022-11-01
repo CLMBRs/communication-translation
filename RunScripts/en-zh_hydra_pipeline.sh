@@ -73,7 +73,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
 
-OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_hiddenAgg-${recurrent_hidden_aggregation}
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}
 # Do rest of backtranslation
 
 python -u BackTranslation/backtranslate.py \

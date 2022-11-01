@@ -4,10 +4,10 @@ DATA=clipL
 # DATA=resnet
 SEED=1
 EX_ABBR=${DATA}
-LANG=en-de
+LANG=en-zh
 UNROLL=transformer
 # UNROLL=recurrent
-EC_TYPE=i2i
+EC_TYPE=t2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
@@ -57,6 +57,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+    # ec.train_eval.valid_every=1 \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -76,12 +77,12 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}
 # Do rest of backtranslation
 
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_SECONDARY_CONFIG} \
-    backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=$((SEED + 7)) \
-    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-    backtranslate.output_dir=${OUTPUT_DIR}
+# python -u BackTranslation/backtranslate.py \
+#     +backtranslate=${BT_SECONDARY_CONFIG} \
+#     backtranslate/data=${LANG} \
+#     backtranslate.train_eval.seed=$((SEED + 7)) \
+#     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+#     backtranslate.output_dir=${OUTPUT_DIR}
 
 
 # Do test

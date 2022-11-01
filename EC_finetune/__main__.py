@@ -66,7 +66,13 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        batch['sender_image'] = batch['sender_image'].to(device)
+        assert args.train_eval.sender_input_type in [IMAGE, TEXT]
+        if args.train_eval.sender_input_type == IMAGE:
+            batch['sender_image'] = batch['sender_image'].to(device)
+        else:
+            batch['sender_input_text'] = batch['sender_input_text'].to(device)
+            batch['sender_attention_mask'] = batch['sender_attention_mask'].to(device)
+
         batch['receiver_images'] = batch['receiver_images'].to(device)
         batch['target'] = batch['target'].to(device)
         if args.mode == 'image_grounding':
