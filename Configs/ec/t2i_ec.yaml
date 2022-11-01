@@ -13,7 +13,6 @@ save_pretrain_seperately: true
 
 model:
   model_name: ./Output/en-de_pipeline/captions
-  recurrent_hidden_aggregation: true
 
 train_eval:
   sender_input_type: text
