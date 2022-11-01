@@ -82,20 +82,20 @@ OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_hi
 python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_SECONDARY_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.train_eval.seed=$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
 
 # Do test
-# cp Data/translation_references/de-en.* ${OUTPUT_DIR}
-# python -u BackTranslation/translate.py --config Configs/translate/test_en2de_translate.yaml \
+# cp Data/translation_references/ne-en.* ${OUTPUT_DIR}
+# python -u BackTranslation/translate.py --config Configs/translate/test_en2ne_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
-# python -u BackTranslation/translate.py --config Configs/translate/test_de2en_translate.yaml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_ne2en_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
-# cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
-# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
+# cp ${OUTPUT_ROOT_DIR}/en-ne_pipeline/translation_results/* ${OUTPUT_DIR}
+# ./Tools/bleu.sh ${OUTPUT_DIR}/ne-en.en.test.ne ${OUTPUT_DIR}/ne-en.ne.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/ne-en.ne.test.en ${OUTPUT_DIR}/ne-en.en.test 13a
