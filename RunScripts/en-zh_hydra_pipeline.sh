@@ -33,15 +33,15 @@ caption_lr=4e-5
 BT_CKPT_CHOICE=last
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}
 
-# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
-#     ec/language=${LANG} \
-#     ec/data=${DATA} \
-#     ec.train_eval.seed=${SEED} \
-#     ec.train_eval.num_distractors_train=${caption_distractor} \
-#     ec.train_eval.num_distractors_valid=${caption_distractor} \
-#     ec.model.image_unroll=${UNROLL} \
-#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+    ec/language=${LANG} \
+    ec/data=${DATA} \
+    ec.train_eval.seed=${SEED} \
+    ec.train_eval.num_distractors_train=${caption_distractor} \
+    ec.train_eval.num_distractors_valid=${caption_distractor} \
+    ec.model.image_unroll=${UNROLL} \
+    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
@@ -73,7 +73,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
 
-OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}
 # Do rest of backtranslation
 
 python -u BackTranslation/backtranslate.py \
