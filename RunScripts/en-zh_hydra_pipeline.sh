@@ -7,7 +7,7 @@ EX_ABBR=${DATA}
 LANG=en-zh
 UNROLL=transformer
 # UNROLL=recurrent
-EC_TYPE=i2i
+EC_TYPE=t2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
@@ -33,15 +33,15 @@ caption_lr=4e-5
 BT_CKPT_CHOICE=last
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}
 
-python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
-    ec/language=${LANG} \
-    ec/data=${DATA} \
-    ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${caption_distractor} \
-    ec.train_eval.num_distractors_valid=${caption_distractor} \
-    ec.model.image_unroll=${UNROLL} \
-    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+#     ec/language=${LANG} \
+#     ec/data=${DATA} \
+#     ec.train_eval.seed=${SEED} \
+#     ec.train_eval.num_distractors_train=${caption_distractor} \
+#     ec.train_eval.num_distractors_valid=${caption_distractor} \
+#     ec.model.image_unroll=${UNROLL} \
+#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
@@ -85,14 +85,14 @@ python -u BackTranslation/backtranslate.py \
 
 
 # Do test
-# cp Data/translation_references/zh-en.* ${OUTPUT_DIR}
-# python -u BackTranslation/translate.py --config Configs/translate/test_en2zh_translate.yaml \
+# cp Data/translation_references/de-en.* ${OUTPUT_DIR}
+# python -u BackTranslation/translate.py --config Configs/translate/test_en2de_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
-# python -u BackTranslation/translate.py --config Configs/translate/test_zh2en_translate.yaml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_de2en_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
 # cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-# ./Tools/bleu.sh ${OUTPUT_DIR}/zh-en.en.test.zh ${OUTPUT_DIR}/zh-en.zh.test 13a
-# ./Tools/bleu.sh ${OUTPUT_DIR}/zh-en.zh.test.en ${OUTPUT_DIR}/zh-en.en.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a
