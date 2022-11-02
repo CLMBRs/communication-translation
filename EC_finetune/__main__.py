@@ -413,7 +413,7 @@ def main(args: DictConfig):
                 tokenizer,
                 args,
                 max_length=args.generation.max_text_seq_length,
-                # max_captions_per_image=1
+                max_captions_per_image=1
             )
         else:
             print("*I2I* EC training")

@@ -141,10 +141,9 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         # since an image can have more than one caption. Create a lookup
         # dictionary that returns a (image_index, caption_index) pair based on a
         # primary index. Also tokenize the captions
-        self.num_instances = sum([len(options) for options in self.captions])
         self.caption_lookup = {}
         caption_index = 0
-        import pdb; pdb.set_trace()
+
         for image_index, caption_set in enumerate(self.captions):
             for secondary_index in range(
                 min(max_captions_per_image, len(caption_set))
@@ -153,6 +152,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                     image_index, secondary_index
                 )
                 caption_index += 1
+        self.num_instances = len(self.captions)
 
         # Prepartion for language-constrained generation
         self.lang_code2id = dict(
