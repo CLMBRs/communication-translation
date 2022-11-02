@@ -144,6 +144,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         self.num_instances = sum([len(options) for options in self.captions])
         self.caption_lookup = {}
         caption_index = 0
+        import pdb; pdb.set_trace()
         for image_index, caption_set in enumerate(self.captions):
             for secondary_index in range(
                 min(max_captions_per_image, len(caption_set))
