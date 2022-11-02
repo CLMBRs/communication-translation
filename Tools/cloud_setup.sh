@@ -31,8 +31,8 @@ if [ ! -d "~/Data" ]; then
      scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
      scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 else
-     rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
-     rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 fi
 echo "Done."
 echo

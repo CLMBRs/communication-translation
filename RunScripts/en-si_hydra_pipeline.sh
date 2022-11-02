@@ -2,12 +2,12 @@
 
 DATA=clipL
 # DATA=resnet
-SEED=3
+SEED=1
 EX_ABBR=${DATA}
 LANG=en-si
 UNROLL=transformer
 # UNROLL=recurrent
-EC_TYPE=i2i
+EC_TYPE=t2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
@@ -31,9 +31,8 @@ python -u BackTranslation/backtranslate.py \
 # Do caption training
 caption_distractor=15
 caption_lr=4e-5
-recurrent_hidden_aggregation=true
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_hiddenAgg-${recurrent_hidden_aggregation}
+CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
@@ -42,14 +41,13 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.train_eval.num_distractors_train=${caption_distractor} \
     ec.train_eval.num_distractors_valid=${caption_distractor} \
     ec.model.image_unroll=${UNROLL} \
-    ec.model.recurrent_hidden_aggregation=${recurrent_hidden_aggregation} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
 ec_distractor=15
-EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_hiddenAgg-${recurrent_hidden_aggregation} 
+EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
@@ -76,7 +74,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
 
-OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_hiddenAgg-${recurrent_hidden_aggregation}
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
 python -u BackTranslation/backtranslate.py \
@@ -96,6 +94,6 @@ python -u BackTranslation/backtranslate.py \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
-# cp ${OUTPUT_ROOT_DIR}/translation_results/* ${OUTPUT_DIR}
+# cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
 # ./Tools/bleu.sh ${OUTPUT_DIR}/si-en.en.test.si ${OUTPUT_DIR}/si-en.si.test 13a
 # ./Tools/bleu.sh ${OUTPUT_DIR}/si-en.si.test.en ${OUTPUT_DIR}/si-en.en.test 13a
