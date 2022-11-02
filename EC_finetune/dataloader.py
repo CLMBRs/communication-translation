@@ -152,7 +152,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                     image_index, secondary_index
                 )
                 caption_index += 1
-        self.num_instances = len(self.captions)
+        self.num_instances = len(self.caption_lookup)
 
         # Prepartion for language-constrained generation
         self.lang_code2id = dict(
