@@ -66,7 +66,7 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        import pdb; pdb.set_trace()
+
         assert args.train_eval.sender_input_type in [IMAGE, TEXT]
         if args.train_eval.sender_input_type == TEXT and args.mode == 'emergent_communication':
             # Special treatment is only done for T2I EC
