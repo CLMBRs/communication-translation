@@ -31,7 +31,8 @@ INIT_BT_OUT_DIR=bt_init
 # Do caption training
 caption_distractor=15
 caption_lr=4e-5
-BT_CKPT_CHOICE=last
+# BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=best_bleu
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
@@ -82,6 +83,7 @@ python -u BackTranslation/backtranslate.py \
     backtranslate/data=${LANG} \
     backtranslate.train_eval.seed=$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+    backtranslate.train_eval.val_dataset_script=BackTranslation/flores/flores.py \
     backtranslate.output_dir=${OUTPUT_DIR}
 
 
