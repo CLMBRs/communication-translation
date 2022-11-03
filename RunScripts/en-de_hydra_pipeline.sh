@@ -31,7 +31,7 @@ INIT_BT_OUT_DIR=bt_init
 caption_distractor=15
 caption_lr=4e-5
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}
+CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
 # python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
 #     ec/language=${LANG} \
@@ -46,7 +46,7 @@ CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_dis
 
 # Do EC
 ec_distractor=15
-EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}
+EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
@@ -73,7 +73,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 # echo 'en to de score: '"$en2de"'; de to en score: '"$de2en"
 
 
-OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}
+OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
 python -u BackTranslation/backtranslate.py \

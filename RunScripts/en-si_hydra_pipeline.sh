@@ -31,7 +31,7 @@ INIT_BT_OUT_DIR=bt_init
 # Do caption training
 caption_distractor=15
 caption_lr=4e-5
-BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=best_bleu
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
