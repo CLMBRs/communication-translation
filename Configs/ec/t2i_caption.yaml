@@ -11,6 +11,9 @@ output_dir: ./Output/en-de_pipeline/captions
 mode: image_grounding
 save_pretrain_seperately: true
 
+data:
+  base_dir: ./DataLink/captioning_new_new
+
 model:
   model_name: ./Output/en-de_pipeline/bt_init/last
 
