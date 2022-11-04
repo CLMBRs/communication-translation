@@ -31,7 +31,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.train_eval.num_distractors_train=${caption_distractor} \
     ec.train_eval.num_distractors_valid=${caption_distractor} \
     ec.train_eval.image_selection_lambda=8.0 \
-    ec.train_eval.grad_clip=8.0 \
+    ec.train_eval.grad_clip=0.5 \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=facebook/mbart-large-cc25 \
@@ -77,10 +77,10 @@ python -u BackTranslation/backtranslate.py \
     backtranslate.train_eval.num_warmup_steps=1024 \
     backtranslate.train_eval.crossent_patience=16 \
     backtranslate.train_eval.num_constrained_steps=2048 \
-    backtranslate.train_eval.vocab_constraint_threshold=0.96 \
     backtranslate.train_eval.early_stop_start_time=8192 \
-    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.train_eval.val_dataset_script=BackTranslation/flores/flores.py \
+    backtranslate.train_eval.vocab_constraint_threshold=0.96 \
+    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
 
