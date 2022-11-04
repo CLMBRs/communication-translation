@@ -1,5 +1,5 @@
 # Model:
-model_name: Output/en-ne_tec/captions
+model_name: ./Output/en-ne_tec/captions
 load_entire_agent: true
 image_dim: 2048
 reshaper_type: learned
@@ -19,7 +19,6 @@ hard: true
 repetition_penalty: 1.2
 generate_from_logits: false
 max_seq_length: 32
-max_text_seq_length: 128
 TransferH: false # switch to hard gumbel after the model reaches target accuracy
 
 # Train and eval:
@@ -27,7 +26,7 @@ seed: 1
 mode: emergent_communication
 ec_input_text: true
 language_model_lambda: 0.0625
-language_model_path: Output/mbart_lm_lr6e-6
+language_model_path: ./Output/mbart_lm_lr6e-6
 weight_drift_lambda: 0.0
 do_train: true
 do_eval: false
@@ -56,7 +55,7 @@ valid_captions: ./Data/ec_finetuning/en_captions_val.jsonl
 train_images: ./Data/ec_finetuning/images_train.pt
 valid_images: ./Data/ec_finetuning/images_val.pt
 save_pretrain_seperately: true
-output_dir: Output/en-ne_tec/ec
+output_dir: ./Output/en-ne_tec/ec
 save_output_txt: true
 
 # Specify info about language and vocab constraint

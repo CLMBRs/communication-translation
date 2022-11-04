@@ -16,7 +16,7 @@ batch_size: 12
 gradient_accumulation_steps: 1
 grad_clip: <need specify -- float>
 valid_every: 256
-max_eval_batches: 
+max_eval_batches: 64
 print_every: 32
 target_acc: 85.0
 stats_to_print: ['loss', 'accuracy', 'lm loss', 'drift loss', 'communication loss', 'mean_length']
