@@ -7,7 +7,7 @@ EX_ABBR=${DATA}
 LANG=en-de
 UNROLL=transformer
 # UNROLL=recurrent
-EC_TYPE=i2i
+EC_TYPE=t2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
@@ -30,18 +30,18 @@ INIT_BT_OUT_DIR=bt_init
 # Do caption training
 caption_distractor=15
 caption_lr=4e-5
-BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=best_bleu
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
-# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
-#     ec/language=${LANG} \
-#     ec/data=${DATA} \
-#     ec.train_eval.seed=${SEED} \
-#     ec.train_eval.num_distractors_train=${caption_distractor} \
-#     ec.train_eval.num_distractors_valid=${caption_distractor} \
-#     ec.model.image_unroll=${UNROLL} \
-#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+    ec/language=${LANG} \
+    ec/data=${DATA} \
+    ec.train_eval.seed=${SEED} \
+    ec.train_eval.num_distractors_train=${caption_distractor} \
+    ec.train_eval.num_distractors_valid=${caption_distractor} \
+    ec.model.image_unroll=${UNROLL} \
+    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC

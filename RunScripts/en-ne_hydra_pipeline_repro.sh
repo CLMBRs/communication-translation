@@ -1,12 +1,10 @@
 #!/bin/bash
 
-DATA=clipL
-# DATA=resnet
+DATA=resnet
 SEED=1
 EX_ABBR=${DATA}
 LANG=en-ne
-UNROLL=transformer
-# UNROLL=recurrent
+UNROLL=recurrent
 EC_TYPE=t2i
 # EC_TYPE=$1
 
@@ -18,15 +16,12 @@ CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
 BT_SECONDARY_CONFIG=bt_secondary
 
-# Do initial (short) backtranslation
-INIT_BT_OUT_DIR=bt_init
-
 
 # Do caption training
-caption_distractor=15
+caption_distractor=7
 caption_lr=4e-5
-BT_CKPT_CHOICE=best_bleu
-# BT_CKPT_CHOICE=pretrained
+# BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=pretrained
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
@@ -35,10 +30,11 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.train_eval.seed=${SEED} \
     ec.train_eval.num_distractors_train=${caption_distractor} \
     ec.train_eval.num_distractors_valid=${caption_distractor} \
+    ec.train_eval.image_selection_lambda=8.0 \
+    ec.train_eval.grad_clip=8.0 \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
-    # ec.model.model_name=facebook/mbart-large-cc25 \
+    ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
 ec_distractor=15
@@ -75,7 +71,14 @@ OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${
 python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_SECONDARY_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=$((SEED + 7)) \
+    backtranslate.train_eval.seed=1 \
+    backtranslate.train_eval.num_steps=8192 \
+    backtranslate.train_eval.lr=1.0e-5 \
+    backtranslate.train_eval.num_warmup_steps=1024 \
+    backtranslate.train_eval.crossent_patience=16 \
+    backtranslate.train_eval.num_constrained_steps=2048 \
+    backtranslate.train_eval.vocab_constraint_threshold=0.96 \
+    backtranslate.train_eval.early_stop_start_time=8192 \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.train_eval.val_dataset_script=BackTranslation/flores/flores.py \
     backtranslate.output_dir=${OUTPUT_DIR}
