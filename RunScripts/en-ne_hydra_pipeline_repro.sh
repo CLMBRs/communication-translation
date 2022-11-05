@@ -12,9 +12,9 @@ OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 
 BT_INIT_CONFIG=bt_initial
-CAPTIONS_CONFIG=${EC_TYPE}_caption
-EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=bt_secondary
+CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
+EC_CONFIG=${EC_TYPE}_ec_repro
+BT_SECONDARY_CONFIG=en-ne_bt_repro
 
 
 # Do caption training
@@ -28,10 +28,6 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${caption_distractor} \
-    ec.train_eval.num_distractors_valid=${caption_distractor} \
-    ec.train_eval.image_selection_lambda=8.0 \
-    ec.train_eval.grad_clip=0.5 \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=facebook/mbart-large-cc25 \
@@ -40,15 +36,13 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
 ec_distractor=15
 EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_from-${BT_CKPT_CHOICE}
 
-python -u -m EC_finetune  +ec=${EC_CONFIG} \
-    ec/language=${LANG} \
-    ec/data=${DATA} \
-    ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${ec_distractor} \
-    ec.train_eval.num_distractors_valid=${ec_distractor} \
-    ec.model.image_unroll=${UNROLL} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+# python -u -m EC_finetune  +ec=${EC_CONFIG} \
+#     ec/language=${LANG} \
+#     ec/data=${DATA} \
+#     ec.train_eval.seed=${SEED} \
+#     ec.model.image_unroll=${UNROLL} \
+#     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -68,20 +62,11 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_SECONDARY_CONFIG} \
-    backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=1 \
-    backtranslate.train_eval.num_steps=8192 \
-    backtranslate.train_eval.lr=1.0e-5 \
-    backtranslate.train_eval.num_warmup_steps=1024 \
-    backtranslate.train_eval.crossent_patience=16 \
-    backtranslate.train_eval.num_constrained_steps=2048 \
-    backtranslate.train_eval.early_stop_start_time=8192 \
-    backtranslate.train_eval.val_dataset_script=BackTranslation/flores/flores.py \
-    backtranslate.train_eval.vocab_constraint_threshold=0.96 \
-    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-    backtranslate.output_dir=${OUTPUT_DIR}
+# python -u BackTranslation/backtranslate.py \
+#     +backtranslate=${BT_SECONDARY_CONFIG} \
+#     backtranslate/data=${LANG} \
+#     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+#     backtranslate.output_dir=${OUTPUT_DIR}
 
 
 # Do test
