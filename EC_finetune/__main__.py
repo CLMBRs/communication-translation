@@ -58,7 +58,8 @@ def ids_to_texts(output_ids, tokenizer):
 def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
     batchwise_stats = defaultdict(list)
     max_eval_batches = None
-    max_eval_batches = args.train_eval.max_eval_batches
+    if hasattr(args.train_eval, "max_eval_batches"):
+        max_eval_batches = args.train_eval.max_eval_batches
     epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
     for i, batch in enumerate(epoch_iterator):
