@@ -356,18 +356,18 @@ class ECImageIdentificationAgent(CommunicationAgent):
             lm_loss /= sum([length - 1 for length in lengths])
             lm_loss *= self.language_model_lambda
 
-        if not self.receiver.recurrent_aggregation:
-            # Prepend the CLS id to the beginning of the sequence, and adjust the
-            # padding mask properly
-            message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
-                message_dict["attention_mask"]
-            )
-            message_dict["message_ids"] = self.prepend_cls(
-                message_dict["message_ids"], self.cls_index
-            )
-            message_dict["message_samples"] = self.prepend_cls_logit(
-                message_dict["message_samples"], self.cls_index
-            )
+        # if not self.receiver.recurrent_aggregation:
+        # Prepend the CLS id to the beginning of the sequence, and adjust the
+        # padding mask properly
+        message_dict["attention_mask"] = self.prepend_non_pad_to_mask(
+            message_dict["attention_mask"]
+        )
+        message_dict["message_ids"] = self.prepend_cls(
+            message_dict["message_ids"], self.cls_index
+        )
+        message_dict["message_samples"] = self.prepend_cls_logit(
+            message_dict["message_samples"], self.cls_index
+        )
 
         # The receiver does not have `message_logits` as one of its arguments
         del message_dict["message_logits"]
@@ -479,15 +479,15 @@ class ImageCaptionGrounder(CommunicationAgent):
             "message_lengths": batch["caption_mask"].float().sum(dim=1).long(),
         }
 
-        if not self.receiver.recurrent_aggregation:
+        # if not self.receiver.recurrent_aggregation:
             # Prepend the CLS id to the beginning of the sequence, and adjust the
             # padding mask properly
-            caption["attention_mask"] = self.prepend_non_pad_to_mask(
-                caption["attention_mask"]
-            )
-            caption["message_ids"] = self.prepend_cls(
-                caption["message_ids"], self.cls_index
-            )
+        caption["attention_mask"] = self.prepend_non_pad_to_mask(
+            caption["attention_mask"]
+        )
+        caption["message_ids"] = self.prepend_cls(
+            caption["message_ids"], self.cls_index
+        )
 
         image_candidate_logits = self.choose_image_from_message(
             caption, batch["receiver_images"]
