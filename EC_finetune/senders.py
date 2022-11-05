@@ -161,16 +161,15 @@ class MBartSender(Sender):
         # on config values, multiple conditions may be true during training. We
         # opt to enforce a strict ordering below to decide if EC should be
         # run on text then caption-training then images.
-        text_crossattention_condition = sender_input_text is not None
-        caption_training_condition = decoder_input_ids is not None
-        image_crossattention_condition = sender_image is not None
+        caption_training_condition = decoder_input_ids is not None # T2I caption; we need this to specially treat T2I caption
+        image_crossattention_condition = sender_image is not None # I2I EC
         
         attn_mask = sender_attention_mask
         if caption_training_condition and self.sender_input_type == TEXT:
-            assert text_crossattention_condition
             sender_input_text = decoder_input_ids
             attn_mask = kwargs['caption_mask']
             
+        text_crossattention_condition = sender_input_text is not None # only exist in T2I EC
         if text_crossattention_condition:
             batch_size = sender_input_text.size(0)
             sender_input_encodings = self.encoder(
