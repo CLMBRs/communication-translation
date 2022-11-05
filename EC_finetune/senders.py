@@ -199,45 +199,6 @@ class MBartSender(Sender):
             crossattention_input = sender_image
         else:
             raise ValueError("Sender must receive valid input combination")
-        # text_unrolling_condition = sender_input_text is not None
-        # caption_training_condition = decoder_input_ids is not None
-        # image_unrolling_condition = sender_image is not None
-
-        # if text_unrolling_condition:
-        #     batch_size = sender_input_text.size(0)
-        #     sender_input_encodings = self.encoder(
-        #         input_ids=sender_input_text,
-        #         attention_mask=sender_attention_mask
-        #     ).last_hidden_state
-        #     crossattention_input = sender_input_encodings
-        # elif caption_training_condition:
-        #     sender_input_encodings = self.encoder(
-        #         input_ids=decoder_input_ids,
-        #         attention_mask=kwargs['caption_mask']
-        #     ).last_hidden_state
-        #     crossattention_input = sender_input_encodings
-        # elif image_unrolling_condition:
-        #     batch_size = sender_image.size(0)
-        #     if len(sender_image.shape) == 2:
-        #         sender_image = sender_image.unsqueeze(1)
-        #     if self.unroll == 'recurrent':
-        #         unrolled_hidden = []
-        #         h = torch.zeros_like(sender_image).transpose(0, 1).to(
-        #             sender_image.device
-        #         )
-        #         c = torch.zeros_like(sender_image).transpose(0, 1).to(
-        #             sender_image.device
-        #         )
-        #         for i in range(self.unroll_length):
-        #             next_hidden, (h, c) = self.lstm(sender_image, (h, c))
-        #             unrolled_hidden.append(next_hidden)
-        #             sender_image = next_hidden
-        #         sender_image = torch.stack(unrolled_hidden, dim=1).squeeze()
-        #     elif self.unroll == 'transformer':
-        #         sender_image = self.transformer(sender_image)
-        #     crossattention_input = sender_image
-        # else:
-        #     raise ValueError("Sender must receive valid input combination")
 
         # If decoder inputs are given, use them to generate timestep-wise
         if caption_training_condition:

@@ -3,7 +3,7 @@ defaults:
   - train_eval: base_caption
   - generation: base_caption
   - data: resnet
-  - language: en-de
+  - language: en-ne
   - _self_
 
 # T2I-specific train and eval configs:
@@ -16,13 +16,10 @@ data:
 
 model:
   model_name: facebook/mbart-large-cc25
+  recurrent_hidden_aggregation: false
 
 train_eval:
-  sender_input_type: text
-  num_distractors_train: 7
-  num_distractors_valid: 7
-  image_selection_lambda: 8.0
-  grad_clip: 0.5
+  sender_input_type: image
 
 language:
   has_vocab_constraint: false
