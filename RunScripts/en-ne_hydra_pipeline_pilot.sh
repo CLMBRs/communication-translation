@@ -9,7 +9,7 @@ EC_TYPE=t2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}_pilot
 
 BT_INIT_CONFIG=bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
@@ -43,6 +43,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+    # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # cp ${OUTPUT_DIR}/bt_init/de-en.en.val ${OUTPUT_DIR}
 # cp ${OUTPUT_DIR}/bt_init/de-en.de.val ${OUTPUT_DIR}
@@ -62,12 +63,12 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_SECONDARY_CONFIG} \
-    backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
-    backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-    backtranslate.output_dir=${OUTPUT_DIR}
+# python -u BackTranslation/backtranslate.py \
+#     +backtranslate=${BT_SECONDARY_CONFIG} \
+#     backtranslate/data=${LANG} \
+#     backtranslate.train_eval.seed=${SEED} \
+#     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
+#     backtranslate.output_dir=${OUTPUT_DIR}
 
 
 # Do test

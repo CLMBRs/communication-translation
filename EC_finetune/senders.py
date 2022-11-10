@@ -165,10 +165,20 @@ class MBartSender(Sender):
         image_crossattention_condition = sender_image is not None # I2I EC
         
         attn_mask = sender_attention_mask
-        if caption_training_condition and self.sender_input_type == TEXT:
-            sender_input_text = decoder_input_ids
-            attn_mask = kwargs['caption_mask']
-            
+        if self.sender_input_type == TEXT:
+            if caption_training_condition:
+                # T2I captioning
+                assert sender_input_text is None
+                assert attn_mask is None
+                sender_input_text = decoder_input_ids
+                attn_mask = kwargs['caption_mask']
+            else:
+                # T2I EC
+                # sender_attention_mask and sender_input_text is unique to T2I EC
+                # Sanity check the T2I input are different in EC and captioning
+                assert decoder_input_ids is None
+                assert 'caption_mask' not in kwargs
+
         text_crossattention_condition = sender_input_text is not None # only exist in T2I EC
         if text_crossattention_condition:
             batch_size = sender_input_text.size(0)
