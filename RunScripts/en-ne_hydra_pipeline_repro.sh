@@ -24,13 +24,13 @@ caption_lr=4e-5
 BT_CKPT_CHOICE=pretrained
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
-# python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
-#     ec/language=${LANG} \
-#     ec/data=${DATA} \
-#     ec.train_eval.seed=${SEED} \
-#     ec.model.image_unroll=${UNROLL} \
-#     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-#     ec.model.model_name=facebook/mbart-large-cc25 \
+python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
+    ec/language=${LANG} \
+    ec/data=${DATA} \
+    ec.train_eval.seed=${SEED} \
+    ec.model.image_unroll=${UNROLL} \
+    ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
+    ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
 # ec_distractor=15
