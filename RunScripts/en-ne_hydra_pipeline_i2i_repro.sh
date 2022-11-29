@@ -1,59 +1,55 @@
 #!/bin/bash
+source activate unmt
 
-DATA=clipL
-# DATA=resnet
+echo $(which python)
+
+DATA=resnet
 SEED=1
 EX_ABBR=${DATA}
-LANG=en-zh
-UNROLL=transformer
-# UNROLL=recurrent
-EC_TYPE=t2i
+LANG=en-ne
+UNROLL=recurrent
+EC_TYPE=i2i
+export PYTHONPATH=".:${PYTHONPATH}"
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${LANG}_${EC_TYPE}_pipeline_seed${SEED}
 
-BT_INIT_CONFIG=bt_initial
-CAPTIONS_CONFIG=${EC_TYPE}_caption
-EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=bt_secondary
+BT_INIT_CONFIG=en-ne_bt_initial_repro
+CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
+EC_CONFIG=${EC_TYPE}_ec_repro
+BT_SECONDARY_CONFIG=en-ne_bt_repro
 
 # Do initial (short) backtranslation
 INIT_BT_OUT_DIR=bt_init
-# python -u BackTranslation/backtranslate.py \
-#     +backtranslate=${BT_INIT_CONFIG} \
-#     backtranslate/data=${LANG} \
-#     backtranslate.train_eval.seed=${SEED} \
-#     backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/
-
+PYTHONPATH=. python -u BackTranslation/backtranslate.py \
+    +backtranslate=${BT_INIT_CONFIG} \
+    backtranslate/data=${LANG} \
+    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/ \
+    backtranslate.model_path=facebook/mbart-large-cc25 \
 
 # Do caption training
-caption_distractor=15
-caption_lr=4e-5
 BT_CKPT_CHOICE=last
-CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_distractor${caption_distractor}_from-${BT_CKPT_CHOICE}
+CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${caption_distractor} \
-    ec.train_eval.num_distractors_valid=${caption_distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
     # ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
-ec_distractor=15
-EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_distractor${ec_distractor}_from-${BT_CKPT_CHOICE}
+# ec_distractor=15
+EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
-    ec.train_eval.num_distractors_train=${ec_distractor} \
-    ec.train_eval.num_distractors_valid=${ec_distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
@@ -76,23 +72,23 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
-python -u BackTranslation/backtranslate.py \
+PYTHONPATH=. python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_SECONDARY_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=$((SEED + 7)) \
+    backtranslate.train_eval.seed=${SEED} \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
 
 # Do test
-# cp Data/translation_references/zh-en.* ${OUTPUT_DIR}
-# python -u BackTranslation/translate.py --config Configs/translate/test_en2zh_translate.yaml \
+# cp Data/translation_references/de-en.* ${OUTPUT_DIR}
+# python -u BackTranslation/translate.py --config Configs/translate/test_en2de_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
-# python -u BackTranslation/translate.py --config Configs/translate/test_zh2en_translate.yaml \
+# python -u BackTranslation/translate.py --config Configs/translate/test_de2en_translate.yaml \
 #     --output_dir ${OUTPUT_DIR} \
 #     --model_path ${OUTPUT_DIR}/best_bleu
 
 # cp ${OUTPUT_ROOT_DIR}/en-de_pipeline/translation_results/* ${OUTPUT_DIR}
-# ./Tools/bleu.sh ${OUTPUT_DIR}/zh-en.en.test.zh ${OUTPUT_DIR}/zh-en.zh.test 13a
-# ./Tools/bleu.sh ${OUTPUT_DIR}/zh-en.zh.test.en ${OUTPUT_DIR}/zh-en.en.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.en.test.de ${OUTPUT_DIR}/de-en.de.test 13a
+# ./Tools/bleu.sh ${OUTPUT_DIR}/de-en.de.test.en ${OUTPUT_DIR}/de-en.en.test 13a

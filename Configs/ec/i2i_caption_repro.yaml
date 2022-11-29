@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 # T2I-specific train and eval configs:
-output_dir: ./Output/en-de_pipeline/captions
+output_dir: ./Output/en-ne_pipeline/captions
 mode: image_grounding
 save_pretrain_seperately: true
 
