@@ -1,0 +1,32 @@
+defaults:
+  - model: base_ec
+  - train_eval: base_ec
+  - generation: base_ec
+  - data: resnet
+  - language: en-ne
+  - _self_
+
+# T2I-specific train and eval configs:
+output_dir: ./Output/en-de_pipeline/ec
+mode: emergent_communication
+save_pretrain_seperately: true
+
+data:
+  base_dir: ./DataLink/ec_finetuning_new
+
+model:
+  model_name: ./Output/en-de_pipeline/captions
+
+train_eval:
+  sender_input_type: text
+  # this is preprint hyper (with resnet)
+  language_model_lambda: 0.0625 
+  lr: 1.0e-6
+  grad_clip: 0.5
+  # language_model_lambda: 0.125
+  # lr: 6.0e-6
+  # grad_clip: 1.0
+
+generation:
+  # this is preprint hyper (with resnet)
+  max_text_seq_length: 128

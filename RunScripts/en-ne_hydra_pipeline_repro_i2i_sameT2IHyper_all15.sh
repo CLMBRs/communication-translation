@@ -3,19 +3,21 @@ source activate unmt
 
 echo $(which python)
 
-LANG=$1
-DATA=$2
-UNROLL=$3
-SEED=$4
-EC_TYPE=t2i
+DATA=$1
+SEED=1
 EX_ABBR=${DATA}
+LANG=en-ne
+UNROLL=$2
+EC_TYPE=i2i
+# EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${EC_TYPE}_${LANG}_seed${SEED}_all15
+OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
 
-CAPTIONS_CONFIG=${EC_TYPE}_caption
-EC_CONFIG=${EC_TYPE}_ec
-BT_CONFIG=t2i_bt
+BT_INIT_CONFIG=bt_initial
+CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
+EC_CONFIG=${EC_TYPE}_ec_repro
+BT_SECONDARY_CONFIG=en-ne_bt_repro
 
 
 # Do caption training
@@ -35,7 +37,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
-ec_distractor=15
+# ec_distractor=15
 EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
@@ -65,9 +67,9 @@ OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${
 # Do rest of backtranslation
 
 PYTHONPATH=. python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_CONFIG} \
+    +backtranslate=${BT_SECONDARY_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=$$((SEED + 7)) \
+    backtranslate.train_eval.seed=${SEED} \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
