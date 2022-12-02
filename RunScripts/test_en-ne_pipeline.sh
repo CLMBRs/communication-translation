@@ -2,7 +2,6 @@
 source activate unmt
 
 OUTPUT_DIR=$1
-MODEL_CONFIG=$2
 
 # Example default run: test_en-ne_pipeline.sh Output/en-ne_pipeline Output/en-ne_pipeline/best_bleu
 

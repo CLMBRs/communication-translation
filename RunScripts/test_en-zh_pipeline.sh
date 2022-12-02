@@ -2,7 +2,6 @@
 source activate unmt
 
 OUTPUT_DIR=$1
-MODEL_CONFIG=$2
 
 # Example default run: test_en-zh_pipeline.sh Output/en-zh_pipeline Output/en-zh_pipeline/best_bleu
 
