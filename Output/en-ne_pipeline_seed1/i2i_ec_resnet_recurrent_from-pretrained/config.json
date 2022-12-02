@@ -1,12 +1,12 @@
 {
-  "_name_or_path": "facebook/mbart-large-cc25",
+  "_name_or_path": "Output/en-ne_pipeline_seed1/i2i_captions_resnet_recurrent_from-pretrained",
   "_num_labels": 3,
   "activation_dropout": 0.0,
   "activation_function": "gelu",
   "add_bias_logits": false,
   "add_final_layer_norm": true,
   "architectures": [
-    "MBartForCausalLanguageModeling"
+    "MBartForConditionalGeneration"
   ],
   "attention_dropout": 0.0,
   "bos_token_id": 0,

@@ -61,9 +61,9 @@ if __name__ == "__main__":
             print(f"(hydra)<<< {k}: {flattened_hydra_cfg[k]}")
             print()
         continue
-    print("In Hydra but not in flat Yaml")
+    
     for k, v in flattened_hydra_cfg.items():
         if k not in flat_config:
-            print(f"{k}: {v}")
+            print(f"'{k}: {v}' is not in flat config ")
             print()
     # print(OmegaConf.to_yaml(cfg))

@@ -55,6 +55,7 @@ conda init
 echo "Done."
 echo 'export PYTHONPATH="~/communication-translation:$PYTHONPATH"' >> ~/.bashrc
 # For some reason, install from bash script doesn't work
-echo "Note: 'pip install -r requirements.txt' needs to be run separately"
-echo "Note: to install torch, use 'pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html'"
+echo "You need to install packages manually:"
+echo "1. To install torch with CUDA 10.2, use 'pip install torch==1.12.1+cu102 --extra-index-url https://download.pytorch.org/whl/cu102'"
+echo "2. pip install -r requirements.txt"
 echo

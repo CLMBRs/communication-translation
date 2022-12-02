@@ -3,11 +3,11 @@ source activate unmt
 
 echo $(which python)
 
-DATA=resnet
+DATA=$1
 SEED=1
 EX_ABBR=${DATA}
 LANG=en-ne
-UNROLL=recurrent
+UNROLL=$2
 EC_TYPE=i2i
 # EC_TYPE=$1
 

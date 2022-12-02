@@ -1,0 +1,7 @@
+- +ec=t2i_ec_repro
+- ec/language=en-ne
+- ec/data=resnet
+- ec.train_eval.seed=1
+- ec.model.image_unroll=recurrent
+- ec.model.model_name=Output/en-ne_pipeline_seed1/t2i_captions_resnet_recurrent_from-pretrained
+- ec.output_dir=Output/en-ne_pipeline_seed1/t2i_ec_resnet_recurrent_from-pretrained
