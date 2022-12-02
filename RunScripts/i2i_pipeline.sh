@@ -3,22 +3,22 @@ source activate unmt
 
 echo $(which python)
 
-DATA=resnet
-SEED=1
-EX_ABBR=${DATA}
-LANG=en-ne
-UNROLL=recurrent
+LANG=$1
+DATA=$2
+UNROLL=$3
+SEED=$4
 EC_TYPE=i2i
+EX_ABBR=${DATA}
 export PYTHONPATH=".:${PYTHONPATH}"
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=${LANG}_${EC_TYPE}_pipeline_seed${SEED}
 
-BT_INIT_CONFIG=bt_initial
+BT_INIT_CONFIG=i2i_bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=bt_secondary
+BT_SECONDARY_CONFIG=i2i_bt_secondary
 
 # Do initial (short) backtranslation
 INIT_BT_OUT_DIR=bt_init
