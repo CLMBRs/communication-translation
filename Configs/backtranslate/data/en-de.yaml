@@ -14,4 +14,4 @@ lang2_vocab_constrain_file: ./Data/cc/de_cc_tokenID2count_dict.facebook-mbart-la
 
 lang_pair: de-en
 
-
+val_dataset_script: BackTranslation/wmt19/wmt19.py

@@ -13,3 +13,5 @@ lang2_max_len: 64
 lang2_vocab_constrain_file: ./Data/cc/zh_cc_tokenID2count_dict.cc25.json
 
 lang_pair: zh-en
+
+val_dataset_script: BackTranslation/wmt19/wmt19.py

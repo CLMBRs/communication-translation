@@ -20,9 +20,9 @@ def flatten_hydra_cfg(hydra_cfg: DictConfig, config_prefix="") -> Dict:
                     print(f"{prefix}.{sub_k} is a duplicate")
                 # ret[sub_k] = sub_v
             ret.update(sub_config)
-            
+
     return ret
-            
+
 
 if __name__ == "__main__":
     # Get path to two config files
@@ -30,10 +30,10 @@ if __name__ == "__main__":
     parser.add_argument('--hydra_config', type=str)
     parser.add_argument('--flat_config', type=str)
     args = parser.parse_args()
-    
+
     # Read Flat config
     flat_config = yaml.load(open(args.flat_config, "r"))
-    
+
     # Infer the pipeline section specified by this config
     section_name = None
     if "backtranslate" in args.hydra_config:
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     elif "ec" in args.hydra_config:
         section_name = "ec"
     assert section_name is not None
-    
+
     # Read Hydra config
     config_dir = os.path.dirname(args.hydra_config)
     initialize(config_path="../Configs")
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     cfg = cfg[section_name]
     # Flatten hydra config
     flattened_hydra_cfg = flatten_hydra_cfg(cfg)
-    
+
     # diff two configs:
     print("Diff:")
     for k, v in flat_config.items():
@@ -61,7 +61,7 @@ if __name__ == "__main__":
             print(f"(hydra)<<< {k}: {flattened_hydra_cfg[k]}")
             print()
         continue
-    
+
     for k, v in flattened_hydra_cfg.items():
         if k not in flat_config:
             print(f"'{k}: {v}' is not in flat config ")

@@ -702,7 +702,7 @@ def main(args: DictConfig) -> None:
 
     if args.train_eval.do_crossent_eval or args.train_eval.do_translate_eval:
         args.train_eval.val_dataset = load_dataset(
-            args.train_eval.val_dataset_script, args.data.lang_pair, split="validation"
+            args.data.val_dataset_script, args.data.lang_pair, split="validation"
         )
         data_columns = [
             "step", f"{args.data.lang1_id} to {args.data.lang2_id}",
