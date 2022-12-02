@@ -3,47 +3,39 @@ source activate unmt
 
 echo $(which python)
 
-DATA=resnet
-SEED=1
+LANG=$1
+DATA=$2
+UNROLL=$3
+SEED=$4
+EC_TYPE=t2i
 EX_ABBR=${DATA}
-LANG=en-ne
-UNROLL=recurrent
-EC_TYPE=i2i
-export PYTHONPATH=".:${PYTHONPATH}"
-# EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_${EC_TYPE}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${EC_TYPE}_${LANG}_seed${SEED}_all15
 
-BT_INIT_CONFIG=bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=bt_secondary
+BT_CONFIG=t2i_bt
 
-# Do initial (short) backtranslation
-INIT_BT_OUT_DIR=bt_init
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_INIT_CONFIG} \
-    backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
-    backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/ \
-    backtranslate.model_path=facebook/mbart-large-cc25 \
 
 # Do caption training
-BT_CKPT_CHOICE=last
+# BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=pretrained
+caption_distractor=15
 CAPTION_OUT_DIR=${EC_TYPE}_captions_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec/language=${LANG} \
     ec/data=${DATA} \
     ec.train_eval.seed=${SEED} \
+    ec.train_eval.num_distractors_train=${caption_distractor} \
+    ec.train_eval.num_distractors_train=${caption_distractor} \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
-    # ec.model.model_name=facebook/mbart-large-cc25 \
+    ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
-# ec_distractor=15
+ec_distractor=15
 EC_OUT_DIR=${EC_TYPE}_ec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune  +ec=${EC_CONFIG} \
@@ -72,10 +64,10 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_TYPE}_bt_sec_${EX_ABBR}_${UNROLL}_from-${BT_CKPT_CHOICE}
 # Do rest of backtranslation
 
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_SECONDARY_CONFIG} \
+PYTHONPATH=. python -u BackTranslation/backtranslate.py \
+    +backtranslate=${BT_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.train_eval.seed=$$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
