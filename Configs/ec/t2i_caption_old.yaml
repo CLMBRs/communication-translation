@@ -12,17 +12,15 @@ mode: image_grounding
 save_pretrain_seperately: true
 
 data:
-  base_dir: ./DataLink/captioning_new
+  base_dir: ./DataLink/captioning_new_new
 
 model:
-  model_name: facebook/mbart-large-cc25
+  model_name: ./Output/en-de_pipeline/bt_init/last
 
 train_eval:
   sender_input_type: text
-  num_distractors_train: 7
-  num_distractors_valid: 7
-  image_selection_lambda: 8.0
-  grad_clip: 0.5
+  # image_selection_lambda: 8.0
+  # grad_clip: 0.5
 
 language:
   has_vocab_constraint: false

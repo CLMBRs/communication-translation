@@ -11,11 +11,11 @@ EC_TYPE=t2i
 EX_ABBR=${DATA}
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${EC_TYPE}_${LANG}_seed${SEED}
 
-CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
-EC_CONFIG=${EC_TYPE}_ec_repro
-BT_CONFIG=en-ne_bt_repro
+CAPTIONS_CONFIG=${EC_TYPE}_caption
+EC_CONFIG=${EC_TYPE}_ec
+BT_CONFIG=t2i_bt
 
 
 # Do caption training
