@@ -12,7 +12,7 @@ EC_TYPE=i2i
 # EC_TYPE=$1
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}
+OUTPUT_BASE_DIR=${LANG}_pipeline_seed${SEED}_all15
 
 BT_INIT_CONFIG=bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption_repro
