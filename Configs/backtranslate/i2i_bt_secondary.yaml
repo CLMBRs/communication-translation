@@ -14,4 +14,4 @@ output_dir: ./Output/bt_en-de_initial/
 backtranslated_dir: ""
 
 train_eval:
-  early_stop_start_time: 4096
+  early_stop_start_time: 6144
