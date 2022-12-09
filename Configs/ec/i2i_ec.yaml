@@ -16,7 +16,9 @@ data:
 
 model:
   model_name: ./Output/en-de_pipeline/captions
-
+  # in preprint, we have recurrent_hidden_aggregation: false. '
+  # But according to Agatha, setting to True is important (at least for T2I). 
+  
 train_eval:
   sender_input_type: image
   language_model_lambda: 0.125

@@ -3,7 +3,7 @@ defaults:
   - train_eval: base_caption
   - generation: base_caption
   - data: resnet
-  - language: en-de
+  - language: en-ne
   - _self_
 
 # I2I-specific train and eval configs:
