@@ -21,4 +21,3 @@ python -u BackTranslation/backtranslate.py \
     backtranslate.train_eval.seed=${SEED} \
     backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/ \
     backtranslate.model_path=facebook/mbart-large-cc25 \
-    backtranslate.train_eval.num_steps=10 \
