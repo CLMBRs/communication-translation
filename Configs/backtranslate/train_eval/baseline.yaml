@@ -24,7 +24,6 @@ secondary_threshold: 0.99
 early_stop_start_time: 8192
 
 # script to load validation datasets
-val_dataset_script: BackTranslation/wmt19/wmt19.py
 models_shared: true
 
 print_translation: false # Whether we want to print backtranslated sentence, for inspection
