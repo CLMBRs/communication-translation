@@ -37,9 +37,14 @@ fi
 echo "Done."
 echo
 
-echo "Clone repository..."
+echo "Clone repositories..."
 if [ ! -d "~/communication-translation" ]; then
+     echo "Clone our repositories..."
      git clone git@github.com:CLMBRs/communication-translation.git
+     echo "Clone repositories for tokenizing si and ne ..."
+     # clone tokenizer for si and ne
+     git clone https://github.com/anoopkunchukuttan/indic_nlp_library.git
+     git clone https://github.com/anoopkunchukuttan/indic_nlp_resources.git
 fi
 cd communication-translation/
 if [ ! -d "./DataLink" ]; then
@@ -55,7 +60,13 @@ conda init
 echo "Done."
 echo 'export PYTHONPATH="~/communication-translation:$PYTHONPATH"' >> ~/.bashrc
 # For some reason, install from bash script doesn't work
-echo "You need to install packages manually:"
+echo "You need to install our packages manually:"
 echo "1. To install torch with CUDA 10.2, use 'pip install torch==1.12.1+cu102 --extra-index-url https://download.pytorch.org/whl/cu102'"
 echo "2. pip install -r requirements.txt"
+echo
+
+
+echo "For si/ne tokenization, you need to install their packages manually:"
+echo "1. Run 'cd indic_nlp_library'"
+echo "2. 'pip install -r requirements.txt'"
 echo
