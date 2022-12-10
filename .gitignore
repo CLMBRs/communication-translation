@@ -33,9 +33,12 @@ Data/ec_finetuning/
 log/
 log_before_rm/
 slurm_logs/
-Output/**/pytorch_model.bin
-Output/**/model.pt
-Output/**/sentencepiece.bpe.model
+# Output/**/pytorch_model.bin
+# Output/**/model.pt
+Output/
+!Output/**/training_args.bin
+!Output/**/*.csv
+!Output/**/translation_results/
 Vision_feats/data
 Models/
 
