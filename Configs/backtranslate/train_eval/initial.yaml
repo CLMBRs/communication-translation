@@ -1,8 +1,8 @@
 # training config
 num_steps: 2048
-lr: 2.0e-05
+lr: 1.0e-5
 grad_clip: 1.0
-num_warmup_steps: 512
+num_warmup_steps: ${.num_steps} // 8
 schedule: constant_w_warmup
 batch_size: 32
 seed: 1
@@ -19,9 +19,9 @@ eval_batch_size: 64
 num_beams: 5
 val_metric_name: bleu
 num_constrained_steps: 2048
-vocab_constraint_threshold: 0.90
+vocab_constraint_threshold: 0.96
 secondary_threshold: 0.99
-early_stop_start_time: 2048
+early_stop_start_time: ${.num_steps}
 
 # script to load validation datasets
 models_shared: true
