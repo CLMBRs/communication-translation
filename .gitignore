@@ -41,3 +41,7 @@ Models/
 
 # hydra config output
 outputs/
+
+# indic nlp 
+indic_nlp_library/
+indic_nlp_resources/
