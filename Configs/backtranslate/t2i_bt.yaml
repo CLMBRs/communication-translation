@@ -16,4 +16,5 @@ backtranslated_dir: ""
 train_eval:
   # use "BackTranslation/flores/flores.py" for en-ne; en-si; 
   num_steps: 8192
+  num_warmup_steps: 1024
   # vocab_constraint_threshold: 0.96

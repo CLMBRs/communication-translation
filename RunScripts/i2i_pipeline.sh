@@ -56,7 +56,6 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.model.image_unroll=${UNROLL} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-    ec.train_eval.max_global_step=10 \
 
 
 
