@@ -5,6 +5,11 @@ echo $(which python)
 
 LANG=$1
 SEED=$2
+SEED_OFFSET=$3
+
+if [ ! -z $SEED_OFFSET ]; then
+    SEED=$(($SEED + $SEED_OFFSET))
+fi
 export PYTHONPATH=".:${PYTHONPATH}"
 # EC_TYPE=$1
 
