@@ -2,6 +2,7 @@
 source activate unmt
 
 echo $(which python)
+git rev-parse HEAD
 
 LANG=$1
 SEED=$2

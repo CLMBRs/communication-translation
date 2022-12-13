@@ -1,5 +1,6 @@
 #!/bin/bash
 source activate unmt
+git rev-parse HEAD
 
 OUTPUT_DIR=$1
 

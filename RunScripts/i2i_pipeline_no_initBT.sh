@@ -18,24 +18,14 @@ EX_ABBR=${DATA}
 export PYTHONPATH=".:${PYTHONPATH}"
 
 OUTPUT_ROOT_DIR=Output
-OUTPUT_BASE_DIR=${LANG}/${EC_TYPE}/${DATA}+${UNROLL}/seed${SEED}
+OUTPUT_BASE_DIR=${LANG}/${EC_TYPE}_no_initBT/${DATA}+${UNROLL}/seed${SEED}
 
-BT_INIT_CONFIG=${EC_TYPE}_bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=${EC_TYPE}_bt_secondary
-
-# Do initial (short) backtranslation
-INIT_BT_OUT_DIR=bt_init
-python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_INIT_CONFIG} \
-    backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
-    backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/ \
-    backtranslate.model_path=facebook/mbart-large-cc25 \
+BT_CONFIG=i2i_bt_no_initBT
 
 # Do caption training
-BT_CKPT_CHOICE=last
+BT_CKPT_CHOICE=pretrained
 CAPTION_OUT_DIR=captions_from-${BT_CKPT_CHOICE}
 
 python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
@@ -44,7 +34,7 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.train_eval.seed=${SEED} \
     ec.model.image_unroll=${UNROLL} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
-    ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
+    ec.model.model_name=facebook/mbart-large-cc25 \
 
 # Do EC
 # ec_distractor=15
@@ -59,12 +49,12 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
 
-
 # Do rest of backtranslation
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}
 python -u BackTranslation/backtranslate.py \
-    +backtranslate=${BT_SECONDARY_CONFIG} \
+    +backtranslate=${BT_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=${SEED} \
+    backtranslate.train_eval.seed=$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-    backtranslate.output_dir=${OUTPUT_DIR} \
+    backtranslate.output_dir=${OUTPUT_DIR}
+
