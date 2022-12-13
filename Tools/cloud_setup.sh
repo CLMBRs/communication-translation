@@ -20,6 +20,7 @@ echo "Host *
      AddKeysToAgent yes
      XAuthLocation /opt/X11/bin/xauth
      IdentityFile ~/.ssh/${SSH_KEY_NAME}" >> ${SSH_HOME}/config
+chmod 600 ${SSH_HOME}/config
 # Copy public key, this is optional
 scp -r ${USER_PATAS}@${PATAS}:${PATAS_SSH_HOME}/${SSH_KEY_NAME}.pub ${SSH_HOME}/
 echo "Done."
@@ -28,11 +29,11 @@ echo
 echo "Transfer data..."
 # scp is 4x faster than rsync, so we use it for the first time.
 if [ ! -d "~/Data" ]; then
-     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
-     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
+     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Data ~/
+     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 else
-     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
-     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Data ~/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 fi
 echo "Done."
 echo
