@@ -1,4 +1,4 @@
-seed_offset=0
+seed_offset=1
 seed=$(Process)
 executable = RunScripts/t2i_pipeline.sh
 arguments = "en-ne clipL transformer $(seed) $(seed_offset)"
@@ -11,4 +11,4 @@ request_GPUs = 1
 transfer_executable = false
 notification = always
 +Research = true
-queue 3
+queue 1
