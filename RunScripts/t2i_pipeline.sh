@@ -54,7 +54,7 @@ OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}
 python -u BackTranslation/backtranslate.py \
     +backtranslate=${BT_CONFIG} \
     backtranslate/data=${LANG} \
-    backtranslate.train_eval.seed=$((SEED + 7)) \
+    backtranslate.train_eval.seed=$((SEED + 0)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR}
 
