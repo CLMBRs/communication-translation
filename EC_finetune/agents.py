@@ -82,7 +82,6 @@ class CommunicationAgent(Module):
     def freeze_adapters(self) -> None:
         self.freeze_params(self.sender_reshaper)
         self.freeze_params(self.receiver_reshaper)
-        self.freeze_params(self.sender.lstm)
         if self.sender.unroll == 'recurrent':
             self.freeze_params(self.sender.lstm)
         elif self.sender.unroll == 'transformer':
