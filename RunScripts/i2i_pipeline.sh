@@ -46,6 +46,8 @@ python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/${BT_CKPT_CHOICE} \
 
+rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${INIT_BT_OUT_DIR}/
+
 # Do EC
 # ec_distractor=15
 EC_OUT_DIR=ec_from-${BT_CKPT_CHOICE}
@@ -58,7 +60,7 @@ python -u -m EC_finetune  +ec=${EC_CONFIG} \
     ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
     ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
 
-
+rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR}
 
 # Do rest of backtranslation
 OUTPUT_DIR=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}
@@ -68,3 +70,5 @@ python -u BackTranslation/backtranslate.py \
     backtranslate.train_eval.seed=$((SEED + 7)) \
     backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
     backtranslate.output_dir=${OUTPUT_DIR} \
+
+rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}
