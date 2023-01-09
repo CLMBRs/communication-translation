@@ -20,21 +20,20 @@ export PYTHONPATH=".:${PYTHONPATH}"
 OUTPUT_ROOT_DIR=Output
 OUTPUT_BASE_DIR=t2i_interleave/${LANG}/${EC_TYPE}/${DATA}+${UNROLL}/seed${SEED}
 
-BT_INIT_CONFIG=${EC_TYPE}_bt_initial
 CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
-BT_SECONDARY_CONFIG=${EC_TYPE}_bt_secondary
+BT_CONFIG=t2i_bt
 
 for i in 1 2 3 4
 do 
 
     BT_CKPT_CHOICE=pretrained
     CAPTION_OUT_DIR=captions_from-${BT_CKPT_CHOICE}_round${i}
-    CAPTION_INIT=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}_round${i}
+    CAPTION_INIT=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}_round$((i - 1))
     if [[ "$i" == "1" ]]; then
         CAPTION_INIT=facebook/mbart-large-cc25
     fi
-
+    echo ${CAPTION_INIT}
     python -u -m EC_finetune +ec=${CAPTIONS_CONFIG} \
         ec/language=${LANG} \
         ec/data=${DATA} \
@@ -42,27 +41,27 @@ do
         ec.model.image_unroll=${UNROLL} \
         ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
         ec.model.model_name=${CAPTION_INIT} \
-        ec.train_eval.max_global_step=512 \
-        ec.train_eval.valid_every=128 \
+        ec.train_eval.max_global_step=10 \ # 512
+        ec.train_eval.valid_every=9 \ # 128
         ec.train_eval.print_every=8 \
 
     if [[ "$i" != "1" ]]; then
-        rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/bt_sec_from-${BT_CKPT_CHOICE}_round$((i - 1))
+        rm -rf ${CAPTION_INIT}
     fi
 
     # Do EC
     # ec_distractor=15
-    EC_OUT_DIR=ec_from-${BT_CKPT_CHOICE}
+    EC_OUT_DIR=ec_from-${BT_CKPT_CHOICE}_round${i}
     python -u -m EC_finetune  +ec=${EC_CONFIG} \
         ec/language=${LANG} \
         ec/data=${DATA} \
-        ec.train_eval.seed=${SEED * i} \
+        ec.train_eval.seed=$((SEED * i)) \
         ec.model.image_unroll=${UNROLL} \
         ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
         ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-        ec.train_eval.max_global_step=512 \
-        ec.train_eval.valid_every=64 \
-        ec.train_eval.print_every=8 \
+        ec.train_eval.max_global_step=10 \ # 512
+        ec.train_eval.valid_every=9 \ # 64
+        ec.train_eval.print_every=8 
     
     rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR}
 
@@ -74,14 +73,14 @@ do
         backtranslate.train_eval.seed=$(((SEED + 0)  * i)) \
         backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
         backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${OUTPUT_DIR}  \
-        backtranslate.train_eval.max_global_step=2048 \
-        backtranslate.train_eval.num_warmup_steps=256 \
-        backtranslate.train_eval.num_constrained_steps=512 \
-        backtranslate.train_eval.eval_every=32 \
-        backtranslate.train_eval.translate_every=64 \
-        backtranslate.train_eval.print_every=8 \
+        backtranslate.train_eval.max_global_step=10 \ # 2048
+        backtranslate.train_eval.num_warmup_steps=2 \ # 256
+        backtranslate.train_eval.num_constrained_steps=5 \ # 512
+        backtranslate.train_eval.eval_every=9 \ # 32
+        backtranslate.train_eval.translate_every=9 \ # 64
+        backtranslate.train_eval.print_every=8 
     
     rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}
     echo "end of iteration"
-
+    echo
 done
