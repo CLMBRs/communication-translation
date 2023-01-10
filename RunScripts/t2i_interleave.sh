@@ -41,8 +41,8 @@ do
         ec.model.image_unroll=${UNROLL} \
         ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
         ec.model.model_name=${CAPTION_INIT} \
-        ec.train_eval.max_global_step=10 \
-        ec.train_eval.valid_every=9 \
+        ec.train_eval.max_global_step=512 \
+        ec.train_eval.valid_every=128 \
         ec.train_eval.print_every=8
 
     # if [[ "$i" != "1" ]]; then
@@ -59,8 +59,8 @@ do
         ec.model.image_unroll=${UNROLL} \
         ec.model.model_name=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR} \
         ec.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
-        ec.train_eval.max_global_step=10 \
-        ec.train_eval.valid_every=9 \
+        ec.train_eval.max_global_step=512 \
+        ec.train_eval.valid_every=64 \
         ec.train_eval.print_every=8 
     
     rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${CAPTION_OUT_DIR}
@@ -73,11 +73,11 @@ do
         backtranslate.train_eval.seed=$(((SEED + 0)  * i)) \
         backtranslate.model_path=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}   \
         backtranslate.output_dir=${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${OUTPUT_DIR}  \
-        backtranslate.train_eval.num_steps=10 \
-        backtranslate.train_eval.num_warmup_steps=2 \
-        backtranslate.train_eval.num_constrained_steps=5 \
-        backtranslate.train_eval.eval_every=9 \
-        backtranslate.train_eval.translate_every=9 \
+        backtranslate.train_eval.num_steps=2048 \
+        backtranslate.train_eval.num_warmup_steps=256 \
+        backtranslate.train_eval.num_constrained_steps=512 \
+        backtranslate.train_eval.eval_every=32 \
+        backtranslate.train_eval.translate_every=64 \
         backtranslate.train_eval.print_every=8 
     
     rm -rf ${OUTPUT_ROOT_DIR}/${OUTPUT_BASE_DIR}/${EC_OUT_DIR}
