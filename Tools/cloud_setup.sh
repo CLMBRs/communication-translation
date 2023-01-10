@@ -42,10 +42,12 @@ echo "Clone repositories..."
 if [ ! -d "~/communication-translation" ]; then
      echo "Clone our repositories..."
      git clone git@github.com:CLMBRs/communication-translation.git
+     cd communication-translation
      echo "Clone repositories for tokenizing si and ne ..."
      # clone tokenizer for si and ne
      git clone https://github.com/anoopkunchukuttan/indic_nlp_library.git
      git clone https://github.com/anoopkunchukuttan/indic_nlp_resources.git
+     cd ../
 fi
 cd communication-translation/
 if [ ! -d "./DataLink" ]; then
