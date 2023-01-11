@@ -25,9 +25,9 @@ echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-ne_comet: Calculating en->ne test tra
 # fi
 # python ${IndicNLP_dir}/indicnlp/cli/cliparser.py tokenize ${TRANSLATION_OUTPUT_DIR}/ne-en.en.test.ne ${TRANSLATION_OUTPUT_DIR}/ne-en.en.test.ne.tok -l nep
 # Calculate the bleu score (`none` = no tokenizer is used)
-en2ne="$(comet-score -s ${reference_dir}/ne-en.en.test -t ${TRANSLATION_OUTPUT_DIR}/ne-en.en.test.ne -r ${reference_dir}/ne-en.ne.test)"
+en2ne="$(comet-score -s ${reference_dir}/ne-en.en.test -t ${TRANSLATION_OUTPUT_DIR}/ne-en.en.test.ne -r ${reference_dir}/ne-en.ne.test --quiet)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-ne_comet: en->ne test COMET: $en2ne"
 
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-ne_comet: Calculating ne->en test translation scores"
-ne2en="$(comet-score -s ${reference_dir}/ne-en.ne.test -t ${TRANSLATION_OUTPUT_DIR}/ne-en.ne.test.en -r ${reference_dir}/ne-en.en.test)"
+ne2en="$(comet-score -s ${reference_dir}/ne-en.ne.test -t ${TRANSLATION_OUTPUT_DIR}/ne-en.ne.test.en -r ${reference_dir}/ne-en.en.test --quiet)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-ne_comet: ne->en test COMET: $ne2en"

@@ -25,9 +25,9 @@ echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: Calculating en->si test tra
 # fi
 # python ${IndicNLP_dir}/indicnlp/cli/cliparser.py tokenize ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si.tok -l sin
 # Calculate the bleu score (`none` = no tokenizer is used)
-en2si="$(comet-score -s ${reference_dir}/si-en.en.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si -r ${reference_dir}/si-en.si.test)"
+en2si="$(comet-score -s ${reference_dir}/si-en.en.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si -r ${reference_dir}/si-en.si.test --quiet)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: en->si test COMET: $en2si"
 
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: Calculating si->en test translation scores"
-si2en="$(comet-score -s ${reference_dir}/si-en.si.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.si.test.en -r ${reference_dir}/si-en.en.test)"
+si2en="$(comet-score -s ${reference_dir}/si-en.si.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.si.test.en -r ${reference_dir}/si-en.en.test --quiet)"
 echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: si->en test COMET: $si2en"
