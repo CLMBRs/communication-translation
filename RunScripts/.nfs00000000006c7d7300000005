@@ -24,7 +24,7 @@ CAPTIONS_CONFIG=${EC_TYPE}_caption
 EC_CONFIG=${EC_TYPE}_ec
 BT_CONFIG=t2i_bt
 
-for i in 2 3 4
+for i in 1 2 3 4
 do 
 
     BT_CKPT_CHOICE=last
