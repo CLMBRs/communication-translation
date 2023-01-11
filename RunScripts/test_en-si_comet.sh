@@ -15,9 +15,9 @@ TRANSLATION_OUTPUT_DIR=$MODEL_DIR/../translation_results
 
 reference_dir=Data/translation_references
 
-# Example default run: test_en-si_pipeline.sh Output/en-si_pipeline/best_bleu
+# Example default run: test_en-si_comet.sh Output/en-si_pipeline/best_bleu
 
-echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_pipeline: Calculating en->si test translation scores"
+echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: Calculating en->si test translation scores"
 # Tokenize both the reference(gold answer) and hypothesis(prediction)
 # if [ ! -f ${reference_dir}/si-en.si.test.tok ]; then
 #     echo "Tokenizing reference"
@@ -26,8 +26,8 @@ echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_pipeline: Calculating en->si test 
 # python ${IndicNLP_dir}/indicnlp/cli/cliparser.py tokenize ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si.tok -l sin
 # Calculate the bleu score (`none` = no tokenizer is used)
 en2si="$(comet-score -s ${reference_dir}/si-en.en.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.en.test.si -r ${reference_dir}/si-en.si.test)"
-echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_pipeline: en->si test COMET: $en2si"
+echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: en->si test COMET: $en2si"
 
-# echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_pipeline: Calculating si->en test translation scores"
-# si2en="$()"
-# echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_pipeline: si->en test bleu: $si2en"
+echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: Calculating si->en test translation scores"
+si2en="$(comet-score -s ${reference_dir}/si-en.si.test -t ${TRANSLATION_OUTPUT_DIR}/si-en.si.test.en -r ${reference_dir}/si-en.en.test)"
+echo "$(date +'%Y-%m-%d %H:%M:%S') test_en-si_comet: si->en test COMET: $si2en"
