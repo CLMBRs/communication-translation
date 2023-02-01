@@ -13,3 +13,5 @@ lang2_max_len: 64
 lang2_vocab_constrain_file: ./Data/cc/si_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
 
 lang_pair: sien
+
+val_dataset_script: BackTranslation/flores/flores.py

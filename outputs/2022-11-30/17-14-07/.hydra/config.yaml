@@ -1,0 +1,68 @@
+ec:
+  model:
+    model_name: facebook/mbart-large-cc25
+    load_entire_agent: false
+    reshaper_type: learned
+    two_ffwd: false
+    unit_norm: false
+    dropout: 0.0
+    share_reshaper: true
+    image_unroll: transformer
+    image_unroll_length: 32
+    recurrent_hidden_aggregation: false
+    freeze_adapters: false
+    freeze_sender: false
+    freeze_receiver: false
+  train_eval:
+    seed: 1
+    sender_input_type: image
+    image_selection_lambda: 4.0
+    language_model_lambda: 0.0
+    weight_drift_lambda: 0.0
+    do_train: true
+    do_eval: true
+    n_gpu: 1
+    num_games: 30
+    max_global_step: 2048
+    lr: 4.0e-05
+    schedule: linear_w_warmup
+    num_warmup_steps: 0
+    gradient_accumulation_steps: 1
+    batch_size: 16
+    grad_clip: 1.0
+    valid_every: 512
+    print_every: 32
+    target_acc: 85.0
+    stats_to_print:
+    - loss
+    - accuracy
+    - caption generation loss
+    - image selection loss
+    num_distractors_train: 15
+    num_distractors_valid: 15
+  generation:
+    beam_width: 1
+    temperature: 1.0
+    hard: true
+    repetition_penalty: 1.0
+    generate_from_logits: false
+    max_seq_length: 32
+    TransferH: false
+  data:
+    base_dir: ./DataLink/captioning_new
+    train_captions: ${.base_dir}/en_captions_train.jsonl
+    valid_captions: ${.base_dir}/en_captions_val.jsonl
+    train_images: ${.base_dir}/clipL_train.pt
+    valid_images: ${.base_dir}/clipL_val.pt
+    image_dim: 768
+    save_output_txt: true
+  language:
+    has_vocab_constraint: false
+    vocab_constraint_threshold: 0.96
+    source_lang: en_XX
+    source_lang_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+    target_lang: ne_NP
+    target_lang_vocab_constrain_file: ./Data/cc/ne_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
+  output_dir: Output/en-ne_pipeline_seed1/i2i_captions_clipL_transformer_from-pretrained
+  mode: image_grounding
+  save_pretrain_seperately: true

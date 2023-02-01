@@ -13,6 +13,7 @@ from torch.nn import Module
 from .adapters import TransformerMapper
 from .modelings.modeling_bart import _prepare_bart_decoder_inputs
 from .modelings.modeling_mbart import MBartForConditionalGeneration
+from .util import TEXT, IMAGE
 
 
 class Sender(Module):
@@ -60,7 +61,7 @@ class MBartSender(Sender):
         repetition_penalty: float = 1.0,
         beam_width: int = 1,
         generate_from_logits: bool = False,
-        use_caption_crossattention: bool = False,
+        sender_input_type: str = IMAGE,
         img_ext_len: int = 10,
         tf_num_layers: int = 8
     ):
@@ -90,7 +91,8 @@ class MBartSender(Sender):
         self.repetition_penalty = repetition_penalty
         self.beam_width = beam_width
         self.generate_from_logits = generate_from_logits
-        self.use_caption_crossattention = use_caption_crossattention
+        assert sender_input_type in [TEXT, IMAGE]
+        self.sender_input_type = sender_input_type
         self.img_ext_len = img_ext_len
         self.tf_num_layers = tf_num_layers
 
@@ -159,18 +161,30 @@ class MBartSender(Sender):
         # on config values, multiple conditions may be true during training. We
         # opt to enforce a strict ordering below to decide if EC should be
         # run on text then caption-training then images.
-        caption_training_condition = decoder_input_ids is not None
-        image_crossattention_condition = sender_image is not None
+        caption_training_condition = decoder_input_ids is not None # T2I caption; we need this to specially treat T2I caption
+        image_crossattention_condition = sender_image is not None # I2I EC
         
-        if caption_training_condition and self.use_caption_crossattention:
-            sender_input_text = decoder_input_ids
-        text_crossattention_condition = sender_input_text is not None
+        attn_mask = sender_attention_mask
+        if self.sender_input_type == TEXT:
+            if caption_training_condition:
+                # T2I captioning
+                assert sender_input_text is None
+                assert attn_mask is None
+                sender_input_text = decoder_input_ids
+                attn_mask = kwargs['caption_mask']
+            else:
+                # T2I EC
+                # sender_attention_mask and sender_input_text is unique to T2I EC
+                # Sanity check the T2I input are different in EC and captioning
+                assert decoder_input_ids is None
+                assert 'caption_mask' not in kwargs
 
+        text_crossattention_condition = sender_input_text is not None # only exist in T2I EC
         if text_crossattention_condition:
             batch_size = sender_input_text.size(0)
             sender_input_encodings = self.encoder(
                 input_ids=sender_input_text,
-                attention_mask=sender_attention_mask
+                attention_mask=attn_mask
             ).last_hidden_state
             crossattention_input = sender_input_encodings
         elif image_crossattention_condition:

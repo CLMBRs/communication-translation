@@ -1,0 +1,5 @@
+- +backtranslate=en-ne_bt_repro
+- backtranslate/data=en-ne
+- backtranslate.train_eval.seed=1
+- backtranslate.model_path=Output/en-ne_pipeline_seed1/i2i_ec_resnet_recurrent_from-pretrained
+- backtranslate.output_dir=Output/en-ne_pipeline_seed1/i2i_bt_sec_resnet_recurrent_from-pretrained

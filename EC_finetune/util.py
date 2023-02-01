@@ -8,6 +8,9 @@ from torch import Tensor
 from transformers import PreTrainedTokenizer
 
 
+TEXT="text"
+IMAGE="image"
+
 def get_coco_idx():
     a, b = 56644, 56643
     a_, b_ = [], []

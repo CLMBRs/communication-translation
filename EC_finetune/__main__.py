@@ -32,6 +32,7 @@ from .dataloader import (
     CaptionTrainingDataset, TextInputECDataset, XLImageIdentificationDataset
 )
 from Util.util import create_logger, set_seed, statbar_string
+from .util import TEXT, IMAGE
 
 EC_CSV_HEADERS = [
     'mode', 'epoch', 'global step', 'loss', 'accuracy', 'mean_length'
@@ -57,7 +58,7 @@ def ids_to_texts(output_ids, tokenizer):
 def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
     batchwise_stats = defaultdict(list)
     max_eval_batches = None
-    if hasattr(args, "max_eval_batches"):
+    if hasattr(args.train_eval, "max_eval_batches"):
         max_eval_batches = args.train_eval.max_eval_batches
     epoch_iterator = tqdm(dataloader, desc='iteration')
     output_ids = []
@@ -65,7 +66,16 @@ def evaluate(args, model, dataloader, device, epoch=0, global_step=0):
         if max_eval_batches and i >= max_eval_batches:
             break
         model.eval()
-        batch['sender_image'] = batch['sender_image'].to(device)
+
+        assert args.train_eval.sender_input_type in [IMAGE, TEXT]
+        if args.train_eval.sender_input_type == TEXT and args.mode == 'emergent_communication':
+            # Special treatment is only done for T2I EC
+            batch['sender_input_text'] = batch['sender_input_text'].to(device)
+            batch['sender_attention_mask'] = batch['sender_attention_mask'].to(device)
+        else:
+            # For T2I/I2I caption, I2I EC, we use the same procedure
+            batch['sender_image'] = batch['sender_image'].to(device)
+
         batch['receiver_images'] = batch['receiver_images'].to(device)
         batch['target'] = batch['target'].to(device)
         if args.mode == 'image_grounding':
@@ -240,7 +250,7 @@ def main(args: DictConfig):
     """
     Train a model to generate image captions
     """
-    logger = create_logger(name="ec_finetune")
+    
     # set csv output file
     # import pdb; pdb.set_trace()
     container = OmegaConf.to_object(args)
@@ -270,8 +280,15 @@ def main(args: DictConfig):
     # Setup CUDA, GPU
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     set_seed(args.train_eval.seed)
-    # num_train = 100
-    if args.mode == 'image_grounding' or getattr(args, 'ec_input_text', False):
+    # Set logger name properly
+    logger_name = ""
+    logger_name += "caption" if args.mode == 'image_grounding' else "ec_finetune"
+    # from pdb import set_trace; set_trace()
+    logger_name += "(T2I)" if args.train_eval.sender_input_type == TEXT else "(I2I)"
+    logger = create_logger(name=logger_name)
+    
+    # Load dataset
+    if args.mode == 'image_grounding' or args.train_eval.sender_input_type == TEXT:
         train_captions = [
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.train_captions, 'r').readlines()
@@ -280,9 +297,7 @@ def main(args: DictConfig):
             [caption.strip() for caption in json.loads(line)]
             for line in open(args.data.valid_captions, 'r').readlines()
         ]
-    # import pdb; pdb.set_trace()
     train_images = torch.load(args.data.train_images)
-    # train_images = train_images[:num_train]
     valid_images = torch.load(args.data.valid_images)
 
     logger.info("Dataset Loaded")
@@ -344,7 +359,8 @@ def main(args: DictConfig):
             hard=args.generation.hard,
             repetition_penalty=args.generation.repetition_penalty,
             beam_width=args.generation.beam_width,
-            generate_from_logits=args.generation.generate_from_logits
+            generate_from_logits=args.generation.generate_from_logits,
+            sender_input_type=args.train_eval.sender_input_type
         )
         receiver = MBartReceiver(
             comm_model,
@@ -380,12 +396,33 @@ def main(args: DictConfig):
             language_model=language_model,
             orig_model=orig_model
         )
-        training_set = XLImageIdentificationDataset(
-            train_images, args.train_eval.num_distractors_train, args, tokenizer
-        )
-        valid_set = XLImageIdentificationDataset(
-            valid_images, args.train_eval.num_distractors_valid, args, tokenizer
-        )
+        if args.train_eval.sender_input_type == TEXT:
+            print("*T2I* EC training")
+            training_set = TextInputECDataset(
+                train_images,
+                train_captions,
+                args.train_eval.num_distractors_train,
+                tokenizer,
+                args,
+                max_length=args.generation.max_text_seq_length
+            )
+            valid_set = TextInputECDataset(
+                valid_images,
+                valid_captions,
+                args.train_eval.num_distractors_valid,
+                tokenizer,
+                args,
+                max_length=args.generation.max_text_seq_length,
+                max_captions_per_image=1
+            )
+        else:
+            print("*I2I* EC training")
+            training_set = XLImageIdentificationDataset(
+                train_images, args.train_eval.num_distractors_train, args, tokenizer
+            )
+            valid_set = XLImageIdentificationDataset(
+                valid_images, args.train_eval.num_distractors_valid, args, tokenizer
+            )
 
     if args.model.load_entire_agent:
         state_dict = torch.load(args.model.model_name + "/model.pt")

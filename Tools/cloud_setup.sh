@@ -20,6 +20,7 @@ echo "Host *
      AddKeysToAgent yes
      XAuthLocation /opt/X11/bin/xauth
      IdentityFile ~/.ssh/${SSH_KEY_NAME}" >> ${SSH_HOME}/config
+chmod 600 ${SSH_HOME}/config
 # Copy public key, this is optional
 scp -r ${USER_PATAS}@${PATAS}:${PATAS_SSH_HOME}/${SSH_KEY_NAME}.pub ${SSH_HOME}/
 echo "Done."
@@ -28,18 +29,25 @@ echo
 echo "Transfer data..."
 # scp is 4x faster than rsync, so we use it for the first time.
 if [ ! -d "~/Data" ]; then
-     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
-     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
+     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Data ~/
+     scp -r ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 else
-     rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Data ~/
-     rsync -azP ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Data ~/
+     rsync -azP -e ssh ${USER_PATAS}@${PATAS}:/projects/unmt/communication-translation-old/Output/mbart_lm_lr6e-6 ~/communication-translation/Output/
 fi
 echo "Done."
 echo
 
-echo "Clone repository..."
+echo "Clone repositories..."
 if [ ! -d "~/communication-translation" ]; then
+     echo "Clone our repositories..."
      git clone git@github.com:CLMBRs/communication-translation.git
+     cd communication-translation
+     echo "Clone repositories for tokenizing si and ne ..."
+     # clone tokenizer for si and ne
+     git clone https://github.com/anoopkunchukuttan/indic_nlp_library.git
+     git clone https://github.com/anoopkunchukuttan/indic_nlp_resources.git
+     cd ../
 fi
 cd communication-translation/
 if [ ! -d "./DataLink" ]; then
@@ -55,6 +63,13 @@ conda init
 echo "Done."
 echo 'export PYTHONPATH="~/communication-translation:$PYTHONPATH"' >> ~/.bashrc
 # For some reason, install from bash script doesn't work
-echo "Note: 'pip install -r requirements.txt' needs to be run separately"
-echo "Note: to install torch, use 'pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html'"
+echo "You need to install our packages manually:"
+echo "1. To install torch with CUDA 10.2, use 'pip install torch==1.12.1+cu102 --extra-index-url https://download.pytorch.org/whl/cu102'"
+echo "2. pip install -r requirements.txt"
+echo
+
+
+echo "For si/ne tokenization, you need to install their packages manually:"
+echo "1. Run 'cd indic_nlp_library'"
+echo "2. 'pip install -r requirements.txt'"
 echo

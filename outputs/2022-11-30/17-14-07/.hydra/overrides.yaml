@@ -1,0 +1,7 @@
+- +ec=i2i_caption_repro
+- ec/language=en-ne
+- ec/data=clipL
+- ec.train_eval.seed=1
+- ec.model.image_unroll=transformer
+- ec.output_dir=Output/en-ne_pipeline_seed1/i2i_captions_clipL_transformer_from-pretrained
+- ec.model.model_name=facebook/mbart-large-cc25

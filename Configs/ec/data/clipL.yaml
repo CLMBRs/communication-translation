@@ -1,5 +1,5 @@
 # Loading and saving data:
-base_dir: ./DataLink/captioning_new_new
+base_dir: <need specify>
 train_captions: ${.base_dir}/en_captions_train.jsonl
 valid_captions: ${.base_dir}/en_captions_val.jsonl
 train_images: ${.base_dir}/clipL_train.pt

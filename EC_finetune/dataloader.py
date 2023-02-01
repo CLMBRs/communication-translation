@@ -141,9 +141,9 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
         # since an image can have more than one caption. Create a lookup
         # dictionary that returns a (image_index, caption_index) pair based on a
         # primary index. Also tokenize the captions
-        self.num_instances = sum([len(options) for options in self.captions])
         self.caption_lookup = {}
         caption_index = 0
+
         for image_index, caption_set in enumerate(self.captions):
             for secondary_index in range(
                 min(max_captions_per_image, len(caption_set))
@@ -152,6 +152,7 @@ class CaptionTrainingDataset(ImageIdentificationDataset):
                     image_index, secondary_index
                 )
                 caption_index += 1
+        self.num_instances = len(self.caption_lookup)
 
         # Prepartion for language-constrained generation
         self.lang_code2id = dict(
@@ -213,16 +214,16 @@ class TextInputECDataset(CaptionTrainingDataset):
             images, captions, num_distractors, tokenizer, args, max_length,
             max_captions_per_image
         )
-        self.source_lang_id = self.lang_code2id[args.source_lang]
-        self.target_lang_id = self.lang_code2id[args.target_lang]
+        self.source_lang_id = self.lang_code2id[args.language.source_lang]
+        self.target_lang_id = self.lang_code2id[args.language.target_lang]
         self.lang_ids = [self.source_lang_id, self.target_lang_id]
 
         if self.has_vocab_constraint:
             self.source_lang_mask = vocab_constraint_from_file(
-                tokenizer, args.source_lang_vocab_constrain_file
+                tokenizer, args.language.source_lang_vocab_constrain_file
             )
             self.target_lang_mask = vocab_constraint_from_file(
-                tokenizer, args.target_lang_vocab_constrain_file
+                tokenizer, args.language.target_lang_vocab_constrain_file
             )
             self.lang_masks = [self.source_lang_mask, self.target_lang_mask]
 

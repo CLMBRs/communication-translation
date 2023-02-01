@@ -475,7 +475,7 @@ def backtranslate(args, backtranslation_pack, logger):
                 crossent_patience_count, step, logger, mode='crossentropy'
             )
             if (
-                hasattr(args, 'crossent_patience') and
+                hasattr(args.train_eval, 'crossent_patience') and
                 crossent_patience_count > args.train_eval.crossent_patience
             ):
                 break
@@ -485,7 +485,7 @@ def backtranslate(args, backtranslation_pack, logger):
                 translation_patience_count, step, logger
             )
             if (
-                hasattr(args, 'translation_patience') and
+                hasattr(args.train_eval, 'translation_patience') and
                 translation_patience_count > args.translation_patience
             ):
                 break
@@ -575,8 +575,7 @@ def main(args: DictConfig) -> None:
         f"Total valid {args.data.lang2_id} tokens:"
         f" {torch.sum(torch.isfinite(lang2_vocab_constraint))}"
     )
-
-    if hasattr(args, 'secondary_threshold'):
+    if hasattr(args.train_eval, 'secondary_threshold'):
         lang1_secondary_constraint = vocab_constraint_from_file(
             tokenizer=tokenizer,
             file=args.data.lang1_vocab_constrain_file,
@@ -703,7 +702,7 @@ def main(args: DictConfig) -> None:
 
     if args.train_eval.do_crossent_eval or args.train_eval.do_translate_eval:
         args.train_eval.val_dataset = load_dataset(
-            args.train_eval.val_dataset_script, args.data.lang_pair, split="validation"
+            args.data.val_dataset_script, args.data.lang_pair, split="validation"
         )
         data_columns = [
             "step", f"{args.data.lang1_id} to {args.data.lang2_id}",

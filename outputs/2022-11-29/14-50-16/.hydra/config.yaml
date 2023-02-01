@@ -1,0 +1,44 @@
+backtranslate:
+  data:
+    data_dir: ./DataLink/cc
+    output_data_filename: bt_en+ne.csv
+    lang1_data_file: en_500k.txt
+    lang1_id: en
+    lang1_max_len: 64
+    lang1_vocab_constrain_file: ./Data/cc/en_cc_tokenID2count_dict.cc25.json
+    lang2_data_file: ne_500k.txt
+    lang2_id: ne
+    lang2_max_len: 64
+    lang2_vocab_constrain_file: ./Data/cc/ne_cc_tokenID2count_dict.facebook-mbart-large-cc25.json
+    lang_pair: neen
+  train_eval:
+    num_steps: 8192
+    lr: 1.0e-05
+    grad_clip: 1.0
+    num_warmup_steps: 1024
+    schedule: constant_w_warmup
+    batch_size: 32
+    seed: 1
+    n_gpu: 1
+    print_every: 32
+    do_initial_eval: false
+    do_crossent_eval: false
+    eval_every: 128
+    crossent_patience: 16
+    do_translate_eval: true
+    translate_every: 256
+    validation_set_size: 4096
+    eval_batch_size: 64
+    num_beams: 5
+    val_metric_name: bleu
+    num_constrained_steps: 2048
+    vocab_constraint_threshold: 0.96
+    secondary_threshold: 0.99
+    early_stop_start_time: 8192
+    val_dataset_script: BackTranslation/flores/flores.py
+    models_shared: true
+    print_translation: false
+    num_printed_translation: 3
+  model_path: Output/en-ne_pipeline_seed1/i2i_ec_resnet_recurrent_from-pretrained
+  output_dir: Output/en-ne_pipeline_seed1/i2i_bt_sec_resnet_recurrent_from-pretrained
+  backtranslated_dir: ''

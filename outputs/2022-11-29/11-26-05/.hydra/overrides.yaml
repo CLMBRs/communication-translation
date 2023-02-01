@@ -1,0 +1,5 @@
+- +backtranslate=en-ne_bt_initial_repro
+- backtranslate/data=en-ne
+- backtranslate.train_eval.seed=1
+- backtranslate.output_dir=Output/en-ne_i2i_pipeline_seed1/bt_init/
+- backtranslate.model_path=facebook/mbart-large-cc25
