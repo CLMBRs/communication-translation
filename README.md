@@ -51,7 +51,7 @@ This project uses structured configs implemented by [`hydra`](https://hydra.cc/d
 
 Our pipeline mainly consists of two parts: backtranslation(`Configs/backtranslate`, "BT") and emergent communication(`Configs/ec`, "EC"). Backtranslation follows the iterative backtranslation process in [mBART paper](https://arxiv.org/abs/2001.08210) but applied to different language pairs. 
 
-Backtranslation(BT) is the main bulk part of the experiments and BT in all experiments run for the same number of steps. **One could view EC training as a super light-weight training (about 30min of EC and 12hr of BT) inserted into the backtranslation process.** Given a language pair and image embedding source, different experiments mainly vary across two dimensions: **1.** Where EC is inserted in the process of BT **2.** Which part of EC is inserted (T2I or I2I).
+Backtranslation(BT) is the main bulk part of the experiments and BT in all experiments run for the same number of steps. **One could view EC training as a super light-weight training (about 30min of EC and 12hr of BT) inserted into the backtranslation process.** Given a language pair and image embedding source, different experiments mainly vary across two dimensions: **1.** Where EC is inserted in the process of BT **2.** Which type of EC is inserted (T2I or I2I).
 
 ```
 |===== BT =====||===== Optional: EC ======||=========== BT ============|
