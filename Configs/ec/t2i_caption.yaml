@@ -12,7 +12,7 @@ mode: image_grounding
 save_pretrain_seperately: true
 
 data:
-  base_dir: ./DataLink/captioning_new_new
+  base_dir: ./DataLink/captioning
 
 model:
   model_name: facebook/mbart-large-cc25

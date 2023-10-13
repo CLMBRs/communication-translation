@@ -12,7 +12,7 @@ mode: emergent_communication
 save_pretrain_seperately: true
 
 data:
-  base_dir: ./DataLink/ec_finetuning_new
+  base_dir: ./DataLink/ec
 
 model:
   model_name: ./Output/en-de_pipeline/captions
