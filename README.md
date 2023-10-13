@@ -57,12 +57,8 @@ Backtranslation(BT) is the main bulk part of the experiments and BT in all exper
 |===== BT =====||===== Optional: EC ======||=========== BT ============|
 ```
 
-With that in mind, we organize configs follows
+With that in mind, we organize configs as follows. We will use BT as an example:
 
-
-Therefore, the folder is structured as
-
-### Backtranslation
 ```
 Configs/backtranslate/
 ├── bt_baseline.yaml # baseline, that only do BT
@@ -83,9 +79,8 @@ Configs/backtranslate/
 ├── t2i_bt_initial.yaml
 ├── t2i_bt_secondary.yaml
 └── t2i_bt.yaml
-
 ```
-
+Since we ran our experiments on server managed by [condor](https://courses.washington.edu/ling571/ling571_WIN2017/orientation.pdf), we included many `*.cmd` files at the repository root.
 
 ## Style Guide
 
