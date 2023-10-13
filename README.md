@@ -23,17 +23,69 @@ Proceedings of the 28th International Conference on Computational Linguistics
 and is under development by the **University of Washington CLMBR Lab**, under
 Shane Steinert-Threlkeld.
 
-## Dependencies
+## Installation
 
 The source code is built aroud PyTorch, and has the following main dependencies:
 
 - Python 3.9
-- PyTorch >=1.7.0
 - transformers 4.0.1
 
-For more extensive dependencies, see `requirements.txt`.
 
+For more extensive dependencies, see `requirements.txt`.
+```
+    conda create -n unmt python=3.9
     pip install -r requirements.txt
+    pip install torch==1.12.1+cu102 --extra-index-url https://download.pytorch.org/whl/cu102
+```
+
+
+**Important Note:** We develop this project with `torch==1.12.1+cu102`, please make sure this is package is used for reproducibility.
+
+## Config / Experiments
+
+To obtain the latest results of this project, go to the `communication-translation` folder and
+run the relevant script from [RunScripts](/RunScripts).
+
+
+This project uses structured configs implemented by [`hydra`](https://hydra.cc/docs/intro/), located in `Configs` directory. We will briefly explain how configs are organized in this project and we refer user to original `hydra` documentation for understanding what "structure configs" means.
+
+Our pipeline mainly consists of two parts: backtranslation(`Configs/backtranslate`, "BT") and emergent communication(`Configs/ec`, "EC"). Backtranslation follows the iterative backtranslation process in [mBART paper](https://arxiv.org/abs/2001.08210) but applied to different language pairs. 
+
+Backtranslation(BT) is the main bulk part of the experiments and BT in all experiments run for the same number of steps. **One could view EC training as a super light-weight training (about 30min of EC and 12hr of BT) inserted into the backtranslation process.** Given a language pair and image embedding source, different experiments mainly vary across two dimensions: **1.** Where EC is inserted in the process of BT **2.** Which part of EC is inserted (T2I or I2I).
+
+```
+|===== BT =====||===== Optional: EC ======||=========== BT ============|
+```
+
+With that in mind, we organize configs follows
+
+
+Therefore, the folder is structured as
+
+### Backtranslation
+```
+Configs/backtranslate/
+├── bt_baseline.yaml # baseline, that only do BT
+├── data  # pointing to different language data files
+│   ├── en-de.yaml
+│   ├── en-ne.yaml
+│   ├── en-si.yaml
+│   └── en-zh.yaml
+└── train_eval # different training configs for backtranslation 
+│   ├── baseline.yaml
+│   ├── initial.yaml
+│   └── secondary.yaml
+│   # different configs for different experiments, 
+│   # each configs essentially combine sub-configs in `data` and `train_eval`
+├── i2i_bt_initial.yaml  
+├── i2i_bt_no_initBT.yaml
+├── i2i_bt_secondary.yaml
+├── t2i_bt_initial.yaml
+├── t2i_bt_secondary.yaml
+└── t2i_bt.yaml
+
+```
+
 
 ## Style Guide
 
@@ -70,17 +122,6 @@ ones)
 ## Data
 
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
-
-## Pipeline
-
-To run code in this package, you must first do the following steps:
-
-1. Create a Python 3.9 Conda virtual environment: `conda create -n unmt python=3.9`
-1. Start the new environment: `conda activate unmt`
-1. Install this package using developer mode from the top level directory (`communication_translation`): `pip install -e .`
-
-To obtain the latest results of this project, go to the `communication-translation` folder and
-run the relevant script from [RunScripts](/RunScripts).
 
 ## Acknowledgements
 

@@ -1,8 +1,0 @@
-# Generation
-beam_width: 1
-temperature: 1.0
-hard: true
-repetition_penalty: 1.0
-generate_from_logits: false
-max_seq_length: 32
-TransferH: false # switch to hard gumbel after the model reaches target accuracy
