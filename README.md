@@ -119,7 +119,7 @@ ones)
 COCO image features are obtained from [Translagent](https://github.com/facebookresearch/translagent).
 
 We publicize our data and model at [huggingface hub](https://huggingface.co/CLMBR/ec-unmt). 
-The data is under `Data/`; we additionally use a language model to regularize training, the used model is essentially a finetuned mBART decoder (under `Output/mbart_lm_lr6e-6`).
+The data is under `Data/`; we additionally use a language model to regularize training, the used model is essentially a finetuned mBART decoder (under `Output/mbart_lm_lr6e-6`) on different languages of CC-100.
 
 ## Acknowledgements
 
